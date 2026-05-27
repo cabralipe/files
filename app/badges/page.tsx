@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
 
@@ -147,12 +148,10 @@ export default function Badges() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-700">Carregando badges...</p>
-        </div>
-      </div>
+      <main className="auth-state">
+        <div className="spin" />
+        <p>Carregando conquistas...</p>
+      </main>
     )
   }
 
@@ -163,110 +162,137 @@ export default function Badges() {
   const unlockedCount = badges.filter((b) => b.unlocked).length
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main>
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">🏅 Suas Conquistas</h1>
-          <button
-            onClick={async () => {
-              await signOut()
-              router.push('/')
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-          >
-            Sair
-          </button>
+      <header id="hdr">
+        <div className="hdr-in">
+          <Link href="/" className="logo" aria-label="Voltar ao portal">
+            <div className="logo-ic">BN</div>
+            <div>
+              <div className="logo-t">Portal BNCC Computação</div>
+              <div className="logo-s">Minhas conquistas e insígnias</div>
+            </div>
+          </Link>
+          <nav className="hdr-nav" aria-label="Acessos">
+            <Link className="nb" href="/">
+              Início
+            </Link>
+            <Link className="nb" href="/experiences">
+              Experiências
+            </Link>
+            <button
+              className="nb"
+              onClick={async () => {
+                await signOut()
+                router.push('/')
+              }}
+            >
+              Sair
+            </button>
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      <section className="pg">
+        <div className="saved-head">
+          <div>
+            <h1>🏅 Suas Conquistas</h1>
+            <p>Acompanhe sua pontuação de engajamento pedagógico na rede municipal.</p>
+          </div>
+        </div>
+
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-gray-500 text-sm mb-2">Pontos Totais</p>
-            <p className="text-4xl font-bold text-indigo-600">{userPoints}</p>
+        <div className="coord-stats mb-8">
+          <div>
+            <strong>{userPoints}</strong>
+            <span>Pontos Totais</span>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-gray-500 text-sm mb-2">Badges Desbloqueados</p>
-            <p className="text-4xl font-bold text-green-600">
-              {unlockedCount}/{badges.length}
-            </p>
+          <div>
+            <strong>{unlockedCount}/{badges.length}</strong>
+            <span>Insígnias Desbloqueadas</span>
           </div>
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-gray-500 text-sm mb-2">Progresso Geral</p>
-            <p className="text-4xl font-bold text-purple-600">
-              {Math.round((unlockedCount / badges.length) * 100)}%
-            </p>
+          <div>
+            <strong>{Math.round((unlockedCount / badges.length) * 100)}%</strong>
+            <span>Progresso Geral</span>
           </div>
         </div>
 
         {/* Badges Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="plans-grid">
           {badges.map((badge) => (
             <div
               key={badge.id}
-              className={`rounded-lg shadow-lg p-6 text-center transition transform hover:scale-105 ${
+              className={`pc text-center transition-all ${
                 badge.unlocked
-                  ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-2 border-yellow-400'
-                  : 'bg-white opacity-60'
+                  ? 'bg-[#FBEFCC]'
+                  : 'opacity-50'
               }`}
+              style={badge.unlocked ? { transform: `rotate(${(parseInt(badge.id) % 3) - 1.5}deg)` } : {}}
             >
               {/* Icon */}
-              <div className="text-6xl mb-4">{badge.icon}</div>
+              <div className="text-6xl mb-4 select-none transform hover:scale-110 transition-transform duration-100">{badge.icon}</div>
 
               {/* Badge Name */}
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
+              <h3 className="pct justify-center">
                 {badge.name}
               </h3>
 
               {/* Description */}
-              <p className="text-sm text-gray-600 mb-4">{badge.description}</p>
+              <p className="text-xs text-gray-600 mb-4">{badge.description}</p>
 
-              {/* Progress Bar */}
+              {/* Progress Bar (Risographic Custom) */}
               <div className="mb-4">
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-[#E8DCB8] border-2 border-black h-4 overflow-hidden relative">
                   <div
-                    className={`h-2 rounded-full transition-all ${
-                      badge.unlocked ? 'bg-green-500' : 'bg-indigo-500'
+                    className={`h-full transition-all border-r-2 border-black ${
+                      badge.unlocked ? 'bg-[#1E8C7E]' : 'bg-[#E5394B]'
                     }`}
                     style={{ width: `${badge.progress}%` }}
                   ></div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs font-mono font-bold mt-1 text-gray-700">
                   {Math.round(badge.progress)}%
                 </p>
               </div>
 
               {/* Status */}
               {badge.unlocked ? (
-                <div className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold inline-block">
-                  ✓ Desbloqueado
-                </div>
+                <span className="tag tcd">✓ Desbloqueado</span>
               ) : (
-                <div className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm font-semibold inline-block">
-                  Bloqueado
-                </div>
+                <span className="tag ta">Bloqueado</span>
               )}
             </div>
           ))}
         </div>
 
         {/* Info Section */}
-        <div className="mt-12 bg-white rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Como ganhar pontos?
-          </h2>
-          <ul className="space-y-3 text-gray-700">
-            <li>⭐ Criar experiência: +10 pontos</li>
-            <li>❤️ Receber like: +5 pontos</li>
-            <li>💬 Comentário recebido: +2 pontos</li>
-            <li>📚 Completar plano: +20 pontos</li>
-            <li>🎯 Dominar skill: +50 pontos</li>
+        <div className="pc mt-12">
+          <h2 className="pct">Como ganhar pontos e desbloquear insígnias?</h2>
+          <ul className="space-y-3 font-body text-sm font-semibold">
+            <li className="flex items-center gap-2">
+              <span className="tag tc">⭐ Criar experiência</span>
+              <span className="text-gray-700">+10 pontos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="tag ta">❤️ Receber like</span>
+              <span className="text-gray-700">+5 pontos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="tag tcd">💬 Comentário recebido</span>
+              <span className="text-gray-700">+2 pontos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="tag tm">📚 Completar plano</span>
+              <span className="text-gray-700">+20 pontos</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="tag tp">🎯 Dominar skill</span>
+              <span className="text-gray-700">+50 pontos</span>
+            </li>
           </ul>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   )
 }

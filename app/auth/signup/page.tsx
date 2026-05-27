@@ -76,28 +76,35 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            BNCC Platform
+        <div className="mb-8 text-center flex flex-col items-center">
+          <Link href="/" className="logo mb-4 inline-flex">
+            <div className="logo-ic">BN</div>
+            <div className="text-left">
+              <div className="logo-t">Portal BNCC Computação</div>
+              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+            </div>
+          </Link>
+          <h1 className="font-display font-black text-2xl text-gray-900 mt-2">
+            Cadastro de Professor
           </h1>
-          <p className="text-gray-600">Crie sua conta</p>
+          <p className="text-sm text-gray-600 mt-1">Crie sua conta para começar a criar experiências e planos</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="pc w-full">
           {/* Success Message */}
           {success && (
-            <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-800 rounded">
+            <div className="al-ok mb-4">
               {success}
             </div>
           )}
 
           {/* Error Messages */}
           {(error || authError) && (
-            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-800 rounded">
+            <div className="al-error mb-4">
               {error || authError}
             </div>
           )}
@@ -105,44 +112,35 @@ export default function SignUp() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nome Completo
-              </label>
+            <label className="fgr">
+              <span className="fl">Nome Completo</span>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="João Silva"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de acesso
-              </label>
+            <label className="fgr">
+              <span className="fl">Tipo de acesso</span>
               <select
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
               >
                 <option value="teacher">Professor(a)</option>
                 <option value="coordinator">Coordenador(a)</option>
               </select>
-            </div>
+            </label>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Escola
-              </label>
+            <label className="fgr">
+              <span className="fl">Escola</span>
               <select
                 name="school"
                 value={formData.school}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
               >
                 <option value="">Selecione a escola</option>
                 {municipalSchools.map((school) => (
@@ -151,18 +149,15 @@ export default function SignUp() {
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
 
             {formData.role === 'teacher' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Disciplina que leciona
-                </label>
+              <label className="fgr">
+                <span className="fl">Disciplina que leciona</span>
                 <select
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                 >
                   <option value="">Selecione a disciplina</option>
                   {teacherSubjectOptions.map((subject) => (
@@ -171,59 +166,50 @@ export default function SignUp() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </label>
             )}
 
             {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+            <label className="fgr">
+              <span className="fl">Email</span>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="seu@email.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
               />
-            </div>
+            </label>
 
             {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Senha
-              </label>
+            <label className="fgr">
+              <span className="fl">Senha</span>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
               />
-            </div>
+            </label>
 
             {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirmar Senha
-              </label>
+            <label className="fgr">
+              <span className="fl">Confirmar Senha</span>
               <input
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
               />
-            </div>
+            </label>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="w-full btn btn-pri mt-6"
             >
               {loading ? 'Carregando...' : 'Criar Conta'}
             </button>
@@ -234,7 +220,7 @@ export default function SignUp() {
             Já tem conta?{' '}
             <Link
               href="/auth/login"
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
+              className="text-indigo-600 hover:underline font-semibold"
             >
               Faça login
             </Link>

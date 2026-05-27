@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/coordinator/plans":{},"/api/experiences":{},"/api/coordinator/plans/[id]/review":{},"/api/notifications":{},"/api/plans/[id]":{},"/api/plans/generate":{},"/api/plans":{},"/api/search":{},"/api/skills":{}}}
+{"version":1,"functions":{"/api/coordinator/plans":{},"/api/plans/[id]":{},"/api/plans":{},"/api/notifications":{},"/api/coordinator/plans/[id]/review":{},"/api/search":{},"/api/experiences":{},"/api/skills":{},"/api/plans/generate":{}}}

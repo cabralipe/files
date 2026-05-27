@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useStorage } from '@/hooks/useStorage'
 
@@ -98,14 +99,28 @@ export default function Gallery() {
     }
   }
 
+  const handleDelete = async (fileName: string) => {
+    if (!window.confirm('Tem certeza de que deseja excluir esta imagem?')) return
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+      await deleteFile('experience-images', fileName)
+      setSuccess('Imagem excluída com sucesso!')
+      await fetchFiles()
+    } catch (err: any) {
+      setError(err.message || 'Erro ao excluir imagem')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-700">Carregando galeria...</p>
-        </div>
-      </div>
+      <main className="auth-state">
+        <div className="spin" />
+        <p>Carregando galeria...</p>
+      </main>
     )
   }
 
@@ -114,34 +129,55 @@ export default function Gallery() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main>
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">📸 Galeria</h1>
-          <button
-            onClick={async () => {
-              await signOut()
-              router.push('/')
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-          >
-            Sair
-          </button>
+      <header id="hdr">
+        <div className="hdr-in">
+          <Link href="/" className="logo" aria-label="Voltar ao portal">
+            <div className="logo-ic">BN</div>
+            <div>
+              <div className="logo-t">Portal BNCC Computação</div>
+              <div className="logo-s">Galeria de imagens pedagógicas</div>
+            </div>
+          </Link>
+          <nav className="hdr-nav" aria-label="Acessos">
+            <Link className="nb" href="/">
+              Início
+            </Link>
+            <Link className="nb" href="/experiences">
+              Experiências
+            </Link>
+            <button
+              className="nb"
+              onClick={async () => {
+                await signOut()
+                router.push('/')
+              }}
+            >
+              Sair
+            </button>
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      <section className="pg">
+        <div className="saved-head">
+          <div>
+            <h1>📸 Galeria de Experiências</h1>
+            <p>Envie e gerencie fotos das aulas práticas de computação realizadas na rede municipal.</p>
+          </div>
+        </div>
+
         {/* Messages */}
         {success && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-800 rounded">
-            ✓ {success}
+          <div className="al-ok mb-6">
+            {success}
           </div>
         )}
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-800 rounded">
-            ✗ {error}
+          <div className="al-error mb-6">
+            {error}
           </div>
         )}
 
@@ -151,17 +187,18 @@ export default function Gallery() {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          className={`mb-8 rounded-lg border-2 border-dashed p-8 text-center transition ${
+          className={`pc text-center transition-all duration-120 ${
             dragActive
-              ? 'border-indigo-500 bg-indigo-50'
-              : 'border-gray-300 bg-white'
+              ? 'bg-[#E9DDF0] border-dashed border-[3px]'
+              : 'bg-var(--paper-soft) border-dashed border-[3px]'
           }`}
+          style={{ cursor: 'pointer' }}
         >
-          <div className="text-4xl mb-4">📤</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Envie suas imagens
+          <div className="text-4xl mb-4 select-none">📤</div>
+          <h2 className="pct justify-center">
+            Envie suas imagens de experiência
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-sm text-gray-600 mb-6 font-semibold">
             Arraste arquivos aqui ou clique para selecionar
           </p>
           <label className="inline-block">
@@ -184,42 +221,49 @@ export default function Gallery() {
                 input?.click()
               }}
               disabled={uploading}
-              className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+              className="btn btn-pri"
             >
               {uploading ? 'Enviando...' : 'Selecionar Arquivo'}
             </button>
           </label>
-          <p className="text-xs text-gray-500 mt-4">
-            Máximo 10MB • PNG, JPG ou WebP
+          <p className="text-xs font-mono mt-4 text-gray-500 font-semibold">
+            Limite: 10MB • Imagens PNG, JPG ou WebP
           </p>
         </div>
 
         {/* Files Grid */}
         {files.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500 text-lg">Nenhuma imagem na galeria</p>
+          <div className="pc text-center py-12">
+            <p className="text-gray-500 text-lg font-semibold">Nenhuma imagem na galeria ainda.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="plans-grid">
             {files.map((file) => (
-              <div key={file.name} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="aspect-square bg-gray-200 flex items-center justify-center">
-                  <span className="text-4xl">📋</span>
+              <div key={file.name} className="pc flex flex-col justify-between overflow-hidden">
+                <div className="aspect-square bg-[#E8DCB8] border-2 border-black flex items-center justify-center relative select-none">
+                  <span className="text-5xl">📸</span>
                 </div>
-                <div className="p-4">
-                  <p className="font-medium text-gray-900 truncate">{file.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(file.updated_at).toLocaleDateString()}
-                  </p>
-                  <button className="mt-3 w-full bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition text-sm">
-                    Deletar
+                <div className="pt-4 flex flex-col flex-grow justify-between">
+                  <div>
+                    <p className="font-display font-black text-base text-gray-900 truncate mb-1" title={file.name}>
+                      {file.name}
+                    </p>
+                    <p className="text-xs font-mono font-semibold text-gray-500 mb-4">
+                      {new Date(file.updated_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(file.name)}
+                    className="w-full btn btn-out"
+                  >
+                    Deletar imagem
                   </button>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </section>
+    </main>
   )
 }

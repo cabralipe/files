@@ -83,20 +83,20 @@ export default function LikesButton({ experienceId, userId }: LikesButtonProps) 
       <button
         onClick={handleToggleLike}
         disabled={loading}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+        className={`btn font-mono text-sm font-bold ${
           liked
-            ? 'bg-red-100 text-red-600 hover:bg-red-200'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-        } disabled:opacity-50 disabled:cursor-not-allowed`}
+            ? 'bg-[#E5394B] text-[#FBF5E3] hover:bg-[#B82433] !important'
+            : 'btn-out'
+        }`}
       >
         <Heart
-          size={20}
+          size={18}
           fill={liked ? 'currentColor' : 'none'}
-          className="transition"
+          className="transition-transform duration-100 active:scale-125"
         />
-        <span className="text-sm font-medium">{likeCount}</span>
+        <span>{likeCount} likes</span>
       </button>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <span className="text-xs font-mono font-bold text-[#E5394B] ml-2">{error}</span>}
     </div>
   )
 }

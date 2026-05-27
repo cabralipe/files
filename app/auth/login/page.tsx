@@ -42,21 +42,28 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            BNCC Platform
+        <div className="mb-8 text-center flex flex-col items-center">
+          <Link href="/" className="logo mb-4 inline-flex">
+            <div className="logo-ic">BN</div>
+            <div className="text-left">
+              <div className="logo-t">Portal BNCC Computação</div>
+              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+            </div>
+          </Link>
+          <h1 className="font-display font-black text-2xl text-gray-900 mt-2">
+            Acesso à Plataforma
           </h1>
-          <p className="text-gray-600">Faça login na sua conta</p>
+          <p className="text-sm text-gray-600 mt-1">Faça login para salvar e gerenciar seus planos de aula</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="pc w-full">
           {/* Error Messages */}
           {(error || authError) && (
-            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-800 rounded">
+            <div className="al-error mb-4">
               {error || authError}
             </div>
           )}
@@ -66,49 +73,45 @@ export default function Login() {
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Email */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
+                <label className="fgr">
+                  <span className="fl">Email</span>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="seu@email.com"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   />
-                </div>
+                </label>
 
                 {/* Password */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Senha
-                  </label>
+                <label className="fgr">
+                  <span className="fl">Senha</span>
                   <input
                     type="password"
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="••••••••"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
                   />
-                </div>
+                </label>
 
                 {/* Forgot Password Link */}
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-indigo-600 hover:text-indigo-700"
-                >
-                  Esqueceu a senha?
-                </button>
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs font-semibold text-gray-600 hover:text-indigo-700 underline"
+                  >
+                    Esqueceu a senha?
+                  </button>
+                </div>
 
                 {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                  className="w-full btn btn-pri mt-6"
                 >
                   {loading ? 'Carregando...' : 'Fazer Login'}
                 </button>
@@ -119,9 +122,9 @@ export default function Login() {
                 Não tem conta?{' '}
                 <Link
                   href="/auth/signup"
-                  className="text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="text-indigo-600 hover:underline font-semibold"
                 >
-                  Cadastre-se
+                  Cadastre-se como professor
                 </Link>
               </p>
             </>
@@ -132,20 +135,22 @@ export default function Login() {
                 <p className="text-sm text-gray-600 mb-4">
                   Digite seu email para receber um link de redefinição de senha.
                 </p>
-                <input
-                  type="email"
-                  placeholder="seu@email.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                />
+                <label className="fgr">
+                  <span className="fl">Email</span>
+                  <input
+                    type="email"
+                    placeholder="seu@email.com"
+                  />
+                </label>
                 <button
                   onClick={() => setShowForgotPassword(false)}
-                  className="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition"
+                  className="w-full btn btn-pri mt-4"
                 >
                   Enviar Link
                 </button>
                 <button
                   onClick={() => setShowForgotPassword(false)}
-                  className="w-full bg-gray-200 text-gray-800 font-medium py-2 rounded-lg hover:bg-gray-300 transition"
+                  className="w-full btn btn-out mt-2"
                 >
                   Voltar
                 </button>

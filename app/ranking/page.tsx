@@ -59,130 +59,133 @@ export default function Ranking() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">🏆 Ranking Global</h1>
-          <button
-            onClick={async () => {
-              await signOut()
-              router.push('/')
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-          >
-            Sair
-          </button>
+      <header id="hdr">
+        <div className="hdr-in">
+          <Link href="/" className="logo" aria-label="Voltar ao portal">
+            <div className="logo-ic">BN</div>
+            <div>
+              <div className="logo-t">Portal BNCC Computação</div>
+              <div className="logo-s">Ranking Global de Professores</div>
+            </div>
+          </Link>
+          <nav className="hdr-nav" aria-label="Acessos">
+            <Link className="nb" href="/">
+              Habilidades e planos
+            </Link>
+            <Link className="nb" href="/experiences">
+              Experiências
+            </Link>
+            <button
+              className="nb"
+              onClick={async () => {
+                await signOut()
+                router.push('/')
+              }}
+            >
+              Sair
+            </button>
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      <main className="pg">
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-800 rounded">
+          <div className="al-error" style={{ marginBottom: '20px' }}>
             {error}
           </div>
         )}
 
         {/* Top 3 Podium */}
         {ranking.length >= 3 && (
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-              Top 3
+          <div style={{ marginBottom: '32px' }}>
+            <h2 className="pct" style={{ fontSize: '24px', textAlign: 'center', marginBottom: '24px' }}>
+              🏆 Pódio - Professores Destaques
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '18px', alignItems: 'end' }}>
               {/* 2nd Place */}
-              <div className="md:order-1 bg-white rounded-lg shadow-lg p-6 border-t-4 border-gray-400">
-                <div className="text-center">
-                  <div className="text-5xl mb-2">🥈</div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {ranking[1]?.name || '-'}
-                  </h3>
-                  <p className="text-gray-600">{ranking[1]?.email || '-'}</p>
-                  <p className="text-3xl font-bold text-gray-600 mt-4">
-                    {ranking[1]?.points || 0} pts
-                  </p>
-                </div>
+              <div className="pc" style={{ textAlign: 'center', transform: 'rotate(-1deg)', borderTop: '6px solid var(--ink-muted)' }}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>🥈</div>
+                <h3 className="pi-title" style={{ fontSize: '18px' }}>
+                  {ranking[1]?.name || '-'}
+                </h3>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}>{ranking[1]?.email || '-'}</p>
+                <p className="sc-n" style={{ fontSize: '32px', color: 'var(--ink-soft)', marginTop: '12px' }}>
+                  {ranking[1]?.points || 0} pts
+                </p>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>2º Lugar</span>
               </div>
 
               {/* 1st Place */}
-              <div className="md:order-2 bg-gradient-to-br from-yellow-100 to-yellow-50 rounded-lg shadow-xl p-8 border-t-4 border-yellow-400 transform md:scale-105">
-                <div className="text-center">
-                  <div className="text-6xl mb-2">🥇</div>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    {ranking[0]?.name || '-'}
-                  </h3>
-                  <p className="text-gray-600">{ranking[0]?.email || '-'}</p>
-                  <p className="text-4xl font-bold text-yellow-600 mt-4">
-                    {ranking[0]?.points || 0} pts
-                  </p>
-                </div>
+              <div className="pc" style={{ textAlign: 'center', backgroundColor: 'var(--mustard-wash)', transform: 'scale(1.05) rotate(1deg)', boxShadow: 'var(--stamp-lg)', borderTop: '6px solid var(--mustard)' }}>
+                <div style={{ fontSize: '56px', marginBottom: '10px' }}>👑</div>
+                <h3 className="pi-title" style={{ fontSize: '20px', fontWeight: 900 }}>
+                  {ranking[0]?.name || '-'}
+                </h3>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}>{ranking[0]?.email || '-'}</p>
+                <p className="sc-n" style={{ fontSize: '38px', color: 'var(--red-deep)', marginTop: '12px' }}>
+                  {ranking[0]?.points || 0} pts
+                </p>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>1º Lugar - Campeão</span>
               </div>
 
               {/* 3rd Place */}
-              <div className="md:order-3 bg-white rounded-lg shadow-lg p-6 border-t-4 border-orange-400">
-                <div className="text-center">
-                  <div className="text-5xl mb-2">🥉</div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {ranking[2]?.name || '-'}
-                  </h3>
-                  <p className="text-gray-600">{ranking[2]?.email || '-'}</p>
-                  <p className="text-3xl font-bold text-orange-600 mt-4">
-                    {ranking[2]?.points || 0} pts
-                  </p>
-                </div>
+              <div className="pc" style={{ textAlign: 'center', transform: 'rotate(-0.5deg)', borderTop: '6px solid var(--mustard-deep)' }}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>🥉</div>
+                <h3 className="pi-title" style={{ fontSize: '18px' }}>
+                  {ranking[2]?.name || '-'}
+                </h3>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}>{ranking[2]?.email || '-'}</p>
+                <p className="sc-n" style={{ fontSize: '32px', color: 'var(--ink-soft)', marginTop: '12px' }}>
+                  {ranking[2]?.points || 0} pts
+                </p>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>3º Lugar</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Full Ranking Table */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">
-              Todos os Participantes
+        <div className="pc" style={{ padding: '0px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px', borderBottom: '2.5px solid var(--ink)', backgroundColor: 'var(--paper-deep)' }}>
+            <h2 className="pct" style={{ marginBottom: '0px' }}>
+              📊 Quadro Geral de Professores
             </h2>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    Posição
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    Nome
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">
-                    Pontos
-                  </th>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr className="coord-head">
+                  <th style={{ padding: '12px 16px' }}>Posição</th>
+                  <th style={{ padding: '12px 16px' }}>Nome</th>
+                  <th style={{ padding: '12px 16px' }}>Email</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Pontos</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody style={{ color: 'var(--ink)' }}>
                 {ranking.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                      Nenhum participante ainda
+                    <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: 'var(--ink-muted)' }}>
+                      Nenhum participante pontuou ainda.
                     </td>
                   </tr>
                 ) : (
-                  ranking.map((user, index) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4">
-                        <span className="text-lg font-bold text-indigo-600">
-                          #{user.rank}
-                        </span>
+                  ranking.map((user) => (
+                    <tr key={user.id} className="coord-row" style={{ display: 'table-row' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
+                        #{user.rank}º
                       </td>
-                      <td className="px-6 py-4 font-medium text-gray-900">
+                      <td style={{ padding: '12px 16px', fontWeight: 700 }}>
                         {user.name}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-semibold">
+                      <td style={{ padding: '12px 16px', color: 'var(--ink-soft)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                        {user.email}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <span className="tag tcd" style={{ fontSize: '12px', padding: '4px 10px', fontWeight: 'bold' }}>
                           {user.points} pts
                         </span>
                       </td>
