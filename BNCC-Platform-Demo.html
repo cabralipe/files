@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BNCC Platform - Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-blue {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        @media (max-width: 640px) {
+            .podium-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px 8px; }
+            .podium-inner { min-width: 480px; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app"></div>
+
+    <script>
+        const app = document.getElementById('app');
+
+        // Dados de exemplo
+        const topProfessors = [
+            { rank: 1, name: 'Dra. Maria Silva', school: 'EMEF Paulo Freire', points: 2450, badge: '👑' },
+            { rank: 2, name: 'Prof. João Santos', school: 'EEEP Tech Futuro', points: 2100, badge: '🥈' },
+            { rank: 3, name: 'Professora Ana Costa', school: 'CEE Inovação', points: 1950, badge: '🥉' },
+            { rank: 4, name: 'Prof. Carlos Oliveira', school: 'EMEF Aprender', points: 1750 },
+            { rank: 5, name: 'Dra. Patricia Gomes', school: 'EEEP Excelência', points: 1620 }
+        ];
+
+        const experiences = [
+            {
+                id: 1,
+                title: 'Robótica com Sucata Eletrônica',
+                author: 'Prof. João Santos',
+                category: 'Programação',
+                skills: ['Lógica de Programação', 'Pensamento Computacional'],
+                likes: 245,
+                image: '🤖'
+            },
+            {
+                id: 2,
+                title: 'Criando Jogos Educativos',
+                author: 'Dra. Maria Silva',
+                category: 'Design Digital',
+                skills: ['Pensamento Crítico', 'Criatividade Digital'],
+                likes: 189,
+                image: '🎮'
+            },
+            {
+                id: 3,
+                title: 'Inclusão Digital na Comunidade',
+                author: 'Professora Ana Costa',
+                category: 'Cultura Digital',
+                skills: ['Cultura Digital', 'Responsabilidade Social'],
+                likes: 156,
+                image: '💻'
+            }
+        ];
+
+        const pages = {
+            home: () => `
+                <div class="min-h-screen gradient-blue text-white">
+                    <!-- Header -->
+                    <header class="bg-black bg-opacity-30 backdrop-blur-md">
+                        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-3xl">📚</span>
+                                <h1 class="text-2xl font-bold">BNCC Platform</h1>
+                            </div>
+                            <button onclick="navigate('home')" class="px-6 py-2 bg-white text-purple-600 rounded-lg font-semibold hover-lift">Login</button>
+                        </nav>
+                    </header>
+
+                    <!-- Hero -->
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+                        <div class="text-center mb-12">
+                            <h2 class="text-3xl sm:text-5xl font-bold mb-4 leading-tight">Plataforma de Educação Digital</h2>
+                            <p class="text-base sm:text-xl text-purple-100 mb-6 sm:mb-8">Compartilhe planos de aula, crie com IA e celebre experiências exitosas</p>
+                            <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                                <button onclick="navigate('ranking')" class="w-full sm:w-auto px-8 py-3 bg-white text-purple-600 rounded-lg font-bold hover-lift">Ver Ranking</button>
+                                <button onclick="navigate('dashboard')" class="w-full sm:w-auto px-8 py-3 bg-purple-500 text-white rounded-lg font-bold hover-lift">Meu Dashboard</button>
+                            </div>
+                        </div>
+
+                        <!-- Feature Cards -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 sm:mt-12">
+                            <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 hover-lift cursor-pointer" onclick="navigate('dashboard')">
+                                <span class="text-4xl mb-3 block">📋</span>
+                                <h3 class="font-bold text-lg mb-2">Planos de Aula</h3>
+                                <p class="text-sm text-purple-100">Crie e organize seus planos com as habilidades BNCC</p>
+                            </div>
+                            <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 hover-lift cursor-pointer" onclick="navigate('ranking')">
+                                <span class="text-4xl mb-3 block">🏆</span>
+                                <h3 class="font-bold text-lg mb-2">Ranking</h3>
+                                <p class="text-sm text-purple-100">Acompanhe os professores mais ativos</p>
+                            </div>
+                            <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 hover-lift cursor-pointer" onclick="navigate('experiencias')">
+                                <span class="text-4xl mb-3 block">⭐</span>
+                                <h3 class="font-bold text-lg mb-2">Experiências</h3>
+                                <p class="text-sm text-purple-100">Compartilhe seus cases de sucesso</p>
+                            </div>
+                            <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-6 hover-lift">
+                                <span class="text-4xl mb-3 block">🤖</span>
+                                <h3 class="font-bold text-lg mb-2">IA Assistant</h3>
+                                <p class="text-sm text-purple-100">Sugestões alimentadas por IA</p>
+                            </div>
+                        </div>
+
+                        <!-- Sistema de Pontos -->
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-lg p-5 sm:p-8 mt-8 sm:mt-12">
+                            <h3 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Sistema de Pontos 🎯</h3>
+                            <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                                <div class="bg-blue-400 bg-opacity-30 rounded p-4 text-center">
+                                    <p class="text-2xl font-bold">+10</p>
+                                    <p class="text-sm">Criar Plano</p>
+                                </div>
+                                <div class="bg-green-400 bg-opacity-30 rounded p-4 text-center">
+                                    <p class="text-2xl font-bold">+5</p>
+                                    <p class="text-sm">Sugestão IA</p>
+                                </div>
+                                <div class="bg-yellow-400 bg-opacity-30 rounded p-4 text-center">
+                                    <p class="text-2xl font-bold">+25</p>
+                                    <p class="text-sm">Publicar Experiência</p>
+                                </div>
+                                <div class="bg-red-400 bg-opacity-30 rounded p-4 text-center">
+                                    <p class="text-2xl font-bold">+2</p>
+                                    <p class="text-sm">Usar Plano</p>
+                                </div>
+                                <div class="bg-purple-400 bg-opacity-30 rounded p-4 text-center">
+                                    <p class="text-2xl font-bold">+1</p>
+                                    <p class="text-sm">Receber Like</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Demo Access -->
+                        <div class="mt-8 sm:mt-12 text-center">
+                            <p class="text-purple-100 mb-4">Explore o demo das seções principais:</p>
+                            <div class="flex flex-col sm:flex-row gap-3 justify-center items-center sm:flex-wrap">
+                                <button onclick="navigate('ranking')" class="px-6 py-2 bg-blue-400 hover:bg-blue-500 rounded-lg font-semibold hover-lift">→ Ir para Ranking</button>
+                                <button onclick="navigate('dashboard')" class="px-6 py-2 bg-green-400 hover:bg-green-500 rounded-lg font-semibold hover-lift">→ Ir para Dashboard</button>
+                                <button onclick="navigate('experiencias')" class="px-6 py-2 bg-yellow-400 hover:bg-yellow-500 rounded-lg font-semibold hover-lift">→ Ir para Experiências</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            ranking: () => `
+                <div class="min-h-screen bg-gray-50">
+                    <!-- Header -->
+                    <header class="gradient-blue text-white py-6">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-3">
+                            <h1 class="text-xl sm:text-3xl font-bold flex items-center gap-2"><span>🏆</span> Ranking de Professores</h1>
+                            <button onclick="navigate('home')" class="flex-shrink-0 px-3 sm:px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover-lift text-sm sm:text-base">← Voltar</button>
+                        </div>
+                    </header>
+
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                        <!-- Top 3 Podium -->
+                        <div class="mb-12">
+                            <h2 class="text-2xl font-bold mb-8 text-center">Pódio - Top 3</h2>
+                            <div class="podium-scroll"><div class="podium-inner flex justify-center items-end gap-4 sm:gap-8 mb-12">
+                                <!-- 2º lugar -->
+                                <div class="text-center">
+                                    <div class="bg-gradient-to-b from-blue-300 to-blue-400 rounded-lg p-6 w-40 hover-lift">
+                                        <p class="text-4xl mb-2">🥈</p>
+                                        <h3 class="font-bold text-lg">${topProfessors[1].name}</h3>
+                                        <p class="text-sm text-blue-900">${topProfessors[1].school}</p>
+                                        <p class="text-3xl font-bold mt-4 text-blue-900">${topProfessors[1].points}</p>
+                                        <p class="text-xs text-blue-800">pontos</p>
+                                    </div>
+                                    <div class="bg-blue-200 h-24 w-32 mx-auto mt-4 rounded flex items-center justify-center font-bold text-2xl">2º</div>
+                                </div>
+
+                                <!-- 1º lugar -->
+                                <div class="text-center">
+                                    <div class="bg-gradient-to-b from-yellow-300 to-yellow-400 rounded-lg p-8 w-48 hover-lift transform scale-110">
+                                        <p class="text-5xl mb-2">👑</p>
+                                        <h3 class="font-bold text-xl">${topProfessors[0].name}</h3>
+                                        <p class="text-sm text-yellow-900">${topProfessors[0].school}</p>
+                                        <p class="text-4xl font-bold mt-4 text-yellow-900">${topProfessors[0].points}</p>
+                                        <p class="text-xs text-yellow-800">pontos</p>
+                                    </div>
+                                    <div class="bg-yellow-300 h-32 w-40 mx-auto mt-4 rounded flex items-center justify-center font-bold text-3xl">1º</div>
+                                </div>
+
+                                <!-- 3º lugar -->
+                                <div class="text-center">
+                                    <div class="bg-gradient-to-b from-orange-300 to-orange-400 rounded-lg p-6 w-40 hover-lift">
+                                        <p class="text-4xl mb-2">🥉</p>
+                                        <h3 class="font-bold text-lg">${topProfessors[2].name}</h3>
+                                        <p class="text-sm text-orange-900">${topProfessors[2].school}</p>
+                                        <p class="text-3xl font-bold mt-4 text-orange-900">${topProfessors[2].points}</p>
+                                        <p class="text-xs text-orange-800">pontos</p>
+                                    </div>
+                                    <div class="bg-orange-200 h-16 w-32 mx-auto mt-4 rounded flex items-center justify-center font-bold text-xl">3º</div>
+                                </div>
+                            </div></div>
+                        </div>
+
+                        <!-- Full Ranking Table -->
+                        <div class="overflow-x-auto rounded-lg shadow-md">
+                        <div class="bg-white overflow-hidden" style="min-width:480px">
+                            <table class="w-full">
+                                <thead class="bg-purple-600 text-white">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-bold">Posição</th>
+                                        <th class="px-6 py-3 text-left font-bold">Nome</th>
+                                        <th class="px-6 py-3 text-left font-bold">Escola</th>
+                                        <th class="px-6 py-3 text-right font-bold">Pontos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${topProfessors.map((prof, idx) => `
+                                        <tr class="border-b hover:bg-purple-50 transition-all ${idx < 3 ? 'bg-purple-100' : ''}">
+                                            <td class="px-6 py-4 font-bold text-lg">${prof.rank}º ${prof.badge || ''}</td>
+                                            <td class="px-6 py-4 font-semibold">${prof.name}</td>
+                                            <td class="px-6 py-4">${prof.school}</td>
+                                            <td class="px-6 py-4 text-right font-bold text-purple-600">${prof.points}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div></div>
+
+                        <!-- Estatísticas -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-8 sm:mt-12">
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift">
+                                <h3 class="text-lg font-bold text-gray-800 mb-2">Total de Professores</h3>
+                                <p class="text-4xl font-bold text-purple-600">347</p>
+                            </div>
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift">
+                                <h3 class="text-lg font-bold text-gray-800 mb-2">Pontos em Circulação</h3>
+                                <p class="text-4xl font-bold text-green-600">487,250</p>
+                            </div>
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift">
+                                <h3 class="text-lg font-bold text-gray-800 mb-2">Ação Mais Comum</h3>
+                                <p class="text-2xl font-bold text-blue-600">Usar Planos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            dashboard: () => `
+                <div class="min-h-screen bg-gray-50">
+                    <!-- Header -->
+                    <header class="gradient-blue text-white py-6">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-3">
+                            <h1 class="text-xl sm:text-3xl font-bold flex items-center gap-2"><span>📊</span> Meu Dashboard</h1>
+                            <button onclick="navigate('home')" class="flex-shrink-0 px-3 sm:px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover-lift text-sm sm:text-base">← Voltar</button>
+                        </div>
+                    </header>
+
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                        <!-- Stat Cards -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift border-l-4 border-blue-500">
+                                <p class="text-gray-600 text-sm font-semibold">Meus Pontos</p>
+                                <p class="text-4xl font-bold text-blue-600 mt-2">1,240</p>
+                                <p class="text-xs text-gray-500 mt-2">+250 este mês</p>
+                            </div>
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift border-l-4 border-green-500">
+                                <p class="text-gray-600 text-sm font-semibold">Planos Criados</p>
+                                <p class="text-4xl font-bold text-green-600 mt-2">18</p>
+                                <p class="text-xs text-gray-500 mt-2">45 habilidades mapeadas</p>
+                            </div>
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift border-l-4 border-yellow-500">
+                                <p class="text-gray-600 text-sm font-semibold">Experiências</p>
+                                <p class="text-4xl font-bold text-yellow-600 mt-2">5</p>
+                                <p class="text-xs text-gray-500 mt-2">186 likes recebidos</p>
+                            </div>
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift border-l-4 border-purple-500">
+                                <p class="text-gray-600 text-sm font-semibold">Ranking</p>
+                                <p class="text-4xl font-bold text-purple-600 mt-2">12º</p>
+                                <p class="text-xs text-gray-500 mt-2">Entre ${topProfessors.length + 342} professores</p>
+                            </div>
+                        </div>
+
+                        <!-- Atividade Recente -->
+                        <div class="grid md:grid-cols-2 gap-6 mb-12">
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">Atividade Recente</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-3 pb-3 border-b">
+                                        <span class="text-2xl">📋</span>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Novo plano criado</p>
+                                            <p class="text-xs text-gray-500">Há 2 horas</p>
+                                        </div>
+                                        <span class="ml-auto text-green-600 font-bold">+10</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 pb-3 border-b">
+                                        <span class="text-2xl">🤖</span>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Sugestão IA utilizada</p>
+                                            <p class="text-xs text-gray-500">Há 5 horas</p>
+                                        </div>
+                                        <span class="ml-auto text-green-600 font-bold">+5</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 pb-3 border-b">
+                                        <span class="text-2xl">👍</span>
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Experiência recebeu like</p>
+                                            <p class="text-xs text-gray-500">Há 1 dia</p>
+                                        </div>
+                                        <span class="ml-auto text-green-600 font-bold">+1</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-lg shadow-md p-6 hover-lift">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4">Habilidades em Uso</h3>
+                                <div class="space-y-3">
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-800 mb-1">Lógica de Programação</p>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-blue-600 h-2 rounded-full" style="width: 85%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-800 mb-1">Pensamento Crítico</p>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-600 h-2 rounded-full" style="width: 72%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-800 mb-1">Criatividade Digital</p>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-purple-600 h-2 rounded-full" style="width: 65%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-800 mb-1">Cultura Digital</p>
+                                        <div class="w-full bg-gray-200 rounded-full h-2">
+                                            <div class="bg-yellow-600 h-2 rounded-full" style="width: 58%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Badges -->
+                        <div class="bg-white rounded-lg shadow-md p-6 hover-lift">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">Badges & Conquistas</h3>
+                            <div class="grid grid-cols-3 md:grid-cols-6 gap-4">
+                                <div class="text-center">
+                                    <p class="text-5xl">🌟</p>
+                                    <p class="text-xs font-semibold text-gray-600 mt-2">Iniciante</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-5xl">🔥</p>
+                                    <p class="text-xs font-semibold text-gray-600 mt-2">Semana Ativa</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-5xl">🎓</p>
+                                    <p class="text-xs font-semibold text-gray-600 mt-2">10 Planos</p>
+                                </div>
+                                <div class="text-center opacity-50">
+                                    <p class="text-5xl">💎</p>
+                                    <p class="text-xs font-semibold text-gray-600 mt-2">Bloqueado</p>
+                                </div>
+                                <div class="text-center opacity-50">
+                                    <p class="text-5xl">🏅</p>
+                                    <p class="text-xs font-semibold text-gray-600 mt-2">Bloqueado</p>
+                                </div>
+                                <div class="text-center opacity-50">
+                                    <p class="text-5xl">🚀</p>
+                                    <p class="text-xs font-semibold text-gray-600 mt-2">Bloqueado</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+
+            experiencias: () => `
+                <div class="min-h-screen bg-gray-50">
+                    <!-- Header -->
+                    <header class="gradient-blue text-white py-6">
+                        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-3">
+                            <h1 class="text-xl sm:text-3xl font-bold flex items-center gap-2"><span>⭐</span> Experiências Exitosas</h1>
+                            <button onclick="navigate('home')" class="flex-shrink-0 px-3 sm:px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover-lift text-sm sm:text-base">← Voltar</button>
+                        </div>
+                    </header>
+
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                        <!-- Filtros -->
+                        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                            <h3 class="font-bold text-gray-800 mb-4">Filtrar por:</h3>
+                            <div class="flex gap-3 flex-wrap">
+                                <button class="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover-lift">Todas</button>
+                                <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-all">Programação</button>
+                                <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-all">Design</button>
+                                <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-all">Cultura Digital</button>
+                                <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-all">Sustentabilidade</button>
+                            </div>
+                        </div>
+
+                        <!-- Experience Cards -->
+                        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
+                            ${experiences.map(exp => `
+                                <div class="bg-white rounded-lg shadow-md overflow-hidden hover-lift cursor-pointer group">
+                                    <div class="bg-gradient-to-br from-purple-400 to-blue-500 p-8 text-center text-5xl group-hover:scale-110 transition-transform">
+                                        ${exp.image}
+                                    </div>
+                                    <div class="p-6">
+                                        <div class="flex items-start justify-between mb-3">
+                                            <div>
+                                                <h3 class="font-bold text-lg text-gray-800">${exp.title}</h3>
+                                                <p class="text-sm text-gray-600">por ${exp.author}</p>
+                                            </div>
+                                            <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">${exp.category}</span>
+                                        </div>
+                                        <div class="mb-4">
+                                            <p class="text-xs text-gray-600 mb-2 font-semibold">Habilidades BNCC:</p>
+                                            <div class="flex flex-wrap gap-2">
+                                                ${exp.skills.map(skill => `
+                                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">${skill}</span>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                        <div class="border-t pt-4 flex items-center justify-between">
+                                            <button class="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 transition-all">
+                                                👍 ${exp.likes}
+                                            </button>
+                                            <button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-all">
+                                                Saiba Mais →
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Load More -->
+                        <div class="text-center mt-12">
+                            <button class="px-8 py-3 bg-purple-600 text-white rounded-lg font-bold hover-lift">
+                                Carregar Mais Experiências
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+
+        function navigate(page) {
+            const content = pages[page] ? pages[page]() : pages.home();
+            app.innerHTML = content;
+        }
+
+        // Iniciar com página home
+        navigate('home');
+    </script>
+</body>
+</html>

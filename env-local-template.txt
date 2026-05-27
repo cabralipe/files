@@ -1,0 +1,46 @@
+# .env.local Template
+# Copie este arquivo para .env.local e preencha com suas credenciais
+
+# ===== SUPABASE =====
+# Obtenha em: Supabase Dashboard > Project Settings > API
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+SUPABASE_DB_PASSWORD=sua-senha-do-banco-aqui
+
+# ===== EMAIL (Gmail SMTP) =====
+# 1. Ative 2FA em: myaccount.google.com/security
+# 2. Gere senha de app em: myaccount.google.com/apppasswords
+# 3. Selecione "Mail" e "Windows Computer" (ou sua situação)
+# 4. Copie a senha gerada abaixo
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu-email@gmail.com
+SMTP_PASSWORD=sua-senha-de-app-aqui
+SMTP_FROM=noreply@bncc-platform.com
+
+# ===== APP =====
+APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# ===== NVIDIA IA (Opcional) =====
+# Obtenha em: https://build.nvidia.com/
+# Selecione "Meta Llama 2 70B"
+NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# ===== SEGURANÇA =====
+# Gere um token aleatório com: openssl rand -hex 32
+JWT_SECRET=seu-token-aleatorio-de-32-caracteres-aqui
+
+# ===== FEATURES (Booleanos) =====
+NEXT_PUBLIC_ENABLE_IA=true
+NEXT_PUBLIC_ENABLE_RANKING=true
+NEXT_PUBLIC_ENABLE_EXPERIENCES=true
+NEXT_PUBLIC_ENABLE_PUBLIC_GENERATOR=true
+
+# ===== MODO DE DESENVOLVIMENTO =====
+NODE_ENV=development
+
+# ===== LOGS (Opcional) =====
+NEXT_PUBLIC_LOG_LEVEL=debug

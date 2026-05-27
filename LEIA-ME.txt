@@ -1,0 +1,43 @@
+╔══════════════════════════════════════════════════════╗
+║   PORTAL BNCC COMPUTAÇÃO · ATALAIA/AL                ║
+║   Guia de Instalação (Windows)                       ║
+╚══════════════════════════════════════════════════════╝
+
+PASSO 1 — Instale o Node.js (só na primeira vez)
+  • Acesse: https://nodejs.org
+  • Baixe a versão "LTS" (recomendada)
+  • Instale normalmente (Next, Next, Finish)
+  • Reinicie o computador se solicitado
+
+PASSO 2 — Coloque TODOS estes arquivos na mesma pasta:
+  ✅ portal_professor_bncc_v2.html
+  ✅ server.js
+  ✅ package.json
+  ✅ jspdf.umd.min.js
+  ✅ iniciar.bat
+
+PASSO 3 — Clique duas vezes em:
+  👉 iniciar.bat
+
+  Na primeira vez, vai instalar as dependências automaticamente
+  (pode demorar 1-2 minutos). Depois o navegador abre sozinho!
+
+PASSO 4 — Use o portal normalmente em:
+  http://localhost:3000/portal_professor_bncc_v2.html
+
+══════════════════════════════════════════════════════
+
+DÚVIDAS FREQUENTES:
+
+❓ "node não é reconhecido"
+   → Node.js não está instalado. Siga o Passo 1.
+
+❓ A janela preta fecha muito rápido
+   → Clique com o botão DIREITO no iniciar.bat
+     e escolha "Executar como administrador"
+
+❓ Porta 3000 ocupada
+   → Abra o iniciar.bat e mude PORT=3000 para PORT=3001
+     e acesse http://localhost:3001/...
+
+══════════════════════════════════════════════════════

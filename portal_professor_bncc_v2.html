@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Portal do Professor — BNCC Computação · Atalaia/AL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,800&family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+// jsPDF will be loaded dynamically from local server to avoid CDN blocking
+window._jspdfLoaded = false;
+async function ensureJsPDF() {
+  if (window.jspdf) return true;
+  try {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = '/jspdf.umd.min.js';
+      s.onload = () => { window._jspdfLoaded = true; resolve(); };
+      s.onerror = () => reject(new Error('jsPDF não carregou'));
+      document.head.appendChild(s);
+    });
+    return true;
+  } catch(e) {
+    // fallback: try CDN
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.crossOrigin = 'anonymous';
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('CDN também falhou'));
+        document.head.appendChild(s);
+      });
+      return true;
+    } catch(e2) {
+      throw new Error('Não foi possível carregar o gerador de PDF. Verifique se o servidor está rodando.');
+    }
+  }
+}
+</script>
+<style>
+/* ═══════════════════════════════════════════════
+   PORTAL BNCC · ATALAIA/AL — REDESIGN RISOGRÁFICO
+   Estética: papel, tinta, halftone, registro
+   ═══════════════════════════════════════════════ */
+
+:root{
+  --paper:#F2E9D0;
+  --paper-deep:#E8DCB8;
+  --paper-soft:#FBF5E3;
+  --ink:#1B1A1F;
+  --ink-soft:#2D2C33;
+  --ink-muted:#6F6A5F;
+  --ink-faint:#A39E91;
+  --rule:#1B1A1F;
+
+  --red:#E5394B;
+  --red-deep:#B82433;
+  --red-soft:#F4A7B0;
+  --red-wash:#FBDCDF;
+
+  --blue:#2D40A0;
+  --blue-deep:#1A2A78;
+  --blue-soft:#A6B0DD;
+  --blue-wash:#DCE0F2;
+
+  --teal:#1E8C7E;
+  --teal-deep:#0F6457;
+  --teal-soft:#9DCBC2;
+  --teal-wash:#D7EAE5;
+
+  --mustard:#E3A82E;
+  --mustard-deep:#A8761A;
+  --mustard-soft:#F2D689;
+  --mustard-wash:#FBEFCC;
+
+  --plum:#6E3B8B;
+  --plum-soft:#C7AED4;
+  --plum-wash:#E9DDF0;
+
+  --g900:var(--teal-deep);--g800:var(--teal-deep);--g700:var(--teal);
+  --g600:var(--teal);--g500:var(--teal);--g400:var(--teal-soft);
+  --g300:var(--teal-soft);--g200:var(--teal-soft);--g100:var(--teal-wash);
+  --g50:var(--teal-wash);--g25:var(--paper-soft);
+  --b800:var(--blue-deep);--b700:var(--blue);--b600:var(--blue);
+  --b100:var(--blue-wash);--b50:var(--blue-wash);
+  --a800:var(--mustard-deep);--a700:var(--mustard-deep);--a600:var(--mustard);
+  --a100:var(--mustard-wash);--a50:var(--mustard-wash);
+  --p800:var(--plum);--p700:var(--plum);--p600:var(--plum);
+  --p100:var(--plum-wash);--p50:var(--plum-wash);
+  --r800:var(--red-deep);--r700:var(--red-deep);--r600:var(--red);
+  --r100:var(--red-wash);--r50:var(--red-wash);
+
+  --text:var(--ink);--text-soft:var(--ink-soft);--muted:var(--ink-muted);--muted-soft:var(--ink-faint);
+  --border:var(--ink);--border-soft:var(--ink-faint);
+  --surface:var(--paper-soft);--surface-soft:var(--paper);--bg:var(--paper);
+
+  --r-sm:0px;--r:0px;--rl:0px;--rxl:0px;
+
+  --stamp:3px 3px 0 var(--ink);
+  --stamp-lg:5px 5px 0 var(--ink);
+
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Space Grotesk',system-ui,sans-serif;
+  --font-mono:'DM Mono',ui-monospace,monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+
+body{
+  font-family:var(--font-body);
+  color:var(--ink);
+  font-size:15px;line-height:1.55;
+  min-height:100vh;
+  background-color:var(--paper);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.10  0 0 0 0 0.12  0 0 0 0.22 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    radial-gradient(800px 380px at 12% -6%, rgba(229,57,75,.10), transparent 60%),
+    radial-gradient(700px 320px at 102% 14%, rgba(45,64,160,.08), transparent 55%);
+  background-attachment:fixed;
+  background-size:220px 220px, auto, auto;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+
+#hdr{
+  position:sticky;top:0;z-index:300;
+  background:var(--paper);
+  border-bottom:3px solid var(--ink);
+  padding:0;
+}
+#hdr::after{
+  content:"";display:block;height:6px;width:100%;
+  background:linear-gradient(90deg,var(--red) 0 28%, var(--mustard) 28% 56%, var(--teal) 56% 78%, var(--blue) 78% 100%);
+  position:absolute;left:0;bottom:-9px;
+  mix-blend-mode:multiply;
+}
+.hdr-in{
+  position:relative;max-width:1300px;margin:0 auto;
+  display:flex;align-items:center;height:64px;gap:12px;
+  padding:0 18px;
+}
+.logo{display:flex;align-items:center;gap:10px;color:var(--ink);flex-shrink:0;min-width:0}
+.logo-ic{
+  width:44px;height:44px;flex-shrink:0;
+  background:var(--red);color:var(--paper-soft);
+  display:grid;place-items:center;
+  border:2px solid var(--ink);
+  box-shadow:var(--stamp);
+  transform:rotate(-3deg);
+  font-size:0;
+}
+.logo-ic::before{
+  content:"B";font-family:var(--font-display);font-weight:900;font-style:italic;font-size:24px;
+}
+.logo-t{
+  font-family:var(--font-display);font-weight:900;font-size:18px;line-height:1;
+  letter-spacing:-.02em;color:var(--ink);
+  font-variation-settings:"opsz" 144;
+}
+.logo-s{
+  font-family:var(--font-mono);font-size:10px;color:var(--ink-muted);
+  text-transform:uppercase;letter-spacing:.1em;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hdr-nav{display:flex;gap:6px;margin-left:auto;align-items:center;flex-shrink:0}
+.nb{
+  display:inline-flex;align-items:center;gap:6px;
+  background:transparent;color:var(--ink);
+  border:2px solid transparent;
+  padding:8px 12px;font-family:var(--font-body);font-weight:600;font-size:13px;
+  cursor:pointer;transition:transform .12s;
+  position:relative;
+}
+.nb:hover{transform:translate(-1px,-1px)}
+.nb.on{background:var(--ink);color:var(--paper-soft);border-color:var(--ink)}
+.nb.on::after{
+  content:"";position:absolute;left:4px;right:4px;bottom:-5px;height:3px;
+  background:var(--red);
+}
+.nb-label{display:inline}
+.nbadge{
+  display:inline-grid;place-items:center;min-width:20px;height:20px;
+  padding:0 6px;background:var(--red);color:var(--paper-soft);
+  font-family:var(--font-mono);font-weight:600;font-size:11px;
+  border:1.5px solid var(--ink);
+}
+.nb.on .nbadge{background:var(--mustard);color:var(--ink)}
+
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translate(-50%,80px);
+  background:var(--ink);color:var(--paper-soft);
+  font-family:var(--font-body);font-weight:600;font-size:14px;
+  padding:12px 20px;border:2px solid var(--ink);
+  box-shadow:4px 4px 0 var(--red);
+  z-index:9999;opacity:0;transition:all .25s;pointer-events:none;
+  max-width:90vw;
+}
+#toast.show{transform:translate(-50%,0);opacity:1}
+
+.mbk{
+  position:fixed;inset:0;background:rgba(27,26,31,.55);
+  display:flex;align-items:flex-start;justify-content:center;
+  z-index:500;padding:24px 12px;overflow-y:auto;
+}
+.mdl{
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--stamp-lg);
+  max-width:680px;width:100%;
+  padding:24px;
+  position:relative;
+  margin:auto 0;
+}
+.mdl-hdr{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+  margin-bottom:14px;padding-bottom:14px;border-bottom:2px solid var(--ink);
+}
+.mdl-title{
+  font-family:var(--font-display);font-weight:900;font-size:24px;line-height:1.1;
+  letter-spacing:-.02em;color:var(--ink);
+  font-variation-settings:"opsz" 144;
+}
+.mdl-close{
+  background:var(--paper);color:var(--ink);border:2px solid var(--ink);
+  width:34px;height:34px;font-size:16px;cursor:pointer;
+  font-family:var(--font-mono);font-weight:600;
+  flex-shrink:0;
+}
+.mdl-close:hover{background:var(--red);color:var(--paper-soft)}
+.ms{margin-bottom:16px}
+.mst{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.12em;
+  color:var(--red-deep);margin-bottom:6px;
+  display:inline-block;border-bottom:2px solid var(--red);padding-bottom:2px;
+}
+.mstx{font-size:14px;line-height:1.6;color:var(--ink-soft)}
+.codes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chip{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  background:var(--paper);color:var(--ink);
+  border:1.5px solid var(--ink);padding:4px 8px;
+}
+.chip-g{background:var(--teal);color:var(--paper-soft);border-color:var(--ink)}
+
+.pg{max-width:1300px;margin:0 auto;padding:28px 18px 60px}
+
+.hero{
+  position:relative;
+  padding:48px 28px 56px;
+  margin-bottom:32px;
+  background:var(--paper-soft);
+  border:3px solid var(--ink);
+  box-shadow:var(--stamp-lg);
+  overflow:hidden;
+  isolation:isolate;
+}
+.hero::before{
+  content:"";position:absolute;z-index:-1;
+  width:380px;height:380px;border-radius:50%;
+  background:var(--red);opacity:.85;
+  top:-120px;right:-100px;
+  mix-blend-mode:multiply;
+}
+.hero::after{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:radial-gradient(var(--ink) 1px, transparent 1.4px);
+  background-size:7px 7px;
+  opacity:.07;mix-blend-mode:multiply;
+}
+.hero-text{position:relative;max-width:760px;z-index:2}
+.hero-eyebrow{
+  display:inline-block;
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.18em;
+  color:var(--ink);background:var(--mustard);
+  padding:6px 12px;border:2px solid var(--ink);
+  box-shadow:3px 3px 0 var(--ink);
+  margin-bottom:18px;transform:rotate(-1.2deg);
+}
+.hero-title{
+  font-family:var(--font-display);font-weight:900;
+  font-size:clamp(34px,7vw,68px);line-height:.96;
+  letter-spacing:-.035em;color:var(--ink);
+  margin-bottom:18px;
+  font-variation-settings:"opsz" 144;
+}
+.hero-title span{
+  font-style:italic;font-weight:800;
+  color:var(--red-deep);
+  position:relative;display:inline-block;
+}
+.hero-title span::after{
+  content:"";position:absolute;left:-2%;right:-2%;bottom:.05em;height:.18em;
+  background:var(--mustard);z-index:-1;
+  transform:skewX(-8deg);
+  mix-blend-mode:multiply;
+}
+.hero-sub{
+  font-size:17px;line-height:1.5;color:var(--ink-soft);
+  max-width:580px;margin-bottom:24px;
+}
+.hero-acts{display:flex;gap:12px;flex-wrap:wrap}
+.hero-deco{
+  position:absolute;inset:0;pointer-events:none;z-index:1;
+}
+.hero-deco svg{position:absolute}
+.hero-deco .blob1{top:38%;right:-30px;width:140px;opacity:.95}
+.hero-deco .blob2{bottom:-30px;right:32%;width:120px;opacity:.85}
+.hero-deco .blob3{top:18%;right:24%;width:80px;opacity:.9}
+.hero-deco .blob4{bottom:24%;right:8%;width:100px;opacity:.8}
+.hero-emoji{display:none}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  font-family:var(--font-body);font-weight:700;font-size:13px;
+  padding:11px 18px;border:2px solid var(--ink);
+  background:var(--paper-soft);color:var(--ink);
+  cursor:pointer;
+  transition:transform .12s, box-shadow .12s;
+  box-shadow:3px 3px 0 var(--ink);
+  text-decoration:none;letter-spacing:.01em;
+  min-height:44px;
+}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+.btn-pri{background:var(--blue);color:var(--paper-soft);box-shadow:3px 3px 0 var(--red)}
+.btn-pri:hover{box-shadow:4px 4px 0 var(--red)}
+.btn-pri:active{box-shadow:1px 1px 0 var(--red)}
+.btn-suc{background:var(--teal);color:var(--paper-soft);box-shadow:3px 3px 0 var(--mustard)}
+.btn-suc:hover{box-shadow:4px 4px 0 var(--mustard)}
+.btn-out{background:var(--paper-soft);color:var(--ink);box-shadow:3px 3px 0 var(--teal)}
+.btn-out:hover{box-shadow:4px 4px 0 var(--teal)}
+.btn-gh{background:transparent;color:var(--ink);box-shadow:none;border-color:var(--ink-faint)}
+.btn-gh:hover{background:var(--paper-deep);box-shadow:2px 2px 0 var(--ink)}
+.btn-lg{padding:14px 22px;font-size:14px}
+.btn-sug{background:var(--plum);color:var(--paper-soft);box-shadow:3px 3px 0 var(--mustard)}
+
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:14px;margin-bottom:28px;
+}
+.sc{
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  padding:16px 14px;display:flex;align-items:center;gap:12px;
+  position:relative;
+  box-shadow:var(--stamp);
+}
+.sc:nth-child(1){background:var(--red-wash)}
+.sc:nth-child(2){background:var(--mustard-wash)}
+.sc:nth-child(3){background:var(--teal-wash)}
+.sc:nth-child(4){background:var(--blue-wash)}
+.sc-ic{
+  font-size:0;
+  width:36px;height:36px;flex-shrink:0;
+  display:grid;place-items:center;
+  background:var(--ink);color:var(--paper-soft);
+  border-radius:50%;
+}
+.sc:nth-child(1) .sc-ic::before{content:"H";font-family:var(--font-display);font-weight:900;font-style:italic;font-size:18px}
+.sc:nth-child(2) .sc-ic::before{content:"A";font-family:var(--font-display);font-weight:900;font-style:italic;font-size:18px}
+.sc:nth-child(3) .sc-ic::before{content:"C";font-family:var(--font-display);font-weight:900;font-style:italic;font-size:18px}
+.sc:nth-child(4) .sc-ic::before{content:"E";font-family:var(--font-display);font-weight:900;font-style:italic;font-size:18px}
+.sc-n{
+  font-family:var(--font-display);font-weight:900;
+  font-size:30px;line-height:1;color:var(--ink);
+  font-variation-settings:"opsz" 144;
+}
+.sc-l{
+  font-family:var(--font-mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--ink-muted);margin-top:3px;font-weight:500;
+}
+
+.fbar{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--stamp);
+  padding:14px;margin-bottom:24px;
+}
+.sw{
+  position:relative;flex:1 1 280px;min-width:240px;
+  display:flex;align-items:center;
+  border:2px solid var(--ink);
+  background:var(--paper);
+}
+.sw-icon{
+  display:grid;place-items:center;width:38px;height:42px;
+  background:var(--ink);color:var(--paper-soft);
+  font-size:14px;flex-shrink:0;
+  font-family:var(--font-display);font-weight:900;font-style:italic;
+}
+.sw input{
+  flex:1;background:transparent;border:0;outline:0;
+  padding:10px 12px;
+  font-family:var(--font-body);font-size:14px;color:var(--ink);
+  min-width:0;
+}
+.fbar select{
+  background:var(--paper);
+  border:2px solid var(--ink);
+  padding:9px 30px 9px 12px;
+  font-family:var(--font-body);font-weight:500;font-size:13px;color:var(--ink);
+  cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4 L6 9 L10 4' stroke='%231B1A1F' stroke-width='1.6' fill='none'/></svg>");
+  background-repeat:no-repeat;background-position:right 10px center;background-size:11px;
+  min-height:42px;
+}
+.fcount{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;
+  margin-left:auto;
+}
+
+.grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:18px;
+}
+.scard{
+  position:relative;
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  padding:18px 16px 14px;
+  display:flex;flex-direction:column;
+  transition:transform .15s, box-shadow .15s;
+  box-shadow:var(--stamp);
+}
+.scard:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+.scard.in-plan{background:var(--mustard-wash);box-shadow:4px 4px 0 var(--teal)}
+.scard.in-plan:hover{box-shadow:6px 6px 0 var(--teal)}
+.scard::before{
+  content:"";position:absolute;top:-2px;right:-2px;
+  width:24px;height:24px;
+  background:linear-gradient(135deg,transparent 50%,var(--ink) 50%) no-repeat,var(--paper-deep);
+  border-left:2.5px solid var(--ink);
+  border-bottom:2.5px solid var(--ink);
+}
+.ctags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding-right:24px}
+.tag{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;
+  padding:3px 8px;border:1.5px solid var(--ink);
+  background:var(--paper);color:var(--ink);
+  display:inline-block;
+}
+.tag.tp{background:var(--red);color:var(--paper-soft)}
+.tag.tm{background:var(--blue);color:var(--paper-soft)}
+.tag.tc{background:var(--teal);color:var(--paper-soft)}
+.tag.tcd{background:var(--plum);color:var(--paper-soft)}
+.tag.ta{background:var(--paper);color:var(--ink)}
+.ceixo{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.12em;
+  color:var(--red-deep);margin-bottom:6px;
+}
+.cobj{
+  font-family:var(--font-display);font-weight:800;
+  font-size:18px;line-height:1.15;letter-spacing:-.015em;
+  color:var(--ink);margin-bottom:10px;
+  font-variation-settings:"opsz" 144;
+}
+.chab{
+  font-size:13.5px;line-height:1.5;color:var(--ink-soft);
+  margin-bottom:14px;flex:1;
+}
+.cmeta{
+  font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);
+  border-top:1.5px dashed var(--ink-faint);padding-top:10px;margin-bottom:10px;
+}
+.cacts{display:flex;gap:6px;flex-wrap:wrap}
+.bsm{
+  flex:1;min-width:0;
+  font-family:var(--font-body);font-weight:600;font-size:12px;
+  background:var(--paper);color:var(--ink);
+  border:2px solid var(--ink);padding:8px 6px;cursor:pointer;
+  transition:transform .12s,background .12s;
+  min-height:38px;
+}
+.bsm:hover{transform:translate(-1px,-1px);background:var(--paper-deep)}
+.bsm.bdet:hover{background:var(--blue);color:var(--paper-soft)}
+.bsm.bsug:hover{background:var(--plum);color:var(--paper-soft)}
+.bsm.badd:hover{background:var(--teal);color:var(--paper-soft)}
+.bsm.badd.added{background:var(--teal);color:var(--paper-soft)}
+
+.pgh{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  margin-bottom:18px;flex-wrap:wrap;
+}
+.pgh-l{flex:1;min-width:0}
+.pgh-t{
+  font-family:var(--font-display);font-weight:900;font-size:36px;
+  letter-spacing:-.025em;color:var(--ink);line-height:1.05;
+  font-variation-settings:"opsz" 144;
+}
+.pgh-s{
+  font-family:var(--font-mono);font-size:12px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--ink-muted);margin-top:6px;
+}
+
+.play{
+  display:grid;grid-template-columns:1fr 300px;gap:24px;
+  align-items:start;
+}
+.pc{
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--stamp);
+  padding:22px 22px 26px;margin-bottom:20px;
+  position:relative;
+}
+.pct{
+  font-family:var(--font-display);font-weight:900;font-size:22px;
+  letter-spacing:-.02em;color:var(--ink);
+  margin-bottom:18px;line-height:1.1;
+  font-variation-settings:"opsz" 144;
+  display:flex;align-items:center;gap:10px;
+}
+.dv{border:0;border-top:2px dashed var(--ink-faint);margin:18px 0}
+
+.stbar{
+  display:flex;gap:0;margin-bottom:22px;
+  border:2.5px solid var(--ink);background:var(--paper-soft);
+  box-shadow:var(--stamp);
+  overflow:hidden;
+}
+.sti{
+  flex:1;padding:12px 10px;display:flex;align-items:center;gap:10px;
+  border-right:2px solid var(--ink);
+  position:relative;
+  background:var(--paper);
+}
+.sti:last-child{border-right:0}
+.sti.active{background:var(--mustard)}
+.sti.done{background:var(--teal);color:var(--paper-soft);cursor:pointer}
+.sti.done .stl{color:var(--paper-soft)}
+.stn{
+  width:28px;height:28px;display:grid;place-items:center;
+  background:var(--ink);color:var(--paper-soft);
+  font-family:var(--font-mono);font-weight:600;font-size:13px;
+  flex-shrink:0;border-radius:0;
+}
+.sti.done .stn{background:var(--paper-soft);color:var(--teal)}
+.stl{
+  font-family:var(--font-body);font-weight:600;font-size:12px;
+  color:var(--ink);line-height:1.2;
+}
+
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fgr{display:flex;flex-direction:column;gap:6px}
+.fgr.s2{grid-column:1/-1}
+.fl{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink);
+}
+.req{color:var(--red);font-weight:700;margin-left:3px}
+.fgr input,.fgr select,.fgr textarea{
+  background:var(--paper);
+  border:2px solid var(--ink);
+  padding:10px 12px;
+  font-family:var(--font-body);font-size:14px;color:var(--ink);
+  outline:none;
+  min-height:42px;
+}
+.fgr input:focus,.fgr select:focus,.fgr textarea:focus{
+  background:var(--paper-soft);
+  box-shadow:3px 3px 0 var(--red);
+  transform:translate(-1px,-1px);
+}
+.fgr textarea{min-height:80px;resize:vertical;font-family:var(--font-body)}
+.fgr select{
+  appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4 L6 9 L10 4' stroke='%231B1A1F' stroke-width='1.6' fill='none'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:11px;
+  padding-right:34px;
+}
+
+.ckg{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:8px;
+}
+.ckitem{
+  display:flex;align-items:center;gap:8px;
+  background:var(--paper);border:2px solid var(--ink);
+  padding:9px 12px;cursor:pointer;
+  font-family:var(--font-body);font-size:13px;color:var(--ink);
+  font-weight:500;
+  transition:transform .12s;
+  min-height:42px;
+}
+.ckitem:hover{transform:translate(-1px,-1px);background:var(--paper-soft)}
+.ckitem input[type=checkbox]{
+  appearance:none;width:18px;height:18px;
+  border:2px solid var(--ink);background:var(--paper-soft);
+  position:relative;cursor:pointer;flex-shrink:0;
+}
+.ckitem input[type=checkbox]:checked{background:var(--teal);border-color:var(--ink)}
+.ckitem input[type=checkbox]:checked::after{
+  content:"X";position:absolute;inset:0;display:grid;place-items:center;
+  color:var(--paper-soft);font-weight:900;font-size:13px;
+  font-family:var(--font-display);font-style:italic;
+}
+
+.brow{
+  display:flex;gap:10px;justify-content:flex-end;margin-top:22px;
+  flex-wrap:wrap;
+}
+
+.msi{
+  width:100%;
+  background:var(--paper);
+  border:2px solid var(--ink);
+  padding:10px 14px;
+  font-family:var(--font-body);font-size:14px;color:var(--ink);
+  outline:none;margin-bottom:12px;
+  min-height:42px;
+}
+.msi:focus{box-shadow:3px 3px 0 var(--red);transform:translate(-1px,-1px)}
+.mlist{
+  max-height:380px;overflow-y:auto;
+  border:2px solid var(--ink);background:var(--paper);
+  padding:6px;
+}
+.mlist::-webkit-scrollbar{width:10px}
+.mlist::-webkit-scrollbar-track{background:var(--paper-deep)}
+.mlist::-webkit-scrollbar-thumb{background:var(--ink);border:2px solid var(--paper-deep)}
+.mi{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:10px 10px;
+  border-bottom:1px dashed var(--ink-faint);
+}
+.mi:last-child{border-bottom:0}
+.mi.ia{background:var(--mustard-wash)}
+.mic{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--ink-muted);
+}
+.mio{
+  font-family:var(--font-display);font-weight:800;font-size:14px;
+  line-height:1.2;color:var(--ink);margin-top:2px;
+  font-variation-settings:"opsz" 144;
+}
+.mian{
+  font-family:var(--font-mono);font-size:10px;font-weight:500;
+  color:var(--ink-muted);text-transform:uppercase;letter-spacing:.06em;
+  margin-top:3px;
+}
+.miab{
+  background:var(--paper-soft);color:var(--ink);
+  border:2px solid var(--ink);
+  width:32px;height:32px;
+  font-family:var(--font-display);font-weight:900;font-size:16px;
+  cursor:pointer;flex-shrink:0;
+}
+.miab:hover{background:var(--teal);color:var(--paper-soft)}
+.miab.ia{background:var(--teal);color:var(--paper-soft)}
+
+.sb{
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--stamp);
+  padding:18px;position:sticky;top:84px;
+}
+.sbt{
+  font-family:var(--font-display);font-weight:900;font-size:18px;
+  color:var(--ink);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;letter-spacing:-.015em;
+  font-variation-settings:"opsz" 144;
+}
+.sbc{
+  background:var(--red);color:var(--paper-soft);
+  font-family:var(--font-mono);font-weight:600;font-size:12px;
+  padding:2px 8px;border:1.5px solid var(--ink);
+}
+.ssi{
+  position:relative;
+  padding:10px 36px 10px 10px;
+  border:2px solid var(--ink);background:var(--paper);
+  margin-bottom:8px;
+}
+.ssic{
+  font-family:var(--font-mono);font-size:10px;font-weight:600;
+  color:var(--ink-muted);text-transform:uppercase;
+}
+.ssio{
+  font-family:var(--font-display);font-weight:800;font-size:13px;
+  line-height:1.15;color:var(--ink);margin-top:3px;
+  font-variation-settings:"opsz" 144;
+}
+.ssims{
+  font-family:var(--font-mono);font-size:10px;color:var(--ink-muted);
+  margin-top:3px;
+}
+.ssrm{
+  position:absolute;top:6px;right:6px;
+  background:var(--paper-soft);color:var(--ink);border:1.5px solid var(--ink);
+  width:24px;height:24px;
+  cursor:pointer;font-family:var(--font-mono);font-weight:600;font-size:12px;
+}
+.ssrm:hover{background:var(--red);color:var(--paper-soft)}
+.esel{
+  font-family:var(--font-body);font-size:13px;
+  color:var(--ink-muted);text-align:center;
+  padding:18px 8px;line-height:1.55;
+  border:2px dashed var(--ink-faint);
+}
+
+.oa{
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--stamp);
+  padding:16px 18px 20px;
+}
+.oa-toolbar{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-bottom:12px;flex-wrap:wrap;
+}
+.oa-label{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--ink);
+  background:var(--mustard);padding:5px 10px;border:2px solid var(--ink);
+}
+#po{
+  width:100%;min-height:520px;
+  background:var(--paper);
+  border:2px solid var(--ink);
+  padding:18px 20px;
+  font-family:var(--font-mono);font-size:13px;line-height:1.6;color:var(--ink);
+  outline:none;resize:vertical;
+  white-space:pre-wrap;word-break:break-word;
+}
+#po:focus{background:var(--paper-soft)}
+.gbanner{
+  display:flex;align-items:center;gap:10px;
+  background:var(--mustard-wash);border:2px solid var(--ink);
+  padding:12px 14px;margin-bottom:12px;
+  font-family:var(--font-body);font-weight:500;font-size:13px;color:var(--ink);
+}
+.spin{
+  width:18px;height:18px;border:3px solid var(--ink);
+  border-top-color:transparent;border-radius:50%;
+  animation:spin .8s linear infinite;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+.al{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:12px 14px;
+  border:2px solid var(--ink);
+  font-family:var(--font-body);font-size:13px;line-height:1.45;color:var(--ink);
+}
+.al-s{background:var(--teal-wash);border-color:var(--ink)}
+.al-w{background:var(--mustard-wash);border-color:var(--ink)}
+.al-r{background:var(--red-wash);border-color:var(--ink)}
+
+.plans-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:18px;
+}
+.plan-item{
+  background:var(--paper-soft);
+  border:2.5px solid var(--ink);
+  box-shadow:var(--stamp);
+  padding:16px;
+}
+.pi-header{margin-bottom:12px}
+.pi-title{
+  font-family:var(--font-display);font-weight:900;font-size:18px;
+  line-height:1.15;letter-spacing:-.015em;color:var(--ink);
+  font-variation-settings:"opsz" 144;
+}
+.pi-date{
+  font-family:var(--font-mono);font-size:10px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--ink-muted);margin-top:5px;
+}
+.pi-meta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.pi-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+
+.est{
+  text-align:center;padding:48px 24px;
+  background:var(--paper-soft);
+  border:2.5px dashed var(--ink-faint);
+  grid-column:1/-1;
+  font-family:var(--font-body);color:var(--ink-muted);font-size:14px;line-height:1.55;
+}
+.est-icon{
+  font-family:var(--font-display);font-weight:900;font-style:italic;
+  font-size:56px;color:var(--red);margin-bottom:10px;line-height:1;
+  letter-spacing:-.04em;
+}
+
+.sug-box{
+  background:var(--paper);border:2px solid var(--ink);padding:14px;
+}
+.sug-title{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.1em;color:var(--ink);
+  margin-bottom:10px;
+}
+.sug-stream{
+  font-family:var(--font-mono);font-size:13px;line-height:1.55;color:var(--ink-soft);
+  white-space:pre-wrap;word-break:break-word;
+  max-height:420px;overflow-y:auto;
+}
+
+@media print{
+  #hdr,.hdr-nav,.fbar,.stats,.hero,.brow,.pacts,.stbar,.sb,#toast{display:none!important}
+  body{background:#fff}
+  #po{border:0;padding:0}
+}
+
+@media (max-width:980px){
+  .play{grid-template-columns:1fr}
+  .sb{position:static;top:auto}
+}
+
+@media (max-width:760px){
+  .pg{padding:18px 14px 80px}
+  .hdr-in{height:60px;padding:0 12px;gap:8px}
+  .logo-t{font-size:15px}
+  .logo-s{display:none}
+  .logo-ic{width:38px;height:38px}
+  .logo-ic::before{font-size:20px}
+  .nb{padding:7px 9px;font-size:12px}
+  .nb-label{display:none}
+  .hero{padding:32px 20px 38px}
+  .hero::before{width:260px;height:260px;top:-90px;right:-90px}
+  .hero-eyebrow{font-size:10px;padding:5px 10px}
+  .hero-sub{font-size:15px}
+  .hero-acts{flex-direction:column;align-items:stretch}
+  .hero-acts .btn{width:100%}
+  .hero-deco .blob1{width:90px;top:auto;bottom:8px;right:8px}
+  .hero-deco .blob2{display:none}
+  .hero-deco .blob3{display:none}
+  .hero-deco .blob4{width:70px;top:14px;right:14px;bottom:auto}
+
+  .stats{grid-template-columns:repeat(2,1fr);gap:10px}
+  .sc{padding:14px 12px}
+  .sc-n{font-size:24px}
+
+  .fbar{padding:10px;gap:8px}
+  .sw{flex-basis:100%}
+  .fbar select{flex:1 1 calc(50% - 4px);min-width:130px}
+  .fcount{flex-basis:100%;text-align:right;margin-left:0}
+
+  .grid{grid-template-columns:1fr;gap:14px}
+  .scard{padding:16px 14px 12px}
+  .cobj{font-size:17px}
+  .chab{font-size:13px}
+  .cacts{flex-direction:column}
+  .bsm{width:100%}
+
+  .pgh{flex-direction:column;align-items:flex-start}
+  .pgh-t{font-size:28px}
+
+  .pc{padding:18px 16px 20px}
+  .pct{font-size:18px}
+  .fg{grid-template-columns:1fr;gap:12px}
+  .stbar{flex-direction:column}
+  .sti{border-right:0;border-bottom:2px solid var(--ink);justify-content:flex-start}
+  .sti:last-child{border-bottom:0}
+
+  .ckg{grid-template-columns:1fr 1fr;gap:6px}
+  .ckitem{padding:8px 10px;font-size:12px}
+
+  .pacts{flex-direction:column}
+  .pacts .btn{width:100%}
+
+  .mdl{padding:18px 16px}
+  .mdl-title{font-size:20px}
+
+  .plans-grid{grid-template-columns:1fr}
+  .pi-actions{flex-direction:column}
+  .pi-actions .btn{width:100%}
+
+  #po{min-height:380px;font-size:12px;padding:14px}
+}
+
+@media (max-width:420px){
+  .stats{grid-template-columns:1fr 1fr}
+  .ckg{grid-template-columns:1fr}
+  .hero-title{font-size:34px}
+  .pgh-t{font-size:24px}
+  .nb{padding:6px 7px}
+  .hdr-nav{gap:3px}
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header id="hdr">
+  <div class="hdr-in">
+    <div class="logo">
+      <div class="logo-ic">📚</div>
+      <div>
+        <div class="logo-t">Portal BNCC Computação</div>
+        <div class="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+      </div>
+    </div>
+    <nav class="hdr-nav">
+      <button class="nb on" id="nb-s" onclick="showView('s')">🔍 <span class="nb-label">Habilidades</span></button>
+      <button class="nb" id="nb-p" onclick="showView('p')">
+        📝 <span class="nb-label">Plano de Aula</span> <span class="nbadge" id="badge-sel">0</span>
+      </button>
+      <button class="nb" id="nb-m" onclick="showView('m')">
+        💾 <span class="nb-label">Meus Planos</span> <span class="nbadge" id="badge-saved">0</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<div id="toast">✓ Pronto!</div>
+
+<!-- ═══ MODAL DETALHE / SUGESTÃO IA ═══ -->
+<div class="mbk" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="mdl" id="mdl-body"></div>
+</div>
+
+<!-- ═══ VIEW: HABILIDADES ═══ -->
+<div id="vs" class="pg">
+  <div class="hero">
+    <div class="hero-text">
+      <div class="hero-eyebrow">👋 Bem-vindo(a), professor(a)</div>
+      <h1 class="hero-title">Construa aulas <span>incríveis</span> com a BNCC Computação</h1>
+      <p class="hero-sub">Explore as habilidades, monte seu plano de aula e gere materiais com IA pensados para a realidade da rede municipal de Atalaia/AL.</p>
+      <div class="hero-acts">
+        <button class="btn btn-pri btn-lg" onclick="showView('p')">📝 Criar Plano de Aula</button>
+        <button class="btn btn-out" onclick="document.getElementById('q-s').focus()">🔍 Explorar Habilidades</button>
+      </div>
+    </div>
+    <div class="hero-deco" aria-hidden="true">
+      <!-- Blob orgânico azul -->
+      <svg class="blob1" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <path d="M48,-58C61,-46,70,-30,73,-13C76,5,72,24,62,38C52,53,36,62,18,68C0,74,-19,75,-36,68C-53,60,-67,44,-72,26C-77,8,-72,-11,-63,-27C-54,-43,-40,-54,-24,-63C-8,-72,10,-78,26,-74C42,-70,56,-58,48,-58Z"
+              transform="translate(100 100)" fill="#2D40A0"/>
+        <circle cx="100" cy="100" r="6" fill="#1B1A1F"/>
+        <circle cx="124" cy="78" r="4" fill="#1B1A1F"/>
+        <circle cx="76" cy="122" r="4" fill="#1B1A1F"/>
+      </svg>
+
+      <!-- Carimbo circular com tipografia -->
+      <svg class="blob2" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="100" r="88" fill="none" stroke="#1B1A1F" stroke-width="4"/>
+        <circle cx="100" cy="100" r="72" fill="#E3A82E"/>
+        <circle cx="100" cy="100" r="72" fill="none" stroke="#1B1A1F" stroke-width="2.5" stroke-dasharray="4 6"/>
+        <text x="100" y="94" text-anchor="middle" font-family="Fraunces,Georgia,serif" font-weight="900" font-style="italic" font-size="36" fill="#1B1A1F">BNCC</text>
+        <text x="100" y="120" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="#1B1A1F" letter-spacing="2">COMPUTAÇÃO</text>
+      </svg>
+
+      <!-- Halftone de pontos (cluster verde) -->
+      <svg class="blob3" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="dots-teal" x="0" y="0" width="9" height="9" patternUnits="userSpaceOnUse">
+            <circle cx="4.5" cy="4.5" r="2.6" fill="#1E8C7E"/>
+          </pattern>
+        </defs>
+        <path d="M10,50 C10,15 40,5 60,15 C85,28 95,55 80,75 C65,95 30,90 18,75 C8,62 10,50 10,50 Z" fill="url(#dots-teal)"/>
+      </svg>
+
+      <!-- Setas/squiggle desenhado à mão -->
+      <svg class="blob4" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,80 Q25,30 50,55 T90,30" fill="none" stroke="#E5394B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M80,22 L92,28 L84,40" fill="none" stroke="#E5394B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="14" cy="84" r="5" fill="#E5394B"/>
+      </svg>
+    </div>
+  </div>
+  <div class="stats" id="stat-bar"></div>
+  <div class="fbar">
+    <div class="sw">
+      <span class="sw-icon">🔍</span>
+      <input type="search" id="q-s" placeholder="Buscar por habilidade, objeto, código CRM, ano…" oninput="applyF()">
+    </div>
+    <select id="f-ano" onchange="applyF()"><option value="">Todos os anos</option></select>
+    <select id="f-comp" onchange="applyF()"><option value="">Todos os componentes</option></select>
+    <select id="f-eixo" onchange="applyF()"><option value="">Todos os eixos</option></select>
+    <span class="fcount" id="f-count">0 habilidades</span>
+  </div>
+  <div class="grid" id="skill-grid"></div>
+</div>
+
+<!-- ═══ VIEW: CRIAR PLANO ═══ -->
+<div id="vp" class="pg" style="display:none">
+  <div class="play">
+    <div id="plan-main">
+      <div class="stbar" id="stbar"></div>
+
+      <!-- STEP 1 -->
+      <div id="s1">
+        <div class="pc">
+          <div class="pct">📋 Dados do Plano de Aula</div>
+          <div class="al al-s" style="margin-bottom:14px">
+            <span>🔓</span>
+            <span><strong>Sem cadastro e sem login.</strong> Você pode gerar o plano sem informar nome ou escola — basta preencher Ano/Turma, Componente e Tema da Aula.</span>
+          </div>
+          <div class="fg">
+            <div class="fgr">
+              <label class="fl">Professor(a) <span style="font-weight:500;color:var(--muted-soft);font-size:11px">(opcional)</span></label>
+              <input type="text" id="f-prof" placeholder="Nome completo — pode deixar em branco">
+            </div>
+            <div class="fgr">
+              <label class="fl">Escola <span style="font-weight:500;color:var(--muted-soft);font-size:11px">(opcional)</span></label>
+              <input type="text" id="f-escola" list="municipal-schools" placeholder="Nome da escola — pode deixar em branco">
+              <datalist id="municipal-schools">
+                <option value="Escola Municipal Dr. Emílio de Maia (Bairro Nova Olinda)">
+                <option value="Escola de Ensino Fundamental Antônio Amâncio de Melo Bastos (Loteamento Santa Inês / José Paulino)">
+                <option value="Escola Municipal de Ensino Fundamental Lúcio Fidelis de Moura (Povoado Porongaba) - Atende Anos Iniciais e Finais">
+                <option value="Escola Municipal Jabes Francisco da Silva (Bairro Nova Olinda)">
+                <option value="Escola Municipal de Ensino Fundamental João Cordeiro de Souza Júnior (Usina Ouricuri)">
+                <option value="Escola Municipal Francisco Lopes de Farias (Zona Rural)">
+                <option value="Escola Municipal Padre Medeiros Neto (Zona Rural)">
+                <option value="Escola Municipal José Martins de Almeida (Distrito de Branca de Atalaia)">
+                <option value="Escola Municipal Joaquim Fortunato Bitencourt Filho (Centro / Urbano)">
+                <option value="Escola Municipal Dr. João Carlos (Centro / Urbano)">
+                <option value="Escola de 1º Grau Antônio Vieira da Costa (Loteamento Mirante de Atalaia)">
+                <option value="Escola Municipal Francisco de Albuquerque Pontes (Povoado Santo Antônio)">
+                <option value="Escola Municipal Dr. Domingos Correia (Povoado Boca da Mata)">
+                <option value="Escola Municipal Adília Vieira da Costa (Povoado Sapucaia)">
+                <option value="Escola Municipal Cel. Sabino de Oliveira (Fazenda São Luiz)">
+                <option value="Escola Municipal Assentamento Boa Fé">
+                <option value="Escola Municipal Assentamento Brasileiro">
+                <option value="Escola Municipal Assentamento Flor da Serra">
+              </datalist>
+            </div>
+            <div class="fgr">
+              <label class="fl">Ano / Turma<span class="req">*</span></label>
+              <select id="f-ano-p">
+                <option value="">Selecione…</option>
+                <option>1º Ano</option><option>2º Ano</option><option>3º Ano</option>
+                <option>4º Ano</option><option>5º Ano</option><option>6º Ano</option>
+                <option>7º Ano</option><option>8º Ano</option><option>9º Ano</option><option>EJA</option>
+              </select>
+            </div>
+            <div class="fgr">
+              <label class="fl">Componente Curricular<span class="req">*</span></label>
+              <select id="f-comp-p">
+                <option value="">Selecione…</option>
+                <option>Língua Portuguesa</option><option>Matemática</option><option>Ciências</option>
+                <option>História</option><option>Geografia</option><option>Arte</option>
+                <option>Educação Física</option><option>Computação</option><option>Outro</option>
+              </select>
+            </div>
+            <div class="fgr">
+              <label class="fl">Data da Aula</label>
+              <input type="date" id="f-data">
+            </div>
+            <div class="fgr">
+              <label class="fl">Duração Total<span class="req">*</span></label>
+              <select id="f-dur">
+                <option>50 minutos (1 aula)</option><option>1h 40min (2 aulas)</option>
+                <option>2h 30min (3 aulas)</option><option>100 minutos</option>
+              </select>
+            </div>
+            <div class="fgr s2">
+              <label class="fl">Tema / Título da Aula<span class="req">*</span></label>
+              <input type="text" id="f-tema" placeholder="Ex: Pensamento Computacional e resolução de problemas cotidianos">
+            </div>
+            <div class="fgr s2">
+              <label class="fl">Objetivos do Professor (opcional)</label>
+              <textarea id="f-obj" placeholder="O que você espera que os alunos aprendam ao final desta aula?"></textarea>
+            </div>
+          </div>
+          <hr class="dv">
+          <div class="pct" style="font-size:14px;margin-bottom:12px">⚙️ Recursos e Metodologia</div>
+          <div class="fgr" style="margin-bottom:12px">
+            <label class="fl">Recursos disponíveis na escola</label>
+            <div class="ckg" id="rec-ckg">
+              <label class="ckitem"><input type="checkbox" value="Computadores/Notebooks" checked> 💻 Computadores</label>
+              <label class="ckitem"><input type="checkbox" value="Tablets"> 📱 Tablets</label>
+              <label class="ckitem"><input type="checkbox" value="Celulares dos alunos"> 📲 Celulares</label>
+              <label class="ckitem"><input type="checkbox" value="Projetor/Datashow" checked> 📽️ Projetor</label>
+              <label class="ckitem"><input type="checkbox" value="Internet" checked> 🌐 Internet</label>
+              <label class="ckitem"><input type="checkbox" value="Lousa Digital"> 🖥️ Lousa Digital</label>
+              <label class="ckitem"><input type="checkbox" value="Material impresso"> 📄 Material impresso</label>
+              <label class="ckitem"><input type="checkbox" value="Lousa convencional" checked> ✏️ Lousa convencional</label>
+            </div>
+          </div>
+          <div class="fg">
+            <div class="fgr">
+              <label class="fl">Abordagem Metodológica</label>
+              <select id="f-met">
+                <option>Aprendizagem Ativa (hands-on)</option>
+                <option>Aprendizagem Baseada em Projetos</option>
+                <option>Aprendizagem Colaborativa</option>
+                <option>Expositiva Dialogada</option>
+                <option>Gamificação</option>
+                <option>Rotação por Estações</option>
+                <option>Sala de Aula Invertida</option>
+              </select>
+            </div>
+            <div class="fgr">
+              <label class="fl">Contexto / Observações</label>
+              <input type="text" id="f-obs" placeholder="Necessidades especiais, perfil da turma, etc.">
+            </div>
+          </div>
+          <div class="brow">
+            <button class="btn btn-pri btn-lg" onclick="goStep2()">
+              Próximo: Habilidades BNCC →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="s2" style="display:none">
+        <div class="pc">
+          <div class="pct">🎯 Habilidades BNCC Computação Selecionadas</div>
+          <div class="al al-s" style="margin-bottom:14px">
+            <span>ℹ️</span>
+            <span>Use o buscador abaixo para encontrar e adicionar mais habilidades ao plano. As marcadas aparecem no painel lateral.</span>
+          </div>
+          <input type="search" class="msi" id="ms-q" placeholder="🔍  Buscar habilidades para adicionar…" oninput="renderMiniList()">
+          <div class="mlist" id="mini-list"></div>
+          <div id="s2-warn" style="display:none;margin-top:10px"></div>
+          <div class="brow">
+            <button class="btn btn-gh" onclick="goStep(1)">← Voltar</button>
+            <button class="btn btn-pri btn-lg" id="btn-gen" onclick="goStep3()">✨ Gerar Plano com IA →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div id="s3" style="display:none">
+        <div class="oa">
+          <div class="oa-toolbar">
+            <span class="oa-label">📄 Plano de Aula — editável</span>
+            <span id="char-count" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div class="gbanner" id="gbanner" style="display:none">
+            <div class="spin"></div>
+            <span>A IA está criando seu plano de aula personalizado<span id="gen-dots"></span></span>
+          </div>
+          <textarea id="po" spellcheck="false" oninput="updateCharCount()" placeholder="O plano de aula gerado aparecerá aqui. Você pode editá-lo livremente antes de baixar o PDF."></textarea>
+          <div class="pacts" id="pacts" style="display:none">
+            <button class="btn btn-suc btn-lg" onclick="downloadPDF()">⬇️ Baixar PDF</button>
+            <button class="btn btn-pri" onclick="savePlan()">💾 Salvar no Portal</button>
+            <button class="btn btn-out" onclick="regenerate()">🔄 Regenerar</button>
+            <button class="btn btn-gh" onclick="copyPlan()">📋 Copiar</button>
+            <button class="btn btn-gh" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn btn-gh" onclick="goStep(1)">✏️ Editar Dados</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sb" id="plan-sb">
+      <div class="sbt">🎯 No Plano <span class="sbc" id="sel-ct">0</span></div>
+      <div id="sel-list"></div>
+      <hr class="dv">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">➕ Adicionar Habilidade</div>
+      <input type="search" class="msi" id="sb-q" placeholder="Buscar habilidade…" oninput="renderSbMini()">
+      <div class="mlist" id="sb-mini" style="max-height:180px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ VIEW: MEUS PLANOS ═══ -->
+<div id="vm" class="pg" style="display:none">
+  <div class="pgh">
+    <div class="pgh-l">
+      <div class="pgh-t">💾 Meus Planos Salvos</div>
+      <div class="pgh-s">Planos criados nesta sessão — baixe o PDF para guardar permanentemente.</div>
+    </div>
+    <button class="btn btn-pri" onclick="showView('p')">+ Criar Novo Plano</button>
+  </div>
+  <div class="al al-w" style="margin-bottom:16px">
+    <span>⚠️</span>
+    <span>Os planos salvos existem apenas nesta sessão do navegador. <strong>Baixe o PDF</strong> para guardar permanentemente.</span>
+  </div>
+  <div class="plans-grid" id="plans-grid">
+    <div class="est"><div class="est-icon">💾</div><div>Nenhum plano salvo ainda.<br>Crie e salve seu primeiro plano de aula!</div></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DADOS — 37 habilidades BNCC Computação
+// ═══════════════════════════════════════════════
+const DADOS=[
+ {id:"EF01CP12",ano:"1º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Planejamento de texto digital",hab:"Planejar, com ajuda do professor, o texto que será produzido considerando a situação comunicativa, os interlocutores, a finalidade, a circulação, o suporte e as fontes pesquisadas em meios digitais.",exp:"Apresentação escrita de uma história elaborada. Ferramentas: Google Docs, Canva.",bnccRef:"EF15LP05",bnccComp:"CD01CD01",crm:"EF01CP12"},
+ {id:"EF01CP13",ano:"1º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Escrita colaborativa digital",hab:"Planejar e produzir, em colaboração com os colegas, listas, agendas, calendários, avisos, convites, receitas e instruções de montagem em meio digital.",exp:"Projeto Colaborativo: Criando Textos do Dia a Dia. Ferramentas: Google Docs, Canva.",bnccRef:"EF01LP17",bnccComp:"CD02LD02",crm:"EF01CP13"},
+ {id:"EF01CM01",ano:"1º Ano",etapa:"Anos Iniciais",comp:"Matemática",eixo:"Tecnologia",obj:"Números como código digital",hab:"Utilizar números naturais como indicador de quantidade ou de ordem em situações cotidianas e reconhecer situações em que os números funcionam como código de identificação com suporte digital.",exp:"Exploração com aplicativos de contagem e jogos digitais educativos.",bnccRef:"EF01MA01",bnccComp:"CD01LD01",crm:"EF01CM01"},
+ {id:"EF01CC01",ano:"1º Ano",etapa:"Anos Iniciais",comp:"Ciências",eixo:"Tecnologia",obj:"Corpo humano e identidade digital",hab:"Identificar características do próprio corpo e dos colegas, reconhecendo semelhanças e diferenças, usando recursos digitais para registro e expressão.",exp:"Diário Digital do Corpo. Ferramentas: Google Slides, Padlet.",bnccRef:"EF01CI01",bnccComp:"CD01LD01",crm:"EF01CC01"},
+ {id:"EF02CP01",ano:"2º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Escrita digital com convenções",hab:"Utilizar, ao produzir texto digital, grafia correta de palavras conhecidas, letras maiúsculas em início de frases, segmentação entre palavras e pontuação básica.",exp:"Corrigindo e Criando com o Texto Digital. Ferramentas: Google Docs, Padlet.",bnccRef:"EF02LP01",bnccComp:"CD01LD01",crm:"EF02CP01"},
+ {id:"EF02CP02",ano:"2º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Bilhetes e cartas digitais",hab:"Planejar e produzir bilhetes e cartas em meio digital, levando em conta o tema, a finalidade e o destinatário do texto.",exp:"Projeto: Cartas Digitais entre Turmas. Ferramentas: Google Docs, Canva.",bnccRef:"EF02LP13",bnccComp:"CD02LD02",crm:"EF02CP02"},
+ {id:"EF02CM05",ano:"2º Ano",etapa:"Anos Iniciais",comp:"Ciências",eixo:"Tecnologia",obj:"Seres vivos no ambiente digital",hab:"Descrever características de plantas e animais do cotidiano relacionando-as ao ambiente onde vivem, usando ferramentas digitais de registro e pesquisa.",exp:"Diário Virtual da Natureza. Ferramentas: Google Slides, Padlet.",bnccRef:"EF02CI04",bnccComp:"CD02LD01",crm:"EF02CM05"},
+ {id:"EF02CM06",ano:"2º Ano",etapa:"Anos Iniciais",comp:"Ciências",eixo:"Tecnologia",obj:"Plantas: água e luz com simuladores",hab:"Investigar a importância da água e da luz para a manutenção da vida das plantas usando simuladores digitais e registros fotográficos.",exp:"Experimento Virtual: Água e Luz para as Plantas. Ferramentas: Google Slides, PhET.",bnccRef:"EF02CI05",bnccComp:"CD02LD01",crm:"EF02CM06"},
+ {id:"EF03CP01",ano:"3º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Edição e publicação de textos",hab:"Utilizar software de edição de texto para editar e publicar os textos produzidos, explorando recursos multissemióticos como imagens, sons e vídeos.",exp:"Publicação Digital de Textos. Ferramentas: Google Docs, Canva, Word Online.",bnccRef:"EF15LP08",bnccComp:"CD03LD01",crm:"EF03CP01"},
+ {id:"EF03CM01",ano:"3º Ano",etapa:"Anos Iniciais",comp:"Matemática",eixo:"Tecnologia",obj:"Pesquisa e gráficos digitais",hab:"Realizar pesquisa com variáveis categóricas em até 50 elementos, organizar dados em tabelas e gráficos de colunas com uso de tecnologias digitais.",exp:"Pesquisa Escolar Digital. Ferramentas: Google Forms, Planilhas, Canva.",bnccRef:"EF03MA28",bnccComp:"CD03CD01",crm:"EF03CM01"},
+ {id:"EF03CC10",ano:"3º Ano",etapa:"Anos Iniciais",comp:"Ciências",eixo:"Tecnologia",obj:"Fenômenos diários e sazonais",hab:"Observar, identificar e registrar períodos diários e sazonais em fenômenos do cotidiano, relacionando mudanças de temperatura às estações do ano com apoio digital.",exp:"Calendário Digital de Observação. Ferramentas: Google Slides, apps de astronomia.",bnccRef:"EF03CI09",bnccComp:"EF03CO02",crm:"EF03CC10"},
+ {id:"EF03CC11",ano:"3º Ano",etapa:"Anos Iniciais",comp:"Ciências",eixo:"Tecnologia",obj:"Usos do solo e pesquisa digital",hab:"Identificar os diferentes usos do solo (plantação, extração), reconhecendo sua importância para a agricultura e para a vida, usando pesquisa digital e mapas online.",exp:"Pesquisa digital sobre usos do solo em Atalaia. Ferramentas: Google Maps, Slides.",bnccRef:"EF03CI10",bnccComp:"EF03CO03",crm:"EF03CC11"},
+ {id:"EF04CP01",ano:"4º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Revisão colaborativa digital",hab:"Revisar o texto produzido com ajuda do professor e colaboração dos colegas usando ferramentas digitais de comentário e controle de versão.",exp:"Revisão Colaborativa Digital. Ferramentas: Google Docs com comentários e histórico.",bnccRef:"EF15LP07",bnccComp:"CD04LD01",crm:"EF04CP01"},
+ {id:"EF04CM01",ano:"4º Ano",etapa:"Anos Iniciais",comp:"Matemática",eixo:"Pensamento Computacional",obj:"Algoritmos e programação por blocos",hab:"Desenvolver algoritmos (sequência de passos) para criar cenas e histórias em ambientes de programação por blocos, aplicando conceitos matemáticos.",exp:"Programando Figuras Geométricas com Scratch. Ferramentas: Scratch, Code.org.",bnccRef:"EF04MA10",bnccComp:"EF04CO01",crm:"EF04CM01"},
+ {id:"EF04CC01",ano:"4º Ano",etapa:"Anos Iniciais",comp:"Ciências",eixo:"Tecnologia",obj:"Misturas com simuladores",hab:"Identificar misturas na vida diária com base em propriedades físicas observáveis, usando simuladores digitais para visualização e experimentação.",exp:"Explorando Misturas com Simuladores. Ferramentas: PhET, Google Slides.",bnccRef:"EF04CI03",bnccComp:"CD04LD01",crm:"EF04CC01"},
+ {id:"EF05CP01",ano:"5º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Tempos verbais e ferramentas digitais",hab:"Identificar a expressão de presente, passado e futuro em tempos verbais do modo indicativo, usando ferramentas interativas digitais para prática.",exp:"Caça aos Verbos no Mundo Digital. Ferramentas: Google Forms, Wordwall, Kahoot.",bnccRef:"EF05LP05",bnccComp:"CD05CD02",crm:"EF05CP01"},
+ {id:"EF05CP02",ano:"5º Ano",etapa:"Anos Iniciais",comp:"Português",eixo:"Tecnologia",obj:"Leitura em meios digitais",hab:"Buscar, selecionar e ler, com mediação do professor, textos que circulam em meios impressos ou digitais, de acordo com as necessidades e interesses.",exp:"Leitura Compartilhada Digital. Ferramentas: Google Meet, Google Docs, Teams.",bnccRef:"EF12LP02",bnccComp:"CD01CD01",crm:"EF05CP02"},
+ {id:"EF05CM01",ano:"5º Ano",etapa:"Anos Iniciais",comp:"Matemática",eixo:"Tecnologia",obj:"Dados estatísticos e ética digital",hab:"Interpretar dados estatísticos em diferentes formatos e comunicá-los com clareza e conduta ética em ambientes digitais e na divulgação de resultados.",exp:"Dashboard de Dados da Escola. Ferramentas: Google Planilhas, Canva, Flippity.",bnccRef:"EF05MA24",bnccComp:"CD05CD03",crm:"EF05CM01"},
+ {id:"EF05CM02",ano:"5º Ano",etapa:"Anos Iniciais",comp:"Matemática",eixo:"Tecnologia",obj:"Pesquisa com variáveis e dados",hab:"Realizar pesquisa com variáveis categóricas e numéricas, organizar dados em tabelas e gráficos e apresentar texto com síntese dos resultados usando tecnologia.",exp:"Pesquisa Escolar Digital: Do Dado ao Texto. Ferramentas: Google Forms, Planilhas, Canva.",bnccRef:"EF05MA25",bnccComp:"CD05CD03",crm:"EF05CM02"},
+ {id:"EF06CP01",ano:"6º Ano",etapa:"Anos Finais",comp:"Português",eixo:"Pensamento Computacional",obj:"Análise crítica de textos jornalísticos",hab:"Reconhecer a impossibilidade de neutralidade absoluta em textos jornalísticos e identificar graus de parcialidade, desenvolvendo atitude crítica como leitor e produtor de textos digitais.",exp:"Análise de notícias online com identificação de vieses. Ferramentas: Agência Lupa, Aos Fatos.",bnccRef:"EF06LP01",bnccComp:"EF06CO01",crm:"EF06CP01"},
+ {id:"EF06MC03",ano:"6º Ano",etapa:"Anos Finais",comp:"Matemática",eixo:"Cultura Digital",obj:"Ética na comunicação de dados",hab:"Analisar dados estatísticos em diferentes formatos e comunicá-los com clareza, respeitando a linguagem apropriada e conduta ética em ambientes digitais.",exp:"Relatórios e gráficos digitais sobre temas sociais. Ferramentas: Google Planilhas, Canva.",bnccRef:"EF05MA24",bnccComp:"EF06CO09",crm:"EF06MC03"},
+ {id:"EF06MC04",ano:"6º Ano",etapa:"Anos Finais",comp:"Matemática",eixo:"Cultura Digital",obj:"Impacto social das tecnologias",hab:"Organizar dados de pesquisa em tabelas e gráficos, promovendo análises críticas sobre o uso e impacto social das tecnologias e consumo de eletrônicos.",exp:"Pesquisa sobre consumo de eletrônicos e impacto ambiental. Ferramentas: Google Forms.",bnccRef:"EF05MA25",bnccComp:"EF06CO10",crm:"EF06MC04"},
+ {id:"EF06CC01",ano:"6º Ano",etapa:"Anos Finais",comp:"Ciências",eixo:"Cultura Digital",obj:"Misturas em plataformas digitais",hab:"Classificar como homogênea ou heterogênea a mistura de materiais e divulgar o conhecimento em plataformas digitais com linguagem acessível.",exp:"Vídeo explicativo sobre misturas para compartilhar online. Ferramentas: YouTube, Canva.",bnccRef:"EF06CI01",bnccComp:"EF06CO03",crm:"EF06CC01"},
+ {id:"EF06CM09",ano:"6º Ano",etapa:"Anos Finais",comp:"Ciências",eixo:"Mundo Digital",obj:"Sistemas do corpo e sistemas computacionais",hab:"Deduzir que estrutura, sustentação e movimentação dos animais resultam da interação entre sistemas muscular, ósseo e nervoso, estabelecendo analogias com sistemas computacionais.",exp:"Criar animações sobre o movimento do corpo. Ferramentas: Scratch, Canva animado.",bnccRef:"EF06CI09",bnccComp:"EF06CO02",crm:"EF06CM09"},
+ {id:"EF06CM10",ano:"6º Ano",etapa:"Anos Finais",comp:"Ciências",eixo:"Cultura Digital",obj:"Substâncias psicoativas e cidadania digital",hab:"Explicar como substâncias psicoativas afetam o sistema nervoso e criar campanhas de conscientização em redes sociais usando linguagem adequada.",exp:"Campanhas de conscientização em redes sociais. Ferramentas: Instagram, Canva, WhatsApp.",bnccRef:"EF06CI10",bnccComp:"EF06CO03",crm:"EF06CM10"},
+ {id:"EF07CP01",ano:"7º Ano",etapa:"Anos Finais",comp:"Português",eixo:"Pensamento Computacional",obj:"Propostas editoriais e análise crítica",hab:"Distinguir diferentes propostas editoriais (sensacionalismo, jornalismo investigativo), identificando recursos usados para impactar o leitor e desenvolver pensamento crítico.",exp:"Análise e comparação de notícias de fontes diversas. Ferramentas: sites de fact-checking.",bnccRef:"EF07LP01",bnccComp:"EF07CO01",crm:"EF07CP01"},
+ {id:"EF07CM01",ano:"7º Ano",etapa:"Anos Finais",comp:"Matemática",eixo:"Pensamento Computacional",obj:"Figuras semelhantes com tecnologia",hab:"Construir figuras planas semelhantes em situações de ampliação e redução com uso de malhas quadriculadas, plano cartesiano ou tecnologias digitais.",exp:"Design gráfico e construção de figuras. Ferramentas: Canva, GeoGebra.",bnccRef:"EF06MA21",bnccComp:"EF07CO01",crm:"EF07CM01"},
+ {id:"EF07CC16",ano:"7º Ano",etapa:"Anos Finais",comp:"Ciências",eixo:"Cultura Digital",obj:"Deriva dos continentes e redes sociais",hab:"Justificar o formato das costas brasileira e africana com base na teoria da deriva dos continentes, compartilhando informações científicas em redes sociais.",exp:"Infográficos sobre deriva dos continentes. Ferramentas: Google Earth, Canva, Instagram.",bnccRef:"EF07CI16",bnccComp:"EF07CO03",crm:"EF07CC16"},
+ {id:"EF08CP01",ano:"8º Ano",etapa:"Anos Finais",comp:"Português",eixo:"Pensamento Computacional",obj:"Algoritmo para análise de notícias",hab:"Identificar e comparar editorias de jornais digitais, refletindo sobre os fatos noticiados e criar algoritmos para categorizar e organizar informações.",exp:"Criar algoritmo para categorizar notícias por editoria. Ferramentas: Google News, planilhas.",bnccRef:"EF08LP01",bnccComp:"EF08CO01",crm:"EF08CP01"},
+ {id:"EF08CM01",ano:"8º Ano",etapa:"Anos Finais",comp:"Matemática",eixo:"Pensamento Computacional",obj:"Medidas de tendência central com dados reais",hab:"Calcular medidas de tendência central (média, moda, mediana), interpretar seus significados e decidir qual é mais adequada para descrever um conjunto de dados coletados digitalmente.",exp:"Análise estatística com planilhas digitais. Ferramentas: Google Planilhas, Google Slides.",bnccRef:"EF08MA04",bnccComp:"EF08CO01",crm:"EF08CM01"},
+ {id:"EF08CC16",ano:"8º Ano",etapa:"Anos Finais",comp:"Ciências",eixo:"Cultura Digital",obj:"Mudanças climáticas e cidadania digital",hab:"Discutir iniciativas para restabelecer o equilíbrio ambiental a partir de alterações climáticas provocadas pela intervenção humana, usando tecnologias digitais de forma ética e responsável.",exp:"Campanha em redes sociais sobre sustentabilidade. Ferramentas: Instagram, YouTube.",bnccRef:"EF08CI16",bnccComp:"EF08CO08",crm:"EF08CC16"},
+ {id:"EF09CP01",ano:"9º Ano",etapa:"Anos Finais",comp:"Português",eixo:"Pensamento Computacional",obj:"Combate algorítmico às fake news",hab:"Analisar a disseminação de notícias falsas nas redes sociais e desenvolver estratégias algorítmicas para reconhecê-las, verificando veículo, fonte, data, autoria e URL.",exp:"Checklist algorítmico para verificar veracidade de notícias. Ferramentas: Lupa, Aos Fatos.",bnccRef:"EF09LP01",bnccComp:"EF09CO01",crm:"EF09CP01"},
+ {id:"EF09CM01",ano:"9º Ano",etapa:"Anos Finais",comp:"Matemática",eixo:"Pensamento Computacional",obj:"Análise e visualização de dados complexos",hab:"Criar e interpretar tabelas e gráficos com e sem tecnologias digitais para resolver situações cotidianas com diferentes tipos de variáveis categóricas e numéricas.",exp:"Dashboards de dados reais. Ferramentas: Google Planilhas, Looker Studio.",bnccRef:"EF09MA24",bnccComp:"EF09CO01",crm:"EF09CM01"},
+ {id:"EF09CC01",ano:"9º Ano",etapa:"Anos Finais",comp:"Ciências",eixo:"Cultura Digital",obj:"Bioética e tecnologia digital",hab:"Discutir questões relativas à tecnologia aplicada à saúde e bioética, utilizando redes sociais e plataformas digitais para debate crítico e responsável.",exp:"Debate online sobre bioética e tecnologia. Ferramentas: Google Meet, Padlet.",bnccRef:"EF09CI12",bnccComp:"EF09CO03",crm:"EF09CC01"},
+ {id:"EJA01CG01",ano:"EJA",etapa:"EJA",comp:"Cultura Digital",eixo:"Cultura Digital",obj:"Inclusão e acesso digital",hab:"Criar e-mail e acessar serviços públicos on-line como plataformas de governo, saúde e educação, exercendo cidadania digital.",exp:"Oficina 'Meu Primeiro E-mail' e cadastro no gov.br. Ferramentas: Gmail, gov.br.",bnccRef:"—",bnccComp:"EJA01CG01",crm:"EJA01CG01"},
+ {id:"EJA01CG02",ano:"EJA",etapa:"EJA",comp:"Cultura Digital",eixo:"Cultura Digital",obj:"Senhas fortes e navegação segura",hab:"Criar senhas fortes e usar autenticação em dois fatores para proteger dados pessoais e navegar com segurança no ambiente digital.",exp:"Simular criação de senhas e testar força. Ferramentas: gerenciadores de senha online.",bnccRef:"—",bnccComp:"EJA01CG02",crm:"EJA01CG02"},
+ {id:"EJA01CG03",ano:"EJA",etapa:"EJA",comp:"Cultura Digital",eixo:"Cultura Digital",obj:"Etiqueta digital e comunicação formal",hab:"Produzir mensagens formais e informais em redes digitais, adaptando linguagem, tom e formato ao contexto e ao destinatário.",exp:"Reescrever mensagem de WhatsApp para tom profissional. Ferramentas: Gmail, LinkedIn.",bnccRef:"—",bnccComp:"EJA01CG03",crm:"EJA01CG03"},
+ {id:"EJA02CG04",ano:"EJA",etapa:"EJA",comp:"Cultura Digital",eixo:"Cultura Digital",obj:"Fake news e direitos digitais",hab:"Reconhecer fake news e denunciar conteúdos impróprios nas redes sociais com senso crítico, responsabilidade e conhecimento dos direitos digitais.",exp:"Analisar manchetes e identificar as falsas; usar botão denunciar. Ferramentas: redes sociais.",bnccRef:"—",bnccComp:"EJA02CG04",crm:"EJA02CG04"}
+];
+
+const CTAG={Português:"tp",Matemática:"tm",Ciências:"tc","Cultura Digital":"tcd",História:"ta",Geografia:"ta",Arte:"ta","Educação Física":"ta",Computação:"tcd"};
+const NVIDIA_KEY="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";
+const NVIDIA_MODEL="deepseek-ai/deepseek-v4-flash";
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? '/api/chat'
+  : 'https://integrate.api.nvidia.com/v1/chat/completions';
+
+// ═══ STATE ═══
+const S={view:"s",step:1,sel:[],filters:{q:"",ano:"",comp:"",eixo:""},plans:[],generated:"",isGen:false};
+
+// ═══ UTILS ═══
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function fv(id){return(document.getElementById(id)||{}).value||""}
+function setV(id,v){const e=document.getElementById(id);if(e)e.value=v}
+function getChecked(id){return[...document.querySelectorAll(`#${id} input[type=checkbox]:checked`)].map(c=>c.value)}
+let toastT;
+function toast(msg,dur=2500){
+  const t=document.getElementById("toast");
+  t.innerHTML=msg;t.classList.add("show");
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),dur);
+}
+function dots(){
+  const el=document.getElementById("gen-dots");
+  if(!el)return;
+  let n=0;
+  return setInterval(()=>{if(el)el.textContent=["",".","..",  "..."][n++%4]},500);
+}
+
+// ═══ VIEWS ═══
+function showView(v){
+  S.view=v;
+  ["s","p","m"].forEach(x=>{
+    const el=document.getElementById("v"+x);
+    if(el) el.style.display=(x===v)?"block":"none";
+  });
+  ["s","p","m"].forEach(x=>{
+    const nb=document.getElementById("nb-"+x);
+    if(nb) nb.classList.toggle("on",x===v);
+  });
+  if(v==="p"){
+    // Make sure current step is visible
+    [1,2,3].forEach(i=>{
+      const el=document.getElementById("s"+i);
+      if(el) el.style.display=(i===S.step)?"block":"none";
+    });
+    renderSteps();
+    renderSidebar();
+    renderSbMini();
+  }
+  if(v==="m") renderSavedPlans();
+}
+
+// ═══ SKILLS VIEW ═══
+function buildSelects(){
+  const anos=[...new Set(DADOS.map(d=>d.ano))];
+  const comps=[...new Set(DADOS.map(d=>d.comp))];
+  const eixos=[...new Set(DADOS.map(d=>d.eixo))];
+  const fa=document.getElementById("f-ano"),fc=document.getElementById("f-comp"),fe=document.getElementById("f-eixo");
+  anos.forEach(a=>{const o=document.createElement("option");o.value=a;o.textContent=a;fa.appendChild(o)});
+  comps.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;fc.appendChild(o)});
+  eixos.forEach(e=>{const o=document.createElement("option");o.value=e;o.textContent=e;fe.appendChild(o)});
+}
+
+function getFiltered(){
+  const{q,ano,comp,eixo}=S.filters;
+  const qt=q.toLowerCase();
+  return DADOS.filter(h=>
+    (!ano||h.ano===ano)&&(!comp||h.comp===comp)&&(!eixo||h.eixo===eixo)&&
+    (!qt||[h.hab,h.obj,h.crm,h.comp,h.ano,h.eixo].some(x=>x.toLowerCase().includes(qt)))
+  );
+}
+
+function applyF(){
+  S.filters.q=fv("q-s");S.filters.ano=fv("f-ano");S.filters.comp=fv("f-comp");S.filters.eixo=fv("f-eixo");
+  renderGrid();
+}
+
+function renderStats(){
+  document.getElementById("stat-bar").innerHTML=[
+    ["📋",DADOS.length,"habilidades"],["📅",new Set(DADOS.map(d=>d.ano)).size,"anos/etapas"],
+    ["📚",new Set(DADOS.map(d=>d.comp)).size,"componentes"],["🧠",new Set(DADOS.map(d=>d.eixo)).size,"eixos BNCC"]
+  ].map(([ic,n,l])=>`<div class="sc"><span class="sc-ic">${ic}</span><div><div class="sc-n">${n}</div><div class="sc-l">${l}</div></div></div>`).join("");
+}
+
+function renderGrid(){
+  const data=getFiltered();
+  document.getElementById("f-count").textContent=`${data.length} habilidade${data.length!==1?"s":""}`;
+  const g=document.getElementById("skill-grid");
+  if(!data.length){
+    g.innerHTML=`<div class="est"><div class="est-icon">🔍</div>Nenhuma habilidade encontrada com esses filtros.</div>`;return;
+  }
+  g.innerHTML=data.map(h=>{
+    const added=S.sel.includes(h.id),ct=CTAG[h.comp]||"ta";
+    return`<div class="scard${added?" in-plan":""}" id="sc-${h.id}">
+      <div class="ctags">
+        <span class="tag ${ct}">${esc(h.comp)}</span>
+        <span class="tag ta">${esc(h.ano)}</span>
+      </div>
+      <div class="ceixo">${esc(h.eixo)}</div>
+      <div class="cobj">${esc(h.obj)}</div>
+      <div class="chab">${esc(h.hab)}</div>
+      <div class="cmeta">#${esc(h.crm)} · ${esc(h.bnccRef)}</div>
+      <div class="cacts">
+        <button class="bsm bdet" onclick='showDetail("${h.id}")'>🔍 Detalhes</button>
+        <button class="bsm bsug" onclick='showSugestao("${h.id}")'>✨ Sugestão IA</button>
+        <button class="bsm badd${added?" added":""}" id="badd-${h.id}" onclick='toggleSel("${h.id}")'>${added?"✓ No Plano":"+ Plano"}</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleSel(id,silent){
+  if(S.sel.includes(id)){S.sel=S.sel.filter(x=>x!==id);if(!silent)toast("Removido do plano")}
+  else{S.sel.push(id);if(!silent)toast("✅ Adicionado ao plano!")}
+  document.getElementById("badge-sel").textContent=S.sel.length;
+  // update card
+  const card=document.getElementById("sc-"+id),btn=document.getElementById("badd-"+id);
+  if(card){card.className="scard"+(S.sel.includes(id)?" in-plan":"")}
+  if(btn){btn.className="bsm badd"+(S.sel.includes(id)?" added":"");btn.textContent=S.sel.includes(id)?"✓ No Plano":"+ Plano"}
+  renderSidebar();renderMiniList();renderSbMini();
+}
+
+// ═══ DETAIL MODAL ═══
+function showDetail(id){
+  const h=DADOS.find(d=>d.id===id);if(!h)return;
+  const added=S.sel.includes(id),ct=CTAG[h.comp]||"ta";
+  document.getElementById("mdl-body").innerHTML=`
+    <div class="mdl-hdr">
+      <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px">${esc(h.etapa)} · ${esc(h.ano)}</div>
+      <div class="mdl-title">${esc(h.obj)}</div></div>
+      <button class="mdl-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="ctags" style="margin-bottom:14px">
+      <span class="tag ${ct}">${esc(h.comp)}</span>
+      <span class="tag ta">${esc(h.eixo)}</span>
+    </div>
+    <div class="ms"><div class="mst">Habilidade Completa</div><div class="mstx">${esc(h.hab)}</div></div>
+    <div class="ms"><div class="mst">Exemplo de Atividade com Tecnologia</div><div class="mstx">${esc(h.exp)}</div></div>
+    <div class="ms"><div class="mst">Códigos de Referência</div>
+      <div class="codes">
+        <span class="chip chip-g">CRM: ${esc(h.crm)}</span>
+        <span class="chip">BNCC: ${esc(h.bnccRef)}</span>
+        <span class="chip">Comp.: ${esc(h.bnccComp)}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">
+      <button class="btn btn-pri" onclick='toggleSel("${id}");closeModal()'>${added?"✕ Remover do Plano":"+ Adicionar ao Plano de Aula"}</button>
+      <button class="btn btn-sug" style="background:var(--p50);color:var(--p700);border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer" onclick='closeModal();setTimeout(()=>showSugestao("${id}"),100)'>✨ Ver Sugestão IA</button>
+      <button class="btn btn-gh" onclick="closeModal()">Fechar</button>
+    </div>`;
+  document.getElementById("modal").style.display="flex";
+}
+
+// ═══ AI SUGGESTION PER SKILL (streaming) ═══
+async function showSugestao(id){
+  const h=DADOS.find(d=>d.id===id);if(!h)return;
+  document.getElementById("mdl-body").innerHTML=`
+    <div class="mdl-hdr">
+      <div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px">✨ Sugestões de Atividades com IA</div>
+      <div class="mdl-title">${esc(h.obj)}</div></div>
+      <button class="mdl-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="ctags" style="margin-bottom:14px">
+      <span class="tag ${CTAG[h.comp]||"ta"}">${esc(h.comp)}</span>
+      <span class="tag ta">${esc(h.ano)}</span>
+      <span class="tag ta">${esc(h.eixo)}</span>
+    </div>
+    <div class="sug-box">
+      <div class="sug-title"><div class="spin"></div> Gerando sugestões personalizadas para Atalaia-AL…</div>
+      <div class="sug-stream" id="sug-out"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-pri" onclick='toggleSel("${id}");closeModal()' >${S.sel.includes(id)?"✕ Remover do Plano":"+ Adicionar ao Plano"}</button>
+      <button class="btn btn-gh" onclick="closeModal()">Fechar</button>
+    </div>`;
+  document.getElementById("modal").style.display="flex";
+
+  const prompt=`Você é especialista em educação básica, BNCC Computação e pedagogia. Crie 3 sugestões de atividades PRÁTICAS e CRIATIVAS para professores de escolas públicas municipais de Atalaia-AL (Nordeste brasileiro), ${h.ano}, componente ${h.comp}.
+
+Habilidade: ${h.hab}
+Objeto de Conhecimento: ${h.obj}
+Eixo BNCC Computação: ${h.eixo}
+Código CRM: ${h.crm}
+
+Para CADA sugestão inclua:
+🎯 TÍTULO criativo e motivador
+📝 DESCRIÇÃO: passo a passo prático e detalhado (3-4 frases), incluindo como a tecnologia será usada
+🛠️ FERRAMENTAS: ferramentas digitais gratuitas e acessíveis
+⏱️ TEMPO ESTIMADO: duração da atividade
+💡 DICA: uma dica especial para adaptar à realidade nordestina/Atalaia
+
+Seja criativo, prático e considere a realidade de escola pública com recursos limitados.`;
+
+  let out="";
+  const outEl=document.getElementById("sug-out");
+  const titleEl=document.querySelector(".sug-title");
+  try{
+    const _useProxy = API_URL === '/api/chat';
+    const _hdrs = {"Content-Type":"application/json"};
+    if (!_useProxy) _hdrs["Authorization"] = "Bearer " + NVIDIA_KEY;
+    const r=await fetch(API_URL,{method:"POST",headers:_hdrs,
+      body:JSON.stringify({model:NVIDIA_MODEL,messages:[{role:"user",content:prompt}],temperature:0.8,top_p:0.95,max_tokens:2048,stream:true,chat_template_kwargs:{thinking:false}})});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    if(titleEl)titleEl.innerHTML="✨ Sugestões de Atividades geradas por IA";
+    const reader=r.body.getReader(),dec=new TextDecoder();let buf="";
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split("\n");buf=lines.pop()||"";
+      for(const line of lines){
+        if(!line.startsWith("data: "))continue;
+        const d=line.slice(6).trim();if(d==="[DONE]")continue;
+        try{const j=JSON.parse(d);const c=j.choices?.[0]?.delta?.content;if(c){out+=c;if(outEl)outEl.textContent=out}}catch(_){}
+      }
+    }
+  }catch(err){
+    if(outEl)outEl.innerHTML=`<div class="al al-r">❌ Erro ao gerar sugestões: ${esc(err.message)}<br><small>Verifique a conexão ou tente novamente.</small></div>`;
+    if(titleEl)titleEl.innerHTML="⚠️ Erro na geração";
+  }
+}
+
+function closeModal(){document.getElementById("modal").style.display="none"}
+
+// ═══ PLAN STEPS ═══
+function renderSteps(){
+  const labels=["Dados do Plano","Habilidades BNCC","Plano Gerado"];
+  document.getElementById("stbar").innerHTML=labels.map((l,i)=>{
+    const n=i+1,cls=n===S.step?"active":n<S.step?"done":"";
+    return`<div class="sti ${cls}"${n<S.step?` onclick="goStep(${n})" title="Voltar ao passo ${n}"`:""}><div class="stn">${n<S.step?"✓":n}</div><div class="stl">${l}</div></div>`;
+  }).join("");
+}
+
+function goStep(n){
+  S.step=n;
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById("s"+i);
+    if(el) el.style.display=(i===n)?"block":"none";
+  });
+  renderSteps();
+  const pl=document.querySelector(".play");
+  if(pl) pl.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function goStep2(){
+  if(!fv("f-ano-p")||!fv("f-comp-p")||!fv("f-tema").trim()){
+    toast("⚠️ Preencha Ano/Turma, Componente e Tema da Aula para continuar.",3500);return;
+  }
+  goStep(2);renderMiniList();
+}
+
+function goStep3(){
+  if(!S.sel.length){
+    document.getElementById("s2-warn").innerHTML=`<div class="al al-w">⚠️ Selecione ao menos 1 habilidade da BNCC Computação para gerar o plano.</div>`;
+    document.getElementById("s2-warn").style.display="";
+    setTimeout(()=>{document.getElementById("s2-warn").style.display="none"},4000);
+    return;
+  }
+  goStep(3);generatePlan();
+}
+
+// ═══ SIDEBAR ═══
+function renderSidebar(){
+  document.getElementById("badge-sel").textContent=S.sel.length;
+  document.getElementById("sel-ct").textContent=S.sel.length;
+  const list=document.getElementById("sel-list");
+  if(!S.sel.length){
+    list.innerHTML=`<div class="esel">📭 Nenhuma habilidade selecionada ainda.<br><br>Na aba <strong>Habilidades</strong>, clique em <strong>"+ Plano"</strong> para adicionar.</div>`;
+    return;
+  }
+  list.innerHTML=S.sel.map(id=>{
+    const h=DADOS.find(d=>d.id===id);if(!h)return"";
+    return`<div class="ssi"><div class="ssic">${esc(h.crm)}</div><div class="ssio">${esc(h.obj)}</div><div class="ssims">${esc(h.comp)} · ${esc(h.ano)}</div><button class="ssrm" onclick='toggleSel("${id}")' title="Remover">✕</button></div>`;
+  }).join("");
+}
+
+function renderMiniList(){
+  const q=(fv("ms-q")||"").toLowerCase();
+  const data=DADOS.filter(h=>!q||h.obj.toLowerCase().includes(q)||h.crm.toLowerCase().includes(q)||h.hab.toLowerCase().includes(q)||h.ano.toLowerCase().includes(q)||h.comp.toLowerCase().includes(q));
+  document.getElementById("mini-list").innerHTML=data.slice(0,25).map(h=>{
+    const ia=S.sel.includes(h.id);
+    return`<div class="mi${ia?" ia":""}"><div style="flex:1"><div class="mic">${esc(h.crm)}</div><div class="mio">${esc(h.obj)}</div><div class="mian">${esc(h.comp)} · ${esc(h.ano)}</div></div><button class="miab${ia?" ia":""}" onclick='toggleSel("${h.id}");renderMiniList()' title="${ia?"Remover":"Adicionar"}">${ia?"✓":"+"}</button></div>`;
+  }).join("");
+}
+
+function renderSbMini(){
+  const q=(fv("sb-q")||"").toLowerCase();
+  const data=DADOS.filter(h=>!q||h.obj.toLowerCase().includes(q)||h.crm.toLowerCase().includes(q)||h.comp.toLowerCase().includes(q));
+  document.getElementById("sb-mini").innerHTML=data.slice(0,15).map(h=>{
+    const ia=S.sel.includes(h.id);
+    return`<div class="mi${ia?" ia":""}"><div style="flex:1"><div class="mic">${esc(h.crm)}</div><div class="mio">${esc(h.obj)}</div><div class="mian">${esc(h.ano)}</div></div><button class="miab${ia?" ia":""}" onclick='toggleSel("${h.id}");renderSbMini()' title="${ia?"Remover":"Adicionar"}">${ia?"✓":"+"}</button></div>`;
+  }).join("");
+}
+
+function updateCharCount(){
+  const v=fv("po");
+  const words=v.trim()?v.trim().split(/\s+/).length:0;
+  const el=document.getElementById("char-count");
+  if(el)el.textContent=`${words} palavras · ${v.length} caracteres`;
+}
+
+// ═══ GENERATE PLAN ═══
+async function generatePlan(){
+  const selObjs=S.sel.map(id=>DADOS.find(d=>d.id===id)).filter(Boolean);
+  const rec=getChecked("rec-ckg");
+  const dataBR=fv("f-data")?new Date(fv("f-data")+"T12:00:00").toLocaleDateString("pt-BR"):"não informada";
+  const skillsBlock=selObjs.map(h=>`  • [${h.crm}] ${h.comp} — ${h.obj}\n    ${h.hab}\n    Eixo: ${h.eixo}`).join("\n\n");
+
+  const prompt=`Você é especialista em educação básica, BNCC e tecnologia educacional. Crie um PLANO DE AULA COMPLETO, DETALHADO e PRÁTICO para professores da rede pública municipal de Atalaia-AL (Alagoas, Nordeste).
+
+DADOS DO PLANO:
+• Professor(a): ${fv("f-prof")||"Não informado"}
+• Escola: ${fv("f-escola")||"Não informada"} — Atalaia/AL
+• Ano/Turma: ${fv("f-ano-p")}
+• Componente Curricular: ${fv("f-comp-p")}
+• Data: ${dataBR}
+• Duração: ${fv("f-dur")}
+• Tema da Aula: ${fv("f-tema")}
+• Objetivos do professor: ${fv("f-obj")||"Não informado"}
+• Recursos disponíveis: ${rec.join(", ")||"recursos básicos"}
+• Metodologia: ${fv("f-met")}
+• Observações: ${fv("f-obs")||"nenhuma"}
+
+HABILIDADES DA BNCC COMPUTAÇÃO (${selObjs.length} selecionadas):
+${skillsBlock}
+
+Escreva o plano de aula COMPLETO seguindo EXATAMENTE este formato e sendo MUITO detalhado em cada seção:
+
+════════════════════════════════════════════
+PLANO DE AULA
+${fv("f-tema").toUpperCase()}
+════════════════════════════════════════════
+
+▌ IDENTIFICAÇÃO
+Professor(a): ${fv("f-prof")||"_______________________"}
+Escola: ${fv("f-escola")||"_______________________"} | Município: Atalaia - AL
+Ano/Turma: ${fv("f-ano-p")} | Componente: ${fv("f-comp-p")}
+Data: ${dataBR} | Duração: ${fv("f-dur")}
+Tema: ${fv("f-tema")}
+
+────────────────────────────────────────────
+▌ OBJETIVOS
+────────────────────────────────────────────
+OBJETIVO GERAL:
+[escreva aqui — o que os alunos serão capazes de fazer ao final da aula]
+
+OBJETIVOS ESPECÍFICOS:
+• [objetivo 1 — mensurável e específico]
+• [objetivo 2]
+• [objetivo 3]
+• [objetivo 4]
+
+────────────────────────────────────────────
+▌ HABILIDADES DA BNCC COMPUTAÇÃO
+────────────────────────────────────────────
+${selObjs.map(h=>`[${h.crm}] ${h.obj}\n${h.hab}`).join("\n\n")}
+
+────────────────────────────────────────────
+▌ CONTEÚDOS
+────────────────────────────────────────────
+CONCEITUAIS (o que saber):
+• [conteúdo 1]
+• [conteúdo 2]
+• [conteúdo 3]
+
+PROCEDIMENTAIS (saber fazer):
+• [conteúdo 1]
+• [conteúdo 2]
+
+ATITUDINAIS (saber ser):
+• [conteúdo 1]
+• [conteúdo 2]
+
+────────────────────────────────────────────
+▌ METODOLOGIA
+────────────────────────────────────────────
+[3-4 parágrafos descrevendo detalhadamente a abordagem pedagógica de ${fv("f-met")}, como os alunos interagirão com a tecnologia, como o pensamento computacional será integrado ao conteúdo, e como a realidade de Atalaia-AL será valorizada]
+
+────────────────────────────────────────────
+▌ DESENVOLVIMENTO DA AULA
+────────────────────────────────────────────
+
+🟢 MOMENTO INICIAL — Aquecimento e Contextualização
+⏱ [XX minutos]
+
+[Descreva em DETALHE: como o professor iniciará a aula, que perguntas motivadoras fará, como conectará o tema à realidade dos alunos de Atalaia (cultura, cotidiano nordestino, exemplos locais). Inclua diálogos sugeridos, dinâmica com os alunos, como organizar a sala. Mínimo 150 palavras.]
+
+🔵 DESENVOLVIMENTO — Construção do Conhecimento
+⏱ [XX minutos]
+
+[Descreva em DETALHE o passo a passo das atividades principais: o que o professor faz, o que os alunos fazem, como usarão os recursos (${rec.join(", ")}), como acontecerão as interações entre alunos, quais instruções específicas o professor dará. Inclua sugestões de comandos/perguntas do professor, como lidar com dificuldades comuns. Mínimo 250 palavras.]
+
+🟡 ENCERRAMENTO — Síntese e Sistematização
+⏱ [XX minutos]
+
+[Descreva como sistematizar o aprendizado: que perguntas o professor fará para consolidar o conhecimento, como os alunos registrarão o que aprenderam, como fazer a transição para a próxima aula. Mínimo 100 palavras.]
+
+────────────────────────────────────────────
+▌ RECURSOS DIDÁTICOS
+────────────────────────────────────────────
+• [liste cada recurso especificando como será usado]
+
+────────────────────────────────────────────
+▌ AVALIAÇÃO
+────────────────────────────────────────────
+AVALIAÇÃO FORMATIVA (durante a aula):
+[Como o professor avaliará o progresso dos alunos continuamente]
+
+AVALIAÇÃO SOMATIVA (produto final):
+[Qual o produto/evidência de aprendizagem esperada]
+
+CRITÉRIOS DE AVALIAÇÃO:
+• [critério 1 — específico e observável]
+• [critério 2]
+• [critério 3]
+• [critério 4]
+
+────────────────────────────────────────────
+▌ REFERÊNCIAS
+────────────────────────────────────────────
+• BRASIL. Base Nacional Comum Curricular (BNCC). Brasília: MEC, 2017.
+• [referência 2 — artigo ou livro sobre computação na educação]
+• [referência 3 — material digital gratuito]
+• [referência 4 — site ou plataforma educacional]
+
+════════════════════════════════════════════
+Plano elaborado com base na BNCC Computação
+Secretaria Municipal de Educação de Atalaia/AL
+${new Date().toLocaleDateString("pt-BR")}
+════════════════════════════════════════════
+
+ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`;
+
+  S.isGen=true;S.generated="";
+  setV("po","");
+  document.getElementById("gbanner").style.display="flex";
+  document.getElementById("pacts").style.display="none";
+  const dt=dots();
+
+  try{
+    const useProxy = API_URL === '/api/chat';
+    const headers = {"Content-Type":"application/json"};
+    if (!useProxy) headers["Authorization"] = "Bearer " + NVIDIA_KEY;
+    const r=await fetch(API_URL,{method:"POST",
+      headers,
+      body:JSON.stringify({model:NVIDIA_MODEL,messages:[{role:"user",content:prompt}],
+        temperature:0.7,top_p:0.95,max_tokens:12000,stream:true,chat_template_kwargs:{thinking:false}})});
+    if(!r.ok){const et=await r.text();throw new Error(`HTTP ${r.status}: ${et.slice(0,300)}`);}
+    const reader=r.body.getReader(),dec=new TextDecoder();let buf="";
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split("\n");buf=lines.pop()||"";
+      for(const line of lines){
+        if(!line.startsWith("data: "))continue;
+        const d=line.slice(6).trim();if(d==="[DONE]")continue;
+        try{const j=JSON.parse(d);const c=j.choices?.[0]?.delta?.content;
+          if(c){S.generated+=c;const po=document.getElementById("po");if(po){po.value=S.generated;po.scrollTop=po.scrollHeight;updateCharCount();}}}catch(_){}
+      }
+    }
+  }catch(err){
+    S.generated=`❌ Erro ao gerar o plano de aula.\n\nDetalhe: ${err.message}\n\nPossíveis causas:\n• A API pode estar temporariamente indisponível\n• Verifique sua conexão com a internet\n• Se abriu o arquivo localmente, pode haver bloqueio de CORS.\n  Solução: execute um servidor local com: python3 -m http.server 8080\n  e acesse: http://localhost:8080/portal_professor_bncc_v2.html\n\nClique em "Regenerar" para tentar novamente.`;
+    const po=document.getElementById("po");if(po)po.value=S.generated;
+  }
+  clearInterval(dt);
+  S.isGen=false;
+  document.getElementById("gbanner").style.display="none";
+  updateCharCount();
+  if(S.generated&&!S.generated.startsWith("❌")){
+    document.getElementById("pacts").style.display="flex";
+    toast("✅ Plano gerado! Você pode editá-lo antes de baixar o PDF.",4000);
+  }
+}
+
+function regenerate(){goStep3();}
+function copyPlan(){navigator.clipboard.writeText(fv("po")).then(()=>toast("📋 Copiado!")).catch(()=>toast("Erro ao copiar"));}
+
+// ═══ SAVE PLAN ═══
+function savePlan(){
+  const text=fv("po");if(!text||text.startsWith("❌")){toast("⚠️ Gere o plano primeiro!");return;}
+  const plan={
+    id:Date.now(),
+    tema:fv("f-tema")||"Sem título",
+    prof:fv("f-prof")||"—",
+    escola:fv("f-escola")||"—",
+    ano:fv("f-ano-p")||"—",
+    comp:fv("f-comp-p")||"—",
+    data:fv("f-data")||new Date().toISOString().split("T")[0],
+    dur:fv("f-dur")||"—",
+    skills:S.sel.slice(),
+    text,
+    savedAt:new Date().toLocaleString("pt-BR")
+  };
+  S.plans.unshift(plan);
+  document.getElementById("badge-saved").textContent=S.plans.length;
+  toast("💾 Plano salvo! Acesse em 'Meus Planos'.",3000);
+}
+
+function renderSavedPlans(){
+  const g=document.getElementById("plans-grid");
+  if(!S.plans.length){
+    g.innerHTML=`<div class="est"><div class="est-icon">💾</div>Nenhum plano salvo ainda.<br>Crie e salve seu primeiro plano!</div>`;return;
+  }
+  g.innerHTML=S.plans.map(p=>`
+    <div class="plan-item">
+      <div class="pi-header">
+        <div><div class="pi-title">${esc(p.tema)}</div><div class="pi-date">Salvo em ${esc(p.savedAt)}</div></div>
+      </div>
+      <div class="pi-meta">
+        <span class="tag ta">${esc(p.ano)}</span>
+        <span class="tag ${CTAG[p.comp]||"ta"}">${esc(p.comp)}</span>
+        <span class="tag ta">${esc(p.dur)}</span>
+        <span class="tag ta">${p.skills.length} habilidade${p.skills.length!==1?"s":""}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        <strong>${esc(p.prof)}</strong> · ${esc(p.escola)}
+      </div>
+      <div class="pi-actions">
+        <button class="btn btn-suc" style="flex:1;justify-content:center" onclick="downloadPlanPDF(${p.id})">⬇️ PDF</button>
+        <button class="btn btn-pri" style="flex:1;justify-content:center" onclick="loadPlan(${p.id})">✏️ Editar</button>
+        <button class="btn btn-gh" style="padding:9px 10px" onclick="deletePlan(${p.id})" title="Excluir">🗑️</button>
+      </div>
+    </div>`).join("");
+}
+
+function loadPlan(id){
+  const p=S.plans.find(x=>x.id===id);if(!p)return;
+  setV("f-prof",p.prof);setV("f-escola",p.escola);setV("f-ano-p",p.ano);
+  setV("f-comp-p",p.comp);setV("f-data",p.data);setV("f-tema",p.tema);
+  S.sel=p.skills.slice();S.generated=p.text;
+  showView("p");goStep(3);
+  document.getElementById("po").value=p.text;
+  document.getElementById("pacts").style.display="flex";
+  updateCharCount();
+  toast("📂 Plano carregado para edição!",3000);
+}
+
+function deletePlan(id){
+  if(!confirm("Excluir este plano? Esta ação não pode ser desfeita."))return;
+  S.plans=S.plans.filter(p=>p.id!==id);
+  document.getElementById("badge-saved").textContent=S.plans.length;
+  renderSavedPlans();toast("🗑️ Plano excluído.");
+}
+
+// ═══ PDF ═══
+function buildPDF(text,meta){
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const pw=210,lm=18,rm=18,cw=pw-lm-rm;
+  let y=0;
+
+  const addPage=()=>{doc.addPage();y=14;};
+  const chk=(n=12)=>{if(y+n>278)addPage();};
+
+  // Header
+  doc.setFillColor(8,80,65);doc.rect(0,0,pw,38,"F");
+  doc.setTextColor(255,255,255);
+  doc.setFont("helvetica","normal");doc.setFontSize(7.5);
+  doc.text("SECRETARIA MUNICIPAL DE EDUCAÇÃO DE ATALAIA/AL  ·  BNCC COMPUTAÇÃO",lm,10);
+  doc.setFont("helvetica","bold");doc.setFontSize(14);
+  doc.text("PLANO DE AULA",lm,20);
+  const temaLines=doc.splitTextToSize(meta.tema||"",cw);
+  doc.setFont("helvetica","normal");doc.setFontSize(10);
+  doc.text(temaLines,lm,28);
+  y=42+(temaLines.length-1)*4;
+
+  // Thin green accent line
+  doc.setDrawColor(29,158,117);doc.setLineWidth(0.5);doc.line(lm,y-2,pw-rm,y-2);
+  y+=4;
+
+  const addLine=(txt,sz,bold,color)=>{
+    if(!txt&&txt!==0)return;
+    const ls=doc.splitTextToSize(String(txt),cw);
+    const lh=sz*0.42;
+    chk(ls.length*lh+3);
+    doc.setFont("helvetica",bold?"bold":"normal");
+    doc.setFontSize(sz||10);
+    doc.setTextColor(...(color||[28,35,46]));
+    doc.text(ls,lm,y);
+    y+=ls.length*lh+2;
+  };
+
+  const secH=(t)=>{
+    chk(14);
+    y+=2;
+    doc.setFillColor(225,245,238);doc.rect(lm,y-5,cw,8.5,"F");
+    doc.setDrawColor(29,158,117);doc.setLineWidth(0.4);doc.rect(lm,y-5,cw,8.5,"S");
+    doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(8,80,65);
+    doc.text(t.toUpperCase(),lm+2,y+1);
+    y+=7;
+  };
+
+  text.split("\n").forEach(raw=>{
+    const l=raw.trim();
+    if(l.startsWith("════")){}
+    else if(l.startsWith("▌ ")){secH(l.slice(2));}
+    else if(/^[🟢🔵🟡] /.test(l)){
+      const cl=l.replace(/^[🟢🔵🟡] /,"");
+      chk(10);
+      doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(8,80,65);
+      const ls=doc.splitTextToSize(cl,cw);doc.text(ls,lm,y);y+=ls.length*4.2+2;
+    }else if(l.startsWith("⏱")){
+      addLine(l,9,false,[100,116,139]);y+=1;
+    }else if(l.startsWith("────")){
+      // separator — skip visual but add small space
+      y+=2;
+    }else if(/^(OBJETIVO GERAL|OBJETIVOS ESPECÍFICOS|AVALIAÇÃO FORMATIVA|AVALIAÇÃO SOMATIVA|CRITÉRIOS|CONCEITUAIS|PROCEDIMENTAIS|ATITUDINAIS|PLANO DE AULA)/.test(l)){
+      addLine(l,10,true,[28,35,46]);
+    }else if(l.startsWith("• ")){
+      const ls=doc.splitTextToSize("  "+l,cw-4);
+      chk(ls.length*4.2+2);
+      doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(28,35,46);
+      doc.text(ls,lm+3,y);y+=ls.length*4.2+1.5;
+    }else if(l.startsWith("[")&&l.endsWith("]")&&l.length<60){
+      // skip template placeholders
+    }else if(l.startsWith("Plano elaborado")||l.startsWith("Secretaria Municipal")||l.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)){
+      addLine(l,8.5,false,[120,130,145]);
+    }else if(l){
+      addLine(l,10,false);
+    }else{y+=2;}
+  });
+
+  // Footers
+  const tp=doc.internal.getNumberOfPages();
+  for(let p=1;p<=tp;p++){
+    doc.setPage(p);
+    doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(148,163,184);
+    doc.text(`Portal BNCC Computação · Atalaia/AL  —  Página ${p} de ${tp}`,lm,290);
+    doc.text(new Date().toLocaleDateString("pt-BR"),pw-rm,290,{align:"right"});
+    if(p>1){doc.setFillColor(8,80,65);doc.rect(0,0,pw,6,"F");}
+  }
+  return doc;
+}
+
+async function downloadPDF(){
+  const text=fv("po");
+  if(!text||text.startsWith("❌")){toast("⚠️ Gere o plano antes de baixar!");return;}
+  toast("⏳ Preparando PDF...");
+  try{ await ensureJsPDF(); } catch(e){ toast("❌ "+e.message,5000); return; }
+  const meta={tema:fv("f-tema")};
+  try{
+    buildPDF(text,meta).save(`PlanoAula_${(meta.tema||"plano").replace(/[^\w\u00C0-\u024F]/g,"-").replace(/-+/g,"-").slice(0,50)}_${fv("f-ano-p").replace(/\s/g,"")}.pdf`);
+    toast("📄 PDF baixado com sucesso!",3000);
+  }catch(e){toast("Erro ao gerar PDF: "+e.message,4000);}
+}
+
+async function downloadPlanPDF(id){
+  const p=S.plans.find(x=>x.id===id);if(!p)return;
+  toast("⏳ Preparando PDF...");
+  try{ await ensureJsPDF(); } catch(e){ toast("❌ "+e.message,5000); return; }
+  try{
+    buildPDF(p.text,{tema:p.tema}).save(`PlanoAula_${p.tema.replace(/[^\w\u00C0-\u024F]/g,"-").slice(0,50)}.pdf`);
+    toast("📄 PDF baixado!",3000);
+  }catch(e){toast("Erro ao gerar PDF: "+e.message,4000);}
+}
+
+// ═══ INIT ═══
+(function init(){
+  // Show only skills view on startup
+  showView("s");
+  renderStats();buildSelects();renderGrid();
+  document.getElementById("f-data").value=new Date().toISOString().split("T")[0];
+})();
+</script>
+</body>
+</html>

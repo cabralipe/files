@@ -1,0 +1,37 @@
+export const municipalSchools = [
+  'Escola Municipal Dr. Emílio de Maia (Bairro Nova Olinda)',
+  'Escola de Ensino Fundamental Antônio Amâncio de Melo Bastos (Loteamento Santa Inês / José Paulino)',
+  'Escola Municipal de Ensino Fundamental Lúcio Fidelis de Moura (Povoado Porongaba) - Atende Anos Iniciais e Finais',
+  'Escola Municipal Jabes Francisco da Silva (Bairro Nova Olinda)',
+  'Escola Municipal de Ensino Fundamental João Cordeiro de Souza Júnior (Usina Ouricuri)',
+  'Escola Municipal Francisco Lopes de Farias (Zona Rural)',
+  'Escola Municipal Padre Medeiros Neto (Zona Rural)',
+  'Escola Municipal José Martins de Almeida (Distrito de Branca de Atalaia)',
+  'Escola Municipal Joaquim Fortunato Bitencourt Filho (Centro / Urbano)',
+  'Escola Municipal Dr. João Carlos (Centro / Urbano)',
+  'Escola de 1º Grau Antônio Vieira da Costa (Loteamento Mirante de Atalaia)',
+  'Escola Municipal Francisco de Albuquerque Pontes (Povoado Santo Antônio)',
+  'Escola Municipal Dr. Domingos Correia (Povoado Boca da Mata)',
+  'Escola Municipal Adília Vieira da Costa (Povoado Sapucaia)',
+  'Escola Municipal Cel. Sabino de Oliveira (Fazenda São Luiz)',
+  'Escola Municipal Assentamento Boa Fé',
+  'Escola Municipal Assentamento Brasileiro',
+  'Escola Municipal Assentamento Flor da Serra',
+]
+
+export const teacherSubjects = [
+  { area: 'Linguagens', subject: 'Língua Portuguesa' },
+  { area: 'Linguagens', subject: 'Arte' },
+  { area: 'Linguagens', subject: 'Educação Física' },
+  { area: 'Linguagens', subject: 'Língua Inglesa' },
+  { area: 'Matemática', subject: 'Matemática' },
+  { area: 'Ciências da Natureza', subject: 'Ciências' },
+  { area: 'Ciências Humanas', subject: 'História' },
+  { area: 'Ciências Humanas', subject: 'Geografia' },
+  { area: 'Ensino Religioso', subject: 'Ensino Religioso' },
+  { area: 'Tecnologia', subject: 'Monitor do Tempo Integral de Tecnologia' },
+]
+
+export const teacherSubjectOptions = teacherSubjects.map(
+  ({ area, subject }) => `${area}: ${subject}`,
+)
