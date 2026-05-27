@@ -542,6 +542,164 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
     .join('\n\n')
   const date = input.date || new Date().toLocaleDateString('pt-BR')
 
+  const prompt = `Você é especialista em educação básica, BNCC e tecnologia educacional. Crie um PLANO DE AULA COMPLETO, DETALHADO e PRÁTICO para professores da rede pública municipal de Atalaia-AL (Alagoas, Nordeste).
+
+DADOS DO PLANO:
+• Professor(a): ${input.teacher || "Não informado"}
+• Escola: ${input.school || "Não informada"} — Atalaia/AL
+• Ano/Turma: ${input.grade_level}
+• Componente Curricular: ${input.subject}
+• Data: ${date}
+• Duração: ${input.duration || "50 minutos"}
+• Tema da Aula: ${input.title}
+• Objetivos do professor: ${input.objectives || "Não informado"}
+• Recursos disponíveis: ${input.materials || "recursos básicos"}
+• Metodologia: ${input.methodology || "Metodologia ativa"}
+• Observações: ${input.notes || "nenhuma"}
+
+HABILIDADES DA BNCC COMPUTAÇÃO (${selected.length} selecionadas):
+${skillBlock}
+
+Escreva o plano de aula COMPLETO seguindo EXATAMENTE este formato e sendo MUITO detalhado em cada seção:
+
+════════════════════════════════════════════
+PLANO DE AULA
+${input.title.toUpperCase()}
+════════════════════════════════════════════
+
+▌ IDENTIFICAÇÃO
+Professor(a): ${input.teacher || "_______________________"}
+Escola: ${input.school || "_______________________"} | Município: Atalaia - AL
+Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
+Data: ${date} | Duração: ${input.duration || "50 minutos"}
+Tema: ${input.title}
+
+────────────────────────────────────────────
+▌ OBJETIVOS
+────────────────────────────────────────────
+OBJETIVO GERAL:
+[escreva aqui — o que os alunos serão capazes de fazer ao final da aula]
+
+OBJETIVOS ESPECÍFICOS:
+• [objetivo 1 — mensurável e específico]
+• [objetivo 2]
+• [objetivo 3]
+• [objetivo 4]
+
+────────────────────────────────────────────
+▌ HABILIDADES DA BNCC COMPUTAÇÃO
+────────────────────────────────────────────
+${selected.map(h => `[${h.code}] ${h.name}\n${h.description}`).join("\n\n")}
+
+────────────────────────────────────────────
+▌ CONTEÚDOS
+────────────────────────────────────────────
+CONCEITUAIS (o que saber):
+• [conteúdo 1]
+• [conteúdo 2]
+• [conteúdo 3]
+
+PROCEDIMENTAIS (saber fazer):
+• [conteúdo 1]
+• [conteúdo 2]
+
+ATITUDINAIS (saber ser):
+• [conteúdo 1]
+• [conteúdo 2]
+
+────────────────────────────────────────────
+▌ METODOLOGIA
+────────────────────────────────────────────
+[3-4 parágrafos descrevendo detalhadamente a abordagem pedagógica de ${input.methodology}, como os alunos interagirão com a tecnologia, como o pensamento computacional será integrado ao conteúdo, e como a realidade de Atalaia-AL será valorizada]
+
+────────────────────────────────────────────
+▌ DESENVOLVIMENTO DA AULA
+────────────────────────────────────────────
+
+🟢 MOMENTO INICIAL — Aquecimento e Contextualização
+⏱ [XX minutos]
+
+[Descreva em DETALHE: como o professor iniciará a aula, que perguntas motivadoras fará, como conectará o tema à realidade dos alunos de Atalaia (cultura, cotidiano nordestino, exemplos locais). Inclua diálogos sugeridos, dinâmica com os alunos, como organizar a sala. Mínimo 150 palavras.]
+
+🔵 DESENVOLVIMENTO — Construção do Conhecimento
+⏱ [XX minutos]
+
+[Descreva em DETALHE o passo a passo das atividades principais: o que o professor faz, o que os alunos fazem, como usarão os recursos (${input.materials}), como acontecerão as interações entre alunos, quais instruções específicas o professor dará. Inclua sugestões de comandos/perguntas do professor, como lidar com dificuldades comuns. Mínimo 250 palavras.]
+
+🟡 ENCERRAMENTO — Síntese e Sistematização
+⏱ [XX minutos]
+
+[Descreva como sistematizar o aprendizado: que perguntas o professor fará para consolidar o conhecimento, como os alunos registrarão o que aprenderam, como fazer a transição para a próxima aula. Mínimo 100 palavras.]
+
+────────────────────────────────────────────
+▌ RECURSOS DIDÁTICOS
+────────────────────────────────────────────
+• [liste cada recurso especificando como será usado]
+
+────────────────────────────────────────────
+▌ AVALIAÇÃO
+────────────────────────────────────────────
+AVALIAÇÃO FORMATIVA (durante a aula):
+[Como o professor avaliará o progresso dos alunos continuamente]
+
+AVALIAÇÃO SOMATIVA (produto final):
+[Qual o produto/evidência de aprendizagem esperada]
+
+CRITÉRIOS DE AVALIAÇÃO:
+• [critério 1 — específico e observável]
+• [critério 2]
+• [critério 3]
+• [critério 4]
+
+────────────────────────────────────────────
+▌ REFERÊNCIAS
+────────────────────────────────────────────
+• BRASIL. Base Nacional Comum Curricular (BNCC). Brasília: MEC, 2017.
+• [referência 2 — artigo ou livro sobre computação na educação]
+• [referência 3 — material digital gratuito]
+• [referência 4 — site ou plataforma educacional]
+
+════════════════════════════════════════════
+Plano elaborado com base na BNCC Computação
+Secretaria Municipal de Educação de Atalaia/AL
+${date}
+════════════════════════════════════════════
+
+ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
+
+  const nvidiaKey = process.env.NVIDIA_API_KEY || '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'
+  const nvidiaModel = 'deepseek-ai/deepseek-v4-flash'
+
+  try {
+    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${nvidiaKey}`,
+      },
+      body: JSON.stringify({
+        model: nvidiaModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        top_p: 0.95,
+        max_tokens: 4096,
+      }),
+    })
+
+    if (!res.ok) {
+      throw new Error(`Status ${res.status}`)
+    }
+
+    const payload = await res.json()
+    const content = payload.choices?.[0]?.message?.content
+    if (content) {
+      return content
+    }
+  } catch (apiError) {
+    console.warn('Erro ao chamar NVIDIA NIM API, usando template estático local:', apiError)
+  }
+
+  // Fallback local caso a API falhe
   return `PLANO DE AULA
 ${input.title.toUpperCase()}
 

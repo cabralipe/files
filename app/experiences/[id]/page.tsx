@@ -20,6 +20,7 @@ type Experience = {
   outcomes: string
   image_url: string
   created_at: string
+  can_delete?: boolean
 }
 
 const supabase = createClient(
@@ -34,6 +35,7 @@ export default function ExperienceDetailPage() {
   const [experience, setExperience] = useState<Experience | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (authLoading) {
@@ -62,6 +64,35 @@ export default function ExperienceDetailPage() {
       setError(err instanceof Error ? err.message : 'Erro ao carregar experiência')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDeleteExperience() {
+    if (!window.confirm('Tem certeza que deseja excluir esta experiência? Esta ação é irreversível.')) {
+      return
+    }
+
+    try {
+      setDeleting(true)
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch(`/api/experiences?id=${experience?.id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+
+      const payload = await response.json()
+      if (response.ok) {
+        alert('Experiência excluída com sucesso!')
+        router.push('/experiences')
+      } else {
+        alert(payload.error || 'Erro ao excluir experiência')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Erro de conexão ao tentar excluir')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -137,11 +168,25 @@ export default function ExperienceDetailPage() {
             </>
           )}
 
-          {user && (
-            <div className="brow">
-              <LikesButton experienceId={experience.id} userId={user.id} />
-            </div>
-          )}
+          <div className="flex justify-between items-center mt-6 pt-4 border-t-2 border-black flex-wrap gap-4">
+            {user && (
+              <div>
+                <LikesButton experienceId={experience.id} userId={user.id} />
+              </div>
+            )}
+            {experience.can_delete && (
+              <div>
+                <button
+                  onClick={handleDeleteExperience}
+                  disabled={deleting}
+                  className="btn text-xs font-bold bg-[#E5394B] text-[#FBF5E3] hover:bg-[#B82433] border-2 border-black active:translate-y-[2px] active:shadow-none"
+                  style={{ borderRadius: '0px' }}
+                >
+                  {deleting ? 'Excluindo...' : 'Excluir Experiência'}
+                </button>
+              </div>
+            )}
+          </div>
         </article>
 
         {user && <CommentsSection experienceId={experience.id} userId={user.id} />}

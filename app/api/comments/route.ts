@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { addPoints } from '@/lib/points-server'
-import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
+import { ensureUserProfile, getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 
 const commentSchema = z
   .object({
@@ -9,8 +9,14 @@ const commentSchema = z
     experienceId: z.string().uuid().optional(),
     content: z.string().trim().min(1).max(500),
   })
+  .refine(
+    (data) => data.experience_id || data.experienceId,
+    {
+      message: 'experience_id ou experienceId é obrigatório',
+    }
+  )
   .transform((value) => ({
-    experience_id: value.experience_id || value.experienceId || '',
+    experience_id: (value.experience_id || value.experienceId)!,
     content: value.content,
   }))
 
@@ -26,7 +32,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await getSupabaseAdmin()
       .from('comments')
-      .select('id, content, created_at, user_id')
+      .select('id, content, created_at, user_id, users(name, avatar_url)')
       .eq('experience_id', experienceId)
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -35,17 +41,24 @@ export async function GET(request: Request) {
       throw error
     }
 
-    const comments = (data || []).map((comment) => ({
-      ...comment,
-      user: {
-        id: comment.user_id,
-        name: 'Professor(a)',
-        email: '',
-      },
-    }))
+    const comments = (data || []).map((comment: any) => {
+      const userProfile = comment.users || {}
+      return {
+        id: comment.id,
+        content: comment.content,
+        created_at: comment.created_at,
+        user: {
+          id: comment.user_id,
+          name: userProfile.name || 'Professor(a)',
+          email: '',
+          avatar_url: userProfile.avatar_url || undefined,
+        },
+      }
+    })
 
     return NextResponse.json({ success: true, comments })
-  } catch {
+  } catch (error) {
+    console.error('Error in GET /api/comments:', error)
     return NextResponse.json({ error: 'Erro ao obter comentarios' }, { status: 500 })
   }
 }
@@ -53,6 +66,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireAuthenticatedUser(request)
+    await ensureUserProfile(user)
     const values = commentSchema.parse(await request.json())
     const { data, error } = await getSupabaseAdmin()
       .from('comments')
@@ -72,6 +86,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, comment: data, pointsEarned: 2 }, { status: 201 })
   } catch (error) {
+    console.error('Error in POST /api/comments:', error)
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }

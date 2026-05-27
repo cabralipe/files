@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { addPoints } from '@/lib/points-server'
-import { getAuthenticatedUser, getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
+import { ensureUserProfile, getAuthenticatedUser, getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 
 const likeSchema = z
   .object({
     experience_id: z.string().uuid().optional(),
     experienceId: z.string().uuid().optional(),
   })
-  .transform((value) => ({ experience_id: value.experience_id || value.experienceId || '' }))
+  .refine(
+    (data) => data.experience_id || data.experienceId,
+    {
+      message: 'experience_id ou experienceId é obrigatório',
+    }
+  )
+  .transform((value) => ({ experience_id: (value.experience_id || value.experienceId)! }))
 
 export async function GET(request: Request) {
   try {
@@ -43,7 +49,8 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ success: true, likeCount: count || 0, userLiked })
-  } catch {
+  } catch (error) {
+    console.error('Error in GET /api/likes:', error)
     return NextResponse.json({ error: 'Erro ao obter likes' }, { status: 500 })
   }
 }
@@ -51,6 +58,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireAuthenticatedUser(request)
+    await ensureUserProfile(user)
     const values = likeSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
     const { data: existingLike, error: existingError } = await supabase
