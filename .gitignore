@@ -1,2 +1,19 @@
 node_modules
 
+# Build artifacts
+.next/
+out/
+dist/
+build/
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+dev-server.log
+dev-server.err.log
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
