@@ -17,6 +17,12 @@ export const municipalSchools = [
   'Escola Municipal Assentamento Boa Fé',
   'Escola Municipal Assentamento Brasileiro',
   'Escola Municipal Assentamento Flor da Serra',
+  'ESCOLA MUNICIPAL SUZANA CRAVEIRO COSTA DE MEDEIROS',
+  'Creche CRIA (Conjunto Maria de Nazaré)',
+  'Creche Municipal Sementes do Amanhã',
+  'Centro Municipal de Educação Infantil Maria Luiza Tenório da Silva (Dona Luizinha)',
+  'Creche Donilia Pereira Acioli',
+  'Creche Maria Alves Brasil',
 ]
 
 export const teacherSubjects = [
@@ -30,6 +36,8 @@ export const teacherSubjects = [
   { area: 'Ciências Humanas', subject: 'Geografia' },
   { area: 'Ensino Religioso', subject: 'Ensino Religioso' },
   { area: 'Tecnologia', subject: 'Monitor do Tempo Integral de Tecnologia' },
+  { area: 'Disciplina', subject: 'Educação Infantil' },
+  { area: 'Disciplina', subject: 'EJA' },
 ]
 
 export const teacherSubjectOptions = teacherSubjects.map(
