@@ -617,15 +617,28 @@ BNCC e uma referencia complementar adequada.
 Feche com: Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao de Atalaia/AL.`
 }
 
-type NvidiaCallOptions = {
+type OpenAiResponseContent = {
+  type?: string
+  text?: string
+}
+
+type OpenAiResponseOutput = {
+  type?: string
+  content?: OpenAiResponseContent[]
+}
+
+type OpenAiResponsePayload = {
+  output_text?: string
+  output?: OpenAiResponseOutput[]
+}
+
+type OpenAiCallOptions = {
   key: string
   model: string
   timeoutMs: number
-  label: string
   prompt: string
-  enableThinking?: boolean
-  reasoningBudget?: number
   maxTokens: number
+  reasoningEffort: string
 }
 
 function envNumber(name: string, fallback: number): number {
@@ -633,36 +646,45 @@ function envNumber(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
-function describeNvidiaError(err: unknown, timeoutMs: number): string {
+function describeOpenAiError(err: unknown, timeoutMs: number): string {
   if (err instanceof Error && err.name === 'AbortError') {
     return `timeout / abortado apos ${timeoutMs}ms`
   }
   return err instanceof Error ? err.message : 'erro desconhecido'
 }
 
-async function callNvidiaChat(opts: NvidiaCallOptions): Promise<string> {
+function extractOpenAiText(payload: OpenAiResponsePayload): string {
+  if (payload.output_text) {
+    return payload.output_text.trim()
+  }
+
+  return (payload.output || [])
+    .filter((item) => !item.type || item.type === 'message')
+    .flatMap((item) => item.content || [])
+    .map((content) => content.text || '')
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+}
+
+async function callOpenAiResponse(opts: OpenAiCallOptions): Promise<string> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
   const callStartTime = Date.now()
 
-  console.log(`[IA-GERADOR] [${opts.label}] Modelo: "${opts.model}" | Timeout: ${opts.timeoutMs}ms | Thinking: ${opts.enableThinking ?? false}`)
+  console.log(`[IA-GERADOR] [openai] Modelo: "${opts.model}" | Timeout: ${opts.timeoutMs}ms`)
 
   try {
     const body: Record<string, unknown> = {
       model: opts.model,
-      messages: [{ role: 'user', content: opts.prompt }],
-      temperature: opts.model.includes('nemotron') ? 1 : 0.7,
-      top_p: opts.model.includes('nemotron') ? 0.95 : 0.9,
-      max_tokens: opts.maxTokens,
-      stream: false,
+      input: opts.prompt,
+      max_output_tokens: opts.maxTokens,
+      reasoning: { effort: opts.reasoningEffort },
+      text: { verbosity: 'low' },
+      store: false,
     }
 
-    if (opts.enableThinking) {
-      body.chat_template_kwargs = { enable_thinking: true }
-      body.reasoning_budget = opts.reasoningBudget ?? 2048
-    }
-
-    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const res = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -678,22 +700,21 @@ async function callNvidiaChat(opts: NvidiaCallOptions): Promise<string> {
     if (!res.ok) {
       const errText = await res.text().catch(() => '')
       const detail = errText ? ': ' + errText.slice(0, 300) : ''
-      throw new Error(`[${opts.label}] Status ${res.status} apos ${callDuration}ms${detail}`)
+      throw new Error(`[openai] Status ${res.status} apos ${callDuration}ms${detail}`)
     }
 
-    const payload = await res.json()
-    const message = payload.choices?.[0]?.message
-    const content = [message?.reasoning_content, message?.content].filter(Boolean).join('\n\n').trim()
+    const payload = (await res.json()) as OpenAiResponsePayload
+    const content = extractOpenAiText(payload)
 
     if (!content) {
-      throw new Error(`[${opts.label}] Resposta vazia da API`)
+      throw new Error('[openai] Resposta vazia da API')
     }
 
-    console.log(`[IA-GERADOR] [${opts.label}] Sucesso em ${callDuration}ms. Tamanho: ${content.length} caracteres.`)
+    console.log(`[IA-GERADOR] [openai] Sucesso em ${callDuration}ms. Tamanho: ${content.length} caracteres.`)
     return content
   } catch (error) {
     const callDuration = Date.now() - callStartTime
-    console.error(`[IA-GERADOR] [${opts.label}] Falhou apos ${callDuration}ms: ${describeNvidiaError(error, opts.timeoutMs)}`)
+    console.error(`[IA-GERADOR] [openai] Falhou apos ${callDuration}ms: ${describeOpenAiError(error, opts.timeoutMs)}`)
     throw error
   } finally {
     clearTimeout(timer)
@@ -703,19 +724,11 @@ async function callNvidiaChat(opts: NvidiaCallOptions): Promise<string> {
 export async function generatePlanText(input: z.infer<typeof createPlanSchema>) {
   const prompt = await buildPlanPrompt(input)
   const totalStartTime = Date.now()
-  const primaryKey = process.env.NVIDIA_API_KEY || ''
-  const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || primaryKey
-  const fallback2Key = process.env.NVIDIA_API_KEY_FALLBACK_2 || fallbackKey
-
-  const primaryModel = process.env.NVIDIA_MODEL || 'google/gemma-2-2b-it'
-  const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'z-ai/glm-5.1'
-  const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'nvidia/nemotron-3-super-120b-a12b'
-
-  const primaryTimeoutMs = envNumber('NVIDIA_PRIMARY_TIMEOUT_MS', 12000)
-  const fallbackTimeoutMs = envNumber('NVIDIA_FALLBACK_TIMEOUT_MS', 25000)
-  const fallback2TimeoutMs = envNumber('NVIDIA_FALLBACK_2_TIMEOUT_MS', 45000)
-  const maxTokens = envNumber('NVIDIA_MAX_TOKENS', 1800)
-  const reasoningBudget = envNumber('NVIDIA_REASONING_BUDGET', 512)
+  const apiKey = process.env.OPENAI_API_KEY || ''
+  const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
+  const timeoutMs = envNumber('OPENAI_TIMEOUT_MS', 30000)
+  const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 1800)
+  const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'
 
   const skills = await listSkills()
   const selected = skills.filter((skill) => input.skill_ids.includes(skill.id) || input.skill_ids.includes(skill.code))
@@ -725,61 +738,24 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
   console.log(`[IA-GERADOR] [${new Date().toISOString()}] Nova solicitacao de plano recebida.`)
   console.log(`[IA-GERADOR] Tema: "${input.title}" | Ano/Turma: "${input.grade_level}" | Componente: "${input.subject}"`)
   console.log(`[IA-GERADOR] Habilidades resolvidas: ${selected.map((skill) => skill.code).join(', ') || 'nenhuma'} (Total: ${selected.length})`)
-  console.log(`[IA-GERADOR] Cascata: 1. ${primaryModel} (${primaryTimeoutMs}ms), 2. ${fallbackModel} (${fallbackTimeoutMs}ms), 3. ${fallback2Model} (${fallback2TimeoutMs}ms)`)
-  console.log(`[IA-GERADOR] Chave principal configurada? ${primaryKey ? 'Sim' : 'Nao'}`)
+  console.log(`[IA-GERADOR] Provedor: OpenAI | Modelo: ${model} | Timeout: ${timeoutMs}ms | Max output tokens: ${maxTokens} | Reasoning: ${reasoningEffort}`)
+  console.log(`[IA-GERADOR] Chave OpenAI configurada? ${apiKey ? 'Sim' : 'Nao'}`)
   console.log('==================================================')
 
-  if (primaryKey) {
+  if (apiKey) {
     try {
-      const content = await callNvidiaChat({
-        key: primaryKey,
-        model: primaryModel,
-        timeoutMs: primaryTimeoutMs,
-        label: 'primary',
+      const content = await callOpenAiResponse({
+        key: apiKey,
+        model,
+        timeoutMs,
         prompt,
-        enableThinking: process.env.NVIDIA_ENABLE_THINKING === 'true',
-        reasoningBudget,
         maxTokens,
+        reasoningEffort,
       })
-      console.log(`[IA-GERADOR] Sucesso total via ${primaryModel}. Tempo total: ${Date.now() - totalStartTime}ms.`)
+      console.log(`[IA-GERADOR] Sucesso total via OpenAI/${model}. Tempo total: ${Date.now() - totalStartTime}ms.`)
       return content
     } catch {
-      console.warn(`[IA-GERADOR] Modelo principal falhou. Tentando fallback 1: ${fallbackModel}.`)
-    }
-  }
-
-  if (fallbackKey) {
-    try {
-      const content = await callNvidiaChat({
-        key: fallbackKey,
-        model: fallbackModel,
-        timeoutMs: fallbackTimeoutMs,
-        label: 'fallback1',
-        prompt,
-        enableThinking: process.env.NVIDIA_FALLBACK_ENABLE_THINKING === 'true',
-        reasoningBudget: Math.min(reasoningBudget, 1024),
-        maxTokens,
-      })
-      console.log(`[IA-GERADOR] Sucesso total via ${fallbackModel}. Tempo total: ${Date.now() - totalStartTime}ms.`)
-      return content
-    } catch {
-      console.warn(`[IA-GERADOR] Fallback 1 falhou. Tentando fallback 2: ${fallback2Model}.`)
-    }
-
-    try {
-      const content = await callNvidiaChat({
-        key: fallback2Key,
-        model: fallback2Model,
-        timeoutMs: fallback2TimeoutMs,
-        label: 'fallback2',
-        prompt,
-        enableThinking: false,
-        maxTokens: Math.min(maxTokens, 2500),
-      })
-      console.log(`[IA-GERADOR] Sucesso total via ${fallback2Model}. Tempo total: ${Date.now() - totalStartTime}ms.`)
-      return content
-    } catch {
-      console.error(`[IA-GERADOR] Todos os modelos falharam apos ${Date.now() - totalStartTime}ms. Usando template local.`)
+      console.error(`[IA-GERADOR] OpenAI falhou apos ${Date.now() - totalStartTime}ms. Usando template local.`)
     }
   }
 

@@ -18,16 +18,28 @@ function loadEnvFile(filePath) {
   }
 }
 
+function extractText(payload) {
+  if (payload.output_text) return payload.output_text.trim()
+
+  return (payload.output || [])
+    .filter((item) => !item.type || item.type === 'message')
+    .flatMap((item) => item.content || [])
+    .map((content) => content.text || '')
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+}
+
 loadEnvFile(path.join(__dirname, '..', '.env.local'))
 
-const apiKey = process.env.NVIDIA_API_KEY_FALLBACK_2 || process.env.NVIDIA_API_KEY
-const model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'nvidia/nemotron-3-super-120b-a12b'
-const maxTokens = Number(process.env.NVIDIA_MAX_TOKENS || 1800)
-const reasoningBudget = Number(process.env.NVIDIA_REASONING_BUDGET || 512)
-const timeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS || 45000)
+const apiKey = process.env.OPENAI_API_KEY
+const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
+const maxTokens = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS || 3000)
+const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'
+const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 30000)
 
 if (!apiKey) {
-  throw new Error('Configure NVIDIA_API_KEY_FALLBACK_2 em .env.local antes de testar.')
+  throw new Error('Configure OPENAI_API_KEY em .env.local antes de testar.')
 }
 
 const prompt = `Voce e especialista em educacao basica, BNCC Computacao e tecnologia educacional. Gere um plano de aula pronto para uso por professores da rede municipal de Atalaia-AL.
@@ -35,7 +47,7 @@ const prompt = `Voce e especialista em educacao basica, BNCC Computacao e tecnol
 DADOS DO PLANO:
 - Professor(a): Eric
 - Escola: Escola Municipal Jabes Francisco da Silva | Municipio: Atalaia-AL
-- Ano/Turma: 5º ano
+- Ano/Turma: 5 ano
 - Componente Curricular: Computacao
 - Data: 28/05/2026
 - Duracao: 50 minutos
@@ -74,9 +86,9 @@ async function main() {
   const startedAt = Date.now()
 
   try {
-    console.log(`Testando ${model} com timeout ${timeoutMs}ms, max_tokens ${maxTokens}, reasoning_budget ${reasoningBudget}...`)
+    console.log(`Testando ${model} com timeout ${timeoutMs}ms, max_output_tokens ${maxTokens}, reasoning ${reasoningEffort}...`)
 
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -85,13 +97,11 @@ async function main() {
       },
       body: JSON.stringify({
         model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 1,
-        top_p: 0.95,
-        max_tokens: maxTokens,
-        stream: false,
-        chat_template_kwargs: { enable_thinking: true },
-        reasoning_budget: reasoningBudget,
+        input: prompt,
+        max_output_tokens: maxTokens,
+        reasoning: { effort: reasoningEffort },
+        text: { verbosity: 'low' },
+        store: false,
       }),
       signal: controller.signal,
     })
@@ -107,12 +117,12 @@ async function main() {
     }
 
     const data = await response.json()
-    const message = data.choices?.[0]?.message || {}
-    const content = [message.reasoning_content, message.content].filter(Boolean).join('\n\n').trim()
+    const content = extractText(data)
     const words = content.split(/\s+/).filter(Boolean).length
 
     console.log(`Caracteres: ${content.length}`)
     console.log(`Palavras: ${words}`)
+    console.log(`Tokens: ${JSON.stringify(data.usage || {})}`)
     console.log(`Dentro do alvo de tempo: ${elapsed <= timeoutMs ? 'sim' : 'nao'}`)
     console.log('\nPrevia:\n')
     console.log(content.slice(0, 2200))

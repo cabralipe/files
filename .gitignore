@@ -1,5 +1,9 @@
 node_modules
 
+# Local secrets
+.env.local
+.env.*.local
+
 # Build artifacts
 .next/
 out/
