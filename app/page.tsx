@@ -350,14 +350,14 @@ export default function Home() {
 
     let currentProgress = 0
     const progressInterval = setInterval(() => {
-      if (currentProgress < 30) {
-        currentProgress += 0.3
-      } else if (currentProgress < 60) {
+      if (currentProgress < 40) {
+        currentProgress += 1.0
+      } else if (currentProgress < 75) {
+        currentProgress += 0.35
+      } else if (currentProgress < 90) {
         currentProgress += 0.15
-      } else if (currentProgress < 85) {
-        currentProgress += 0.06
       } else if (currentProgress < 97) {
-        currentProgress += 0.015
+        currentProgress += 0.07
       }
       setProgress(Math.min(currentProgress, 97))
     }, 200)

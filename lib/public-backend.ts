@@ -696,7 +696,11 @@ ${date}
 
 ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
 
-  // Configuração da cascata NVIDIA NIM: DeepSeek -> Gemma -> GLM -> template local
+  // Configuração da cascata: Gemini -> DeepSeek -> Gemma -> GLM -> template local
+  const geminiKey = process.env.GEMINI_API_KEY || 'AIzaSyBDih4Ua8V0czXE3l-Nwmb1Dj5Akq4a6jQ'
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+  const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 25000
+
   const primaryKey = process.env.NVIDIA_API_KEY || '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'
   const primaryModel = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash'
 
@@ -709,6 +713,47 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
   const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 300000
   const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 100000
   const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 100000
+
+  // Helper: chama a API oficial do Google Gemini
+  async function callGemini(opts: {
+    key: string
+    model: string
+    timeoutMs: number
+  }): Promise<string> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
+
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${opts.model}:generateContent?key=${opts.key}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+          }
+        }),
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '')
+        const detail = errText ? ': ' + errText.slice(0, 200) : ''
+        throw new Error('[gemini] Status ' + res.status + detail)
+      }
+
+      const payload = await res.json()
+      const content = payload.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!content) {
+        throw new Error('[gemini] Resposta vazia da API')
+      }
+      return content
+    } finally {
+      clearTimeout(timer)
+    }
+  }
 
   // Helper: chama o endpoint NVIDIA NIM com timeout. Lança erro se o status não for OK
   // ou se o tempo limite for excedido. Retorna o conteúdo da resposta (string) em sucesso.
@@ -773,40 +818,51 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
     return (err as Error)?.message || 'erro desconhecido'
   }
 
-  // 1) DeepSeek (primário)
+  // 1) Gemini (primário absoluto)
   try {
-    return await callNvidia({
-      key: primaryKey,
-      model: primaryModel,
-      timeoutMs: primaryTimeoutMs,
-      label: 'primary/deepseek',
+    return await callGemini({
+      key: geminiKey,
+      model: geminiModel,
+      timeoutMs: geminiTimeoutMs,
     })
-  } catch (err1) {
-    console.warn('DeepSeek falhou (' + describeError(err1, primaryTimeoutMs) + '). Tentando Gemma...')
+  } catch (errGemini) {
+    console.warn('Gemini falhou (' + describeError(errGemini, geminiTimeoutMs) + '). Tentando DeepSeek...')
 
-    // 2) Gemma (fallback 1) - chave separada
+    // 2) DeepSeek (secundário / NIM primário)
     try {
       return await callNvidia({
-        key: fallbackKey,
-        model: fallbackModel,
-        timeoutMs: fallbackTimeoutMs,
-        label: 'fallback1/gemma',
-        enableThinking: true,
+        key: primaryKey,
+        model: primaryModel,
+        timeoutMs: primaryTimeoutMs,
+        label: 'primary/deepseek',
       })
-    } catch (err2) {
-      console.warn('Gemma falhou (' + describeError(err2, fallbackTimeoutMs) + '). Tentando GLM-5.1...')
+    } catch (err1) {
+      console.warn('DeepSeek falhou (' + describeError(err1, primaryTimeoutMs) + '). Tentando Gemma...')
 
-      // 3) GLM-5.1 (fallback 2) - mesma chave do DeepSeek
+      // 3) Gemma (fallback 1) - chave separada
       try {
         return await callNvidia({
-          key: primaryKey,
-          model: fallback2Model,
-          timeoutMs: fallback2TimeoutMs,
-          label: 'fallback2/glm',
+          key: fallbackKey,
+          model: fallbackModel,
+          timeoutMs: fallbackTimeoutMs,
+          label: 'fallback1/gemma',
           enableThinking: true,
         })
-      } catch (err3) {
-        console.warn('GLM-5.1 tambem falhou (' + describeError(err3, fallback2TimeoutMs) + '). Usando template estatico local.')
+      } catch (err2) {
+        console.warn('Gemma falhou (' + describeError(err2, fallbackTimeoutMs) + '). Tentando GLM-5.1...')
+
+        // 4) GLM-5.1 (fallback 2) - mesma chave do DeepSeek
+        try {
+          return await callNvidia({
+            key: primaryKey,
+            model: fallback2Model,
+            timeoutMs: fallback2TimeoutMs,
+            label: 'fallback2/glm',
+            enableThinking: true,
+          })
+        } catch (err3) {
+          console.warn('GLM-5.1 tambem falhou (' + describeError(err3, fallback2TimeoutMs) + '). Usando template estatico local.')
+        }
       }
     }
   }
