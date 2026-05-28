@@ -6,6 +6,10 @@ export const dynamic = 'force-dynamic'
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 
+function getBlobToken() {
+  return process.env.BLOB_READ_WRITE_TOKEN?.trim().replace(/^["']|["']$/g, '')
+}
+
 function safeFileName(name: string) {
   return name
     .normalize('NFD')
@@ -33,10 +37,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Imagem deve ter no maximo 5MB' }, { status: 400 })
     }
 
+    const token = getBlobToken()
+    if (!token) {
+      return NextResponse.json(
+        { error: 'BLOB_READ_WRITE_TOKEN nao configurado no ambiente da Vercel' },
+        { status: 500 }
+      )
+    }
+
     const fileName = safeFileName(file.name) || 'experiencia.jpg'
     const blob = await put(`experiences/${user.id}/${Date.now()}-${fileName}`, file, {
       access: 'public',
       contentType: file.type,
+      token,
     })
 
     return NextResponse.json({
@@ -52,6 +65,7 @@ export async function POST(request: Request) {
     }
 
     console.error('Erro ao enviar imagem da experiencia:', error)
-    return NextResponse.json({ error: 'Nao foi possivel enviar a imagem' }, { status: 500 })
+    const detail = error instanceof Error ? `: ${error.message}` : ''
+    return NextResponse.json({ error: `Nao foi possivel enviar a imagem${detail}` }, { status: 500 })
   }
 }
