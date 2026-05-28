@@ -313,17 +313,35 @@ export default function Home() {
     const phrases = [
       '🧠 Analisando as habilidades selecionadas...',
       '📚 Consultando as diretrizes da BNCC Computação...',
-      '🔍 Pesquisando melhores práticas pedagógicas...',
-      '💡 Formulando objetivos didáticos para a turma...',
-      '✏️ Estruturando o desenvolvimento da aula...',
-      '🧩 Integrando o Pensamento Computacional de forma prática...',
-      '🎭 Desenvolvendo atividades criativas e nordestinas...',
-      '🍲 Temperando com a cultura local de Atalaia-AL...',
-      '🛠️ Listando recursos e materiais necessários...',
-      '📊 Definindo critérios de avaliação formativa...',
-      '⚙️ Conectando com a IA da NVIDIA para plano personalizado...',
-      '🎨 Refinando os detalhes e revisando a ortografia...',
-      '✨ Finalizando o plano de aula estruturado...'
+      '🔍 Pesquisando melhores práticas pedagógicas de computação...',
+      '💡 Formulando objetivos didáticos alinhados ao ano escolar...',
+      '✏️ Estruturando a introdução e o aquecimento da aula...',
+      '🧩 Decompondo conceitos complexos em atividades simples...',
+      '🕵️‍♂️ Mapeando padrões de aprendizagem para a turma...',
+      '🤖 Integrando o Pensamento Computacional de forma lúdica...',
+      '🎭 Desenvolvendo atividades criativas e contextualizadas...',
+      '🍲 Temperando com a cultura e a história de Atalaia-AL...',
+      '🛶 Inspirando dinâmicas nas águas do Rio Paraíba local...',
+      '🌾 Conectando tecnologia ao cotidiano e à comunidade local...',
+      '🛠️ Selecionando recursos e adaptando para a realidade escolar...',
+      '📊 Definindo critérios inovadores para avaliação formativa...',
+      '⚙️ Conectando com a IA da NVIDIA para gerar o plano...',
+      '⚡ Processando os dados através de modelos de inteligência artificial...',
+      '📝 Rascunhando o passo a passo detalhado do desenvolvimento...',
+      '🤔 Criando perguntas norteadoras para estimular os alunos...',
+      '💡 Elaborando desafios práticos para trabalho em equipe...',
+      '🏫 Adequando a linguagem pedagógica para a rede municipal...',
+      '🧼 Eliminando termos repetitivos para um plano bem objetivo...',
+      '🎨 Refinando a estética e a estrutura do conteúdo...',
+      '✍️ Revisando a ortografia e a formatação do texto...',
+      '🤝 Garantindo que a acessibilidade esteja contemplada...',
+      '🔋 Projetando alternativas para computação desplugada...',
+      '🌟 Adicionando dicas exclusivas para o professor na regência...',
+      '📅 Organizando a cronologia dos momentos da aula...',
+      '🔍 Verificando o alinhamento com a Taxonomia de Bloom...',
+      '💎 Polindo os objetivos gerais e específicos...',
+      '📂 Preparando as referências bibliográficas...',
+      '✨ Dando os últimos retoques pedagógicos no plano...'
     ]
 
     setLoading(true)
@@ -332,15 +350,17 @@ export default function Home() {
 
     let currentProgress = 0
     const progressInterval = setInterval(() => {
-      if (currentProgress < 40) {
-        currentProgress += 1.8
-      } else if (currentProgress < 75) {
-        currentProgress += 0.8
-      } else if (currentProgress < 95) {
-        currentProgress += 0.2
+      if (currentProgress < 30) {
+        currentProgress += 0.3
+      } else if (currentProgress < 60) {
+        currentProgress += 0.15
+      } else if (currentProgress < 85) {
+        currentProgress += 0.06
+      } else if (currentProgress < 97) {
+        currentProgress += 0.015
       }
-      setProgress(Math.min(currentProgress, 95))
-    }, 150)
+      setProgress(Math.min(currentProgress, 97))
+    }, 200)
 
     let phraseIndex = 0
     const phraseInterval = setInterval(() => {

@@ -706,9 +706,9 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
   // GLM-5.1 usa a mesma chave do DeepSeek (NVIDIA_API_KEY) por padrão
   const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'z-ai/glm-5.1'
 
-  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 70000
-  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 70000
-  const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 90000
+  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 320000
+  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 120000
+  const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 120000
 
   // Helper: chama o endpoint NVIDIA NIM com timeout. Lança erro se o status não for OK
   // ou se o tempo limite for excedido. Retorna o conteúdo da resposta (string) em sucesso.
