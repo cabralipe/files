@@ -133,6 +133,9 @@ function getSupabase() {
 function normalizeSkill(raw: Record<string, unknown>, index: number): PublicSkill {
   const code = String(raw.code || raw.id || `BNCC-${index + 1}`)
   const subject = String(raw.subject || raw.category || 'Computação')
+  const rawAxis = String(raw.axis || raw.competency || 'Tecnologia')
+  // corrige typos conhecidos no campo axis
+  const axis = rawAxis.replace(/^PP(ENSAMENTO)/i, 'P$1').trim()
 
   return {
     id: String(raw.id || code),
@@ -142,7 +145,7 @@ function normalizeSkill(raw: Record<string, unknown>, index: number): PublicSkil
     grade_level: String(raw.grade_level || 'EJA'),
     competency: String(raw.competency || subject),
     subject,
-    axis: String(raw.axis || raw.competency || 'Tecnologia'),
+    axis,
   }
 }
 
@@ -532,6 +535,133 @@ export async function createExperience(
   await addPoints(owner.user_id, 10, 'experiência_publicada', experience.id)
 
   return experience
+}
+
+export async function buildPlanPrompt(input: z.infer<typeof createPlanSchema>): Promise<string> {
+  const skills = await listSkills()
+  const selected = skills.filter((skill) => input.skill_ids.includes(skill.id) || input.skill_ids.includes(skill.code))
+  const skillBlock = selected
+    .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
+    .join('\n\n')
+  const date = input.date || new Date().toLocaleDateString('pt-BR')
+
+  return `Você é especialista em educação básica e BNCC. Crie um PLANO DE AULA COMPLETO e PRÁTICO para professores da rede pública municipal de Atalaia-AL (Alagoas, Nordeste).
+
+DADOS DO PLANO:
+• Professor(a): ${input.teacher || 'Não informado'}
+• Escola: ${input.school || 'Não informada'} — Atalaia/AL
+• Ano/Turma: ${input.grade_level}
+• Componente Curricular: ${input.subject}
+• Data: ${date}
+• Duração: ${input.duration || '50 minutos'}
+• Tema da Aula: ${input.title}
+• Objetivos do professor: ${input.objectives || 'Não informado'}
+• Recursos disponíveis: ${input.materials || 'recursos básicos'}
+• Metodologia: ${input.methodology || 'Metodologia ativa'}
+• Observações: ${input.notes || 'nenhuma'}
+
+HABILIDADES DA BNCC COMPUTAÇÃO (${selected.length} selecionadas):
+${skillBlock}
+
+Escreva o plano de aula seguindo EXATAMENTE este formato:
+
+════════════════════════════════════════════
+PLANO DE AULA
+${input.title.toUpperCase()}
+════════════════════════════════════════════
+
+▌ IDENTIFICAÇÃO
+Professor(a): ${input.teacher || '_______________________'}
+Escola: ${input.school || '_______________________'} | Município: Atalaia - AL
+Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
+Data: ${date} | Duração: ${input.duration || '50 minutos'}
+Tema: ${input.title}
+
+────────────────────────────────────────────
+▌ OBJETIVOS
+────────────────────────────────────────────
+OBJETIVO GERAL:
+[o que os alunos serão capazes de fazer ao final da aula]
+
+OBJETIVOS ESPECÍFICOS:
+• [objetivo 1 — mensurável e específico]
+• [objetivo 2]
+• [objetivo 3]
+
+────────────────────────────────────────────
+▌ HABILIDADES DA BNCC COMPUTAÇÃO
+────────────────────────────────────────────
+${selected.map((h) => `[${h.code}] ${h.name}\n${h.description}`).join('\n\n')}
+
+────────────────────────────────────────────
+▌ CONTEÚDOS
+────────────────────────────────────────────
+CONCEITUAIS (o que saber):
+• [conteúdo 1]
+• [conteúdo 2]
+
+PROCEDIMENTAIS (saber fazer):
+• [conteúdo 1]
+• [conteúdo 2]
+
+ATITUDINAIS (saber ser):
+• [conteúdo 1]
+
+────────────────────────────────────────────
+▌ METODOLOGIA
+────────────────────────────────────────────
+[Descreva a abordagem pedagógica de ${input.methodology}: como o pensamento computacional será integrado ao conteúdo e como a realidade de Atalaia-AL será valorizada.]
+
+────────────────────────────────────────────
+▌ DESENVOLVIMENTO DA AULA
+────────────────────────────────────────────
+
+🟢 MOMENTO INICIAL — Aquecimento e Contextualização
+⏱ [XX minutos]
+
+[Como o professor iniciará a aula, perguntas motivadoras e conexão com a realidade dos alunos de Atalaia.]
+
+🔵 DESENVOLVIMENTO — Construção do Conhecimento
+⏱ [XX minutos]
+
+[Passo a passo das atividades: o que o professor faz, o que os alunos fazem, como usarão os recursos (${input.materials}), interações e instruções do professor.]
+
+🟡 ENCERRAMENTO — Síntese e Sistematização
+⏱ [XX minutos]
+
+[Como consolidar o aprendizado e fazer a síntese da aula.]
+
+────────────────────────────────────────────
+▌ RECURSOS DIDÁTICOS
+────────────────────────────────────────────
+• [liste cada recurso especificando como será usado]
+
+────────────────────────────────────────────
+▌ AVALIAÇÃO
+────────────────────────────────────────────
+AVALIAÇÃO FORMATIVA (durante a aula):
+[Como avaliar o progresso dos alunos continuamente]
+
+AVALIAÇÃO SOMATIVA (produto final):
+[Produto ou evidência de aprendizagem esperada]
+
+CRITÉRIOS DE AVALIAÇÃO:
+• [critério 1]
+• [critério 2]
+• [critério 3]
+
+────────────────────────────────────────────
+▌ REFERÊNCIAS
+────────────────────────────────────────────
+• BRASIL. Base Nacional Comum Curricular (BNCC). Brasília: MEC, 2017.
+• [referência 2 — artigo ou livro sobre computação na educação]
+• [referência 3 — plataforma ou material educacional gratuito]
+
+════════════════════════════════════════════
+Plano elaborado com base na BNCC Computação
+Secretaria Municipal de Educação de Atalaia/AL
+${date}
+════════════════════════════════════════════`
 }
 
 export async function generatePlanText(input: z.infer<typeof createPlanSchema>) {

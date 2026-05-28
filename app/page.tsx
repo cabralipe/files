@@ -380,6 +380,11 @@ export default function Home() {
         throw new Error(payload.error || 'Erro ao gerar')
       }
 
+      const content: string = payload.data?.content || ''
+      if (!content.trim()) {
+        throw new Error('Plano gerado vazio. Tente novamente.')
+      }
+
       clearInterval(progressInterval)
       clearInterval(phraseInterval)
       setProgress(100)
@@ -389,7 +394,7 @@ export default function Home() {
 
       const fullText = payload.data.content
       let currentLength = 0
-      const chunkSize = 150 // Chunks of 150 characters for smooth, highly responsive typewriter display
+      const chunkSize = 150
 
       const typingInterval = setInterval(() => {
         currentLength += chunkSize
