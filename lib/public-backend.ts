@@ -544,512 +544,309 @@ export async function buildPlanPrompt(input: z.infer<typeof createPlanSchema>): 
     .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
     .join('\n\n')
   const date = input.date || new Date().toLocaleDateString('pt-BR')
+  const teacherObjectives = (input.objectives || '').trim()
+  const teacherMethodology = (input.methodology || '').trim()
+  const teacherNotes = (input.notes || '').trim()
+  const objectivesBlock = teacherObjectives
+    ? teacherObjectives
+    : '[Sugestao da IA - ajuste conforme sua intencao pedagogica] Inferir objetivos a partir do tema e das habilidades selecionadas.'
+  const methodologyBlock = teacherMethodology
+    ? teacherMethodology
+    : '[Sugestao da IA - ajuste conforme sua intencao pedagogica] Propor metodologia ativa simples e viavel para a turma.'
 
-  return `Você é especialista em educação básica e BNCC. Crie um PLANO DE AULA COMPLETO e PRÁTICO para professores da rede pública municipal de Atalaia-AL (Alagoas, Nordeste).
+  return `Voce e especialista em educacao basica, BNCC Computacao e tecnologia educacional. Gere um plano de aula pronto para uso por professores da rede municipal de Atalaia-AL.
 
 DADOS DO PLANO:
-• Professor(a): ${input.teacher || 'Não informado'}
-• Escola: ${input.school || 'Não informada'} — Atalaia/AL
-• Ano/Turma: ${input.grade_level}
-• Componente Curricular: ${input.subject}
-• Data: ${date}
-• Duração: ${input.duration || '50 minutos'}
-• Tema da Aula: ${input.title}
-• Objetivos do professor: ${input.objectives || 'Não informado'}
-• Recursos disponíveis: ${input.materials || 'recursos básicos'}
-• Metodologia: ${input.methodology || 'Metodologia ativa'}
-• Observações: ${input.notes || 'nenhuma'}
+- Professor(a): ${input.teacher || 'Nao informado'}
+- Escola: ${input.school || 'Nao informada'} | Municipio: Atalaia-AL
+- Ano/Turma: ${input.grade_level}
+- Componente Curricular: ${input.subject}
+- Data: ${date}
+- Duracao: ${input.duration || '50 minutos'}
+- Tema: ${input.title}
+- Recursos disponiveis: ${input.materials || 'recursos basicos'}
+- Observacoes: ${teacherNotes || 'nenhuma'}
 
-HABILIDADES DA BNCC COMPUTAÇÃO (${selected.length} selecionadas):
-${skillBlock}
+OBJETIVOS DO PROFESSOR:
+${objectivesBlock}
 
-Escreva o plano de aula seguindo EXATAMENTE este formato:
+METODOLOGIA INFORMADA:
+${methodologyBlock}
 
-════════════════════════════════════════════
-PLANO DE AULA
-${input.title.toUpperCase()}
-════════════════════════════════════════════
+HABILIDADES DA BNCC COMPUTACAO (${selected.length} selecionadas):
+${skillBlock || 'Nenhuma habilidade encontrada.'}
 
-▌ IDENTIFICAÇÃO
-Professor(a): ${input.teacher || '_______________________'}
-Escola: ${input.school || '_______________________'} | Município: Atalaia - AL
-Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
-Data: ${date} | Duração: ${input.duration || '50 minutos'}
-Tema: ${input.title}
+Escreva em portugues do Brasil, com linguagem clara, direta e pratica. O plano deve ser completo, mas curto: entre 500 e 800 palavras. Evite introducoes longas, decoracao visual e repeticoes.
 
-────────────────────────────────────────────
-▌ OBJETIVOS
-────────────────────────────────────────────
-OBJETIVO GERAL:
-[o que os alunos serão capazes de fazer ao final da aula]
+Use exatamente esta estrutura:
 
-OBJETIVOS ESPECÍFICOS:
-• [objetivo 1 — mensurável e específico]
-• [objetivo 2]
-• [objetivo 3]
+PLANO DE AULA: ${input.title.toUpperCase()}
 
-────────────────────────────────────────────
-▌ HABILIDADES DA BNCC COMPUTAÇÃO
-────────────────────────────────────────────
-${selected.map((h) => `[${h.code}] ${h.name}\n${h.description}`).join('\n\n')}
+1. IDENTIFICACAO
+Professor(a), escola, municipio, ano/turma, componente, data, duracao e tema.
 
-────────────────────────────────────────────
-▌ CONTEÚDOS
-────────────────────────────────────────────
-CONCEITUAIS (o que saber):
-• [conteúdo 1]
-• [conteúdo 2]
+2. OBJETIVOS
+Objetivo geral em uma frase com verbo de acao.
+Tres objetivos especificos mensuraveis.
 
-PROCEDIMENTAIS (saber fazer):
-• [conteúdo 1]
-• [conteúdo 2]
+3. HABILIDADES BNCC
+Liste as habilidades selecionadas com codigo e aplicacao na aula.
 
-ATITUDINAIS (saber ser):
-• [conteúdo 1]
+4. CONTEUDOS
+- Conceituais: 2 itens.
+- Procedimentais: 2 itens.
+- Atitudinais: 1 item.
 
-────────────────────────────────────────────
-▌ METODOLOGIA
-────────────────────────────────────────────
-[Descreva a abordagem pedagógica de ${input.methodology}: como o pensamento computacional será integrado ao conteúdo e como a realidade de Atalaia-AL será valorizada.]
+5. METODOLOGIA
+Um paragrafo explicando como a metodologia sera aplicada, incluindo pensamento computacional e conexao com Atalaia-AL.
 
-────────────────────────────────────────────
-▌ DESENVOLVIMENTO DA AULA
-────────────────────────────────────────────
+6. DESENVOLVIMENTO DA AULA
+- Momento inicial: tempo, acao do professor e pergunta disparadora.
+- Desenvolvimento: passo a passo da atividade principal, uso dos recursos e adaptacao se houver poucos dispositivos.
+- Encerramento: sintese e registro final.
 
-🟢 MOMENTO INICIAL — Aquecimento e Contextualização
-⏱ [XX minutos]
+7. RECURSOS DIDATICOS
+Lista objetiva dos recursos e como serao usados.
 
-[Como o professor iniciará a aula, perguntas motivadoras e conexão com a realidade dos alunos de Atalaia.]
+8. AVALIACAO
+Avaliacao formativa, produto/evidencia final e 3 criterios observaveis.
 
-🔵 DESENVOLVIMENTO — Construção do Conhecimento
-⏱ [XX minutos]
+9. REFERENCIAS
+BNCC e uma referencia complementar adequada.
 
-[Passo a passo das atividades: o que o professor faz, o que os alunos fazem, como usarão os recursos (${input.materials}), interações e instruções do professor.]
+Feche com: Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao de Atalaia/AL.`
+}
 
-🟡 ENCERRAMENTO — Síntese e Sistematização
-⏱ [XX minutos]
+type NvidiaCallOptions = {
+  key: string
+  model: string
+  timeoutMs: number
+  label: string
+  prompt: string
+  enableThinking?: boolean
+  reasoningBudget?: number
+  maxTokens: number
+}
 
-[Como consolidar o aprendizado e fazer a síntese da aula.]
+function envNumber(name: string, fallback: number): number {
+  const value = Number(process.env[name])
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
 
-────────────────────────────────────────────
-▌ RECURSOS DIDÁTICOS
-────────────────────────────────────────────
-• [liste cada recurso especificando como será usado]
+function describeNvidiaError(err: unknown, timeoutMs: number): string {
+  if (err instanceof Error && err.name === 'AbortError') {
+    return `timeout / abortado apos ${timeoutMs}ms`
+  }
+  return err instanceof Error ? err.message : 'erro desconhecido'
+}
 
-────────────────────────────────────────────
-▌ AVALIAÇÃO
-────────────────────────────────────────────
-AVALIAÇÃO FORMATIVA (durante a aula):
-[Como avaliar o progresso dos alunos continuamente]
+async function callNvidiaChat(opts: NvidiaCallOptions): Promise<string> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
+  const callStartTime = Date.now()
 
-AVALIAÇÃO SOMATIVA (produto final):
-[Produto ou evidência de aprendizagem esperada]
+  console.log(`[IA-GERADOR] [${opts.label}] Modelo: "${opts.model}" | Timeout: ${opts.timeoutMs}ms | Thinking: ${opts.enableThinking ?? false}`)
 
-CRITÉRIOS DE AVALIAÇÃO:
-• [critério 1]
-• [critério 2]
-• [critério 3]
+  try {
+    const body: Record<string, unknown> = {
+      model: opts.model,
+      messages: [{ role: 'user', content: opts.prompt }],
+      temperature: opts.model.includes('nemotron') ? 1 : 0.7,
+      top_p: opts.model.includes('nemotron') ? 0.95 : 0.9,
+      max_tokens: opts.maxTokens,
+      stream: false,
+    }
 
-────────────────────────────────────────────
-▌ REFERÊNCIAS
-────────────────────────────────────────────
-• BRASIL. Base Nacional Comum Curricular (BNCC). Brasília: MEC, 2017.
-• [referência 2 — artigo ou livro sobre computação na educação]
-• [referência 3 — plataforma ou material educacional gratuito]
+    if (opts.enableThinking) {
+      body.chat_template_kwargs = { enable_thinking: true }
+      body.reasoning_budget = opts.reasoningBudget ?? 2048
+    }
 
-════════════════════════════════════════════
-Plano elaborado com base na BNCC Computação
-Secretaria Municipal de Educação de Atalaia/AL
-${date}
-════════════════════════════════════════════`
+    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${opts.key}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+
+    const callDuration = Date.now() - callStartTime
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      const detail = errText ? ': ' + errText.slice(0, 300) : ''
+      throw new Error(`[${opts.label}] Status ${res.status} apos ${callDuration}ms${detail}`)
+    }
+
+    const payload = await res.json()
+    const message = payload.choices?.[0]?.message
+    const content = [message?.reasoning_content, message?.content].filter(Boolean).join('\n\n').trim()
+
+    if (!content) {
+      throw new Error(`[${opts.label}] Resposta vazia da API`)
+    }
+
+    console.log(`[IA-GERADOR] [${opts.label}] Sucesso em ${callDuration}ms. Tamanho: ${content.length} caracteres.`)
+    return content
+  } catch (error) {
+    const callDuration = Date.now() - callStartTime
+    console.error(`[IA-GERADOR] [${opts.label}] Falhou apos ${callDuration}ms: ${describeNvidiaError(error, opts.timeoutMs)}`)
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function generatePlanText(input: z.infer<typeof createPlanSchema>) {
+  const prompt = await buildPlanPrompt(input)
+  const totalStartTime = Date.now()
+  const primaryKey = process.env.NVIDIA_API_KEY || ''
+  const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || primaryKey
+  const fallback2Key = process.env.NVIDIA_API_KEY_FALLBACK_2 || fallbackKey
+
+  const primaryModel = process.env.NVIDIA_MODEL || 'google/gemma-2-2b-it'
+  const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'z-ai/glm-5.1'
+  const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'nvidia/nemotron-3-super-120b-a12b'
+
+  const primaryTimeoutMs = envNumber('NVIDIA_PRIMARY_TIMEOUT_MS', 12000)
+  const fallbackTimeoutMs = envNumber('NVIDIA_FALLBACK_TIMEOUT_MS', 25000)
+  const fallback2TimeoutMs = envNumber('NVIDIA_FALLBACK_2_TIMEOUT_MS', 45000)
+  const maxTokens = envNumber('NVIDIA_MAX_TOKENS', 1800)
+  const reasoningBudget = envNumber('NVIDIA_REASONING_BUDGET', 512)
+
   const skills = await listSkills()
   const selected = skills.filter((skill) => input.skill_ids.includes(skill.id) || input.skill_ids.includes(skill.code))
-  const skillBlock = selected
-    .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
-    .join('\n\n')
   const date = input.date || new Date().toLocaleDateString('pt-BR')
 
+  console.log('\n==================================================')
+  console.log(`[IA-GERADOR] [${new Date().toISOString()}] Nova solicitacao de plano recebida.`)
+  console.log(`[IA-GERADOR] Tema: "${input.title}" | Ano/Turma: "${input.grade_level}" | Componente: "${input.subject}"`)
+  console.log(`[IA-GERADOR] Habilidades resolvidas: ${selected.map((skill) => skill.code).join(', ') || 'nenhuma'} (Total: ${selected.length})`)
+  console.log(`[IA-GERADOR] Cascata: 1. ${primaryModel} (${primaryTimeoutMs}ms), 2. ${fallbackModel} (${fallbackTimeoutMs}ms), 3. ${fallback2Model} (${fallback2TimeoutMs}ms)`)
+  console.log(`[IA-GERADOR] Chave principal configurada? ${primaryKey ? 'Sim' : 'Nao'}`)
+  console.log('==================================================')
+
+  if (primaryKey) {
+    try {
+      const content = await callNvidiaChat({
+        key: primaryKey,
+        model: primaryModel,
+        timeoutMs: primaryTimeoutMs,
+        label: 'primary',
+        prompt,
+        enableThinking: process.env.NVIDIA_ENABLE_THINKING === 'true',
+        reasoningBudget,
+        maxTokens,
+      })
+      console.log(`[IA-GERADOR] Sucesso total via ${primaryModel}. Tempo total: ${Date.now() - totalStartTime}ms.`)
+      return content
+    } catch {
+      console.warn(`[IA-GERADOR] Modelo principal falhou. Tentando fallback 1: ${fallbackModel}.`)
+    }
+  }
+
+  if (fallbackKey) {
+    try {
+      const content = await callNvidiaChat({
+        key: fallbackKey,
+        model: fallbackModel,
+        timeoutMs: fallbackTimeoutMs,
+        label: 'fallback1',
+        prompt,
+        enableThinking: process.env.NVIDIA_FALLBACK_ENABLE_THINKING === 'true',
+        reasoningBudget: Math.min(reasoningBudget, 1024),
+        maxTokens,
+      })
+      console.log(`[IA-GERADOR] Sucesso total via ${fallbackModel}. Tempo total: ${Date.now() - totalStartTime}ms.`)
+      return content
+    } catch {
+      console.warn(`[IA-GERADOR] Fallback 1 falhou. Tentando fallback 2: ${fallback2Model}.`)
+    }
+
+    try {
+      const content = await callNvidiaChat({
+        key: fallback2Key,
+        model: fallback2Model,
+        timeoutMs: fallback2TimeoutMs,
+        label: 'fallback2',
+        prompt,
+        enableThinking: false,
+        maxTokens: Math.min(maxTokens, 2500),
+      })
+      console.log(`[IA-GERADOR] Sucesso total via ${fallback2Model}. Tempo total: ${Date.now() - totalStartTime}ms.`)
+      return content
+    } catch {
+      console.error(`[IA-GERADOR] Todos os modelos falharam apos ${Date.now() - totalStartTime}ms. Usando template local.`)
+    }
+  }
+
+  const skillBlock = selected
+    .map((skill) => `- [${skill.code}] ${skill.name}: ${skill.description}`)
+    .join('\n')
   const teacherObjectives = (input.objectives || '').trim()
   const teacherMethodology = (input.methodology || '').trim()
   const teacherNotes = (input.notes || '').trim()
 
-  const objectivesBlock = teacherObjectives
-    ? '"""' + teacherObjectives + '"""'
-    : '(em branco — infira a partir do tema e das habilidades BNCC, e marque como sugestão da IA)'
-  const methodologyBlock = teacherMethodology
-    ? '"""' + teacherMethodology + '"""'
-    : '(em branco — proponha uma metodologia ativa compatível com o tema e marque como sugestão da IA)'
+  return `PLANO DE AULA: ${input.title.toUpperCase()}
 
-  const prompt = `Você é especialista em educação básica, BNCC e tecnologia educacional. Crie um PLANO DE AULA COMPLETO, DETALHADO e PRÁTICO para professores da rede pública municipal de Atalaia-AL (Alagoas, Nordeste).
-
-╔══════════════════════════════════════════════════════════════
-║ INSTRUÇÕES CRÍTICAS — LEIA ANTES DE GERAR O PLANO
-╚══════════════════════════════════════════════════════════════
-1. Os campos "OBJETIVOS DO PROFESSOR" e "METODOLOGIA" abaixo foram escritos pelo próprio professor — eles são a ESPINHA DORSAL deste plano. Você DEVE incorporá-los literalmente e expandi-los, NÃO substituí-los por objetivos genéricos.
-2. Se o professor descreveu uma metodologia específica (ex.: "rotação por estações", "sala de aula invertida", "projeto investigativo"), TODA a seção de DESENVOLVIMENTO da aula precisa se estruturar EXATAMENTE em torno dessa metodologia.
-3. Os "Objetivos do professor" devem virar OBJETIVO GERAL + OBJETIVOS ESPECÍFICOS reescritos com verbos da Taxonomia de Bloom, sem perder a intenção original.
-4. Se algum dos dois campos vier vazio, infira algo coerente com o tema e com as habilidades BNCC selecionadas, mas avise no início da seção: "[Sugestão da IA — ajuste conforme sua intenção pedagógica]".
-
-DADOS DO PLANO:
-• Professor(a): ${input.teacher || "Não informado"}
-• Escola: ${input.school || "Não informada"} — Atalaia/AL
-• Ano/Turma: ${input.grade_level}
-• Componente Curricular: ${input.subject}
-• Data: ${date}
-• Duração: ${input.duration || "50 minutos"}
-• Tema da Aula: ${input.title}
-• Recursos disponíveis: ${input.materials || "recursos básicos"}
-• Observações do professor: ${teacherNotes || "nenhuma"}
-
-▶ OBJETIVOS DO PROFESSOR (use como base do OBJETIVO GERAL e dos ESPECÍFICOS):
-${objectivesBlock}
-
-▶ METODOLOGIA ESCOLHIDA PELO PROFESSOR (use como base do DESENVOLVIMENTO da aula):
-${methodologyBlock}
-
-HABILIDADES DA BNCC COMPUTAÇÃO (${selected.length} selecionadas):
-${skillBlock}
-
-Escreva o plano de aula COMPLETO seguindo EXATAMENTE este formato e sendo MUITO detalhado em cada seção:
-
-════════════════════════════════════════════
-PLANO DE AULA
-${input.title.toUpperCase()}
-════════════════════════════════════════════
-
-▌ IDENTIFICAÇÃO
-Professor(a): ${input.teacher || "_______________________"}
-Escola: ${input.school || "_______________________"} | Município: Atalaia - AL
-Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
-Data: ${date} | Duração: ${input.duration || "50 minutos"}
-Tema: ${input.title}
-
-────────────────────────────────────────────
-▌ OBJETIVOS
-────────────────────────────────────────────
-OBJETIVO GERAL:
-[Reescreva os "Objetivos do professor" acima de forma clara e mensurável, em UMA frase com verbo no infinitivo (Taxonomia de Bloom). Mantenha a intenção original do professor.]
-
-OBJETIVOS ESPECÍFICOS:
-[Quebre os objetivos do professor em 4 metas mensuráveis. Cada uma deve começar com verbo de ação (Compreender, Aplicar, Criar, Analisar, Avaliar...) e ser observável.]
-• [objetivo específico 1 — derivado do que o professor escreveu]
-• [objetivo específico 2 — derivado do que o professor escreveu]
-• [objetivo específico 3 — articulado às habilidades BNCC selecionadas]
-• [objetivo específico 4 — articulado ao tema e à realidade de Atalaia]
-
-────────────────────────────────────────────
-▌ HABILIDADES DA BNCC COMPUTAÇÃO
-────────────────────────────────────────────
-${selected.map(h => `[${h.code}] ${h.name}\n${h.description}`).join("\n\n")}
-
-────────────────────────────────────────────
-▌ CONTEÚDOS
-────────────────────────────────────────────
-CONCEITUAIS (o que saber):
-• [conteúdo 1]
-• [conteúdo 2]
-• [conteúdo 3]
-
-PROCEDIMENTAIS (saber fazer):
-• [conteúdo 1]
-• [conteúdo 2]
-
-ATITUDINAIS (saber ser):
-• [conteúdo 1]
-• [conteúdo 2]
-
-────────────────────────────────────────────
-▌ METODOLOGIA
-────────────────────────────────────────────
-[3-4 parágrafos OBRIGATORIAMENTE ancorados na metodologia escolhida pelo professor: "${teacherMethodology || 'metodologia ativa'}".
-
-Parágrafo 1: explique CONCRETAMENTE como essa metodologia se aplica a este tema específico (não fale em geral sobre a metodologia — fale sobre ESTA aula).
-Parágrafo 2: descreva como os alunos interagirão entre si e com a tecnologia dentro dessa metodologia (papéis, agrupamentos, momentos de fala/escuta).
-Parágrafo 3: explique como o pensamento computacional (decomposição, padrões, abstração, algoritmos) será integrado dentro dessa metodologia.
-Parágrafo 4: conecte com a realidade de Atalaia-AL (cultura nordestina, cotidiano dos alunos, exemplos locais reconhecíveis).]
-
-────────────────────────────────────────────
-▌ DESENVOLVIMENTO DA AULA
-────────────────────────────────────────────
-
-🟢 MOMENTO INICIAL — Aquecimento e Contextualização
-⏱ [XX minutos]
-
-[Descreva em DETALHE: como o professor iniciará a aula, que perguntas motivadoras fará, como conectará o tema à realidade dos alunos de Atalaia (cultura, cotidiano nordestino, exemplos locais). Inclua diálogos sugeridos, dinâmica com os alunos, como organizar a sala. Mínimo 150 palavras.]
-
-🔵 DESENVOLVIMENTO — Construção do Conhecimento
-⏱ [XX minutos]
-
-[Descreva em DETALHE o passo a passo das atividades principais: o que o professor faz, o que os alunos fazem, como usarão os recursos (${input.materials}), como acontecerão as interações entre alunos, quais instruções específicas o professor dará. Inclua sugestões de comandos/perguntas do professor, como lidar com dificuldades comuns. Mínimo 250 palavras.]
-
-🟡 ENCERRAMENTO — Síntese e Sistematização
-⏱ [XX minutos]
-
-[Descreva como sistematizar o aprendizado: que perguntas o professor fará para consolidar o conhecimento, como os alunos registrarão o que aprenderam, como fazer a transição para a próxima aula. Mínimo 100 palavras.]
-
-────────────────────────────────────────────
-▌ RECURSOS DIDÁTICOS
-────────────────────────────────────────────
-• [liste cada recurso especificando como será usado]
-
-────────────────────────────────────────────
-▌ AVALIAÇÃO
-────────────────────────────────────────────
-AVALIAÇÃO FORMATIVA (durante a aula):
-[Como o professor avaliará o progresso dos alunos continuamente]
-
-AVALIAÇÃO SOMATIVA (produto final):
-[Qual o produto/evidência de aprendizagem esperada]
-
-CRITÉRIOS DE AVALIAÇÃO:
-• [critério 1 — específico e observável]
-• [critério 2]
-• [critério 3]
-• [critério 4]
-
-────────────────────────────────────────────
-▌ REFERÊNCIAS
-────────────────────────────────────────────
-• BRASIL. Base Nacional Comum Curricular (BNCC). Brasília: MEC, 2017.
-• [referência 2 — artigo ou livro sobre computação na educação]
-• [referência 3 — material digital gratuito]
-• [referência 4 — site ou plataforma educacional]
-
-════════════════════════════════════════════
-Plano elaborado com base na BNCC Computação
-Secretaria Municipal de Educação de Atalaia/AL
-${date}
-════════════════════════════════════════════
-
-ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
-
-  const totalStartTime = Date.now()
-  console.log(`\n==================================================`)
-  console.log(`[IA-GERADOR] [${new Date().toISOString()}] Nova solicitação de plano recebida!`)
-  console.log(`[IA-GERADOR] Tema: "${input.title}"`)
-  console.log(`[IA-GERADOR] Professor: "${input.teacher || 'Não informado'}" | Escola: "${input.school || 'Não informada'}"`)
-  console.log(`[IA-GERADOR] Ano/Turma: "${input.grade_level}" | Componente: "${input.subject}" | Duração: "${input.duration || '50 minutos'}"`)
-  console.log(`[IA-GERADOR] Materiais: "${input.materials || 'recursos básicos'}"`)
-  console.log(`[IA-GERADOR] Habilidades selecionadas (IDs): ${JSON.stringify(input.skill_ids)}`)
-  console.log(`[IA-GERADOR] Habilidades resolvidas do banco: ${selected.map(s => s.code).join(', ')} (Total: ${selected.length})`)
-
-  const primaryKey = process.env.NVIDIA_API_KEY || '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'
-  const primaryModel = process.env.NVIDIA_MODEL || 'z-ai/glm-5.1'
-
-  const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || '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'
-  const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'google/gemma-2-2b-it'
-
-  // Usar DeepSeek v4 Flash apenas como fallback opcional de baixo timeout
-  const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'deepseek-ai/deepseek-v4-flash'
-
-  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 25000
-  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 12000
-  const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 8000
-
-  console.log(`[IA-GERADOR] [CONFIG] Cascata configurada:`)
-  console.log(`               1. GLM-5.1 (NIM): ${primaryModel} (Timeout: ${primaryTimeoutMs}ms)`)
-  console.log(`               2. Gemma 2 (NIM): ${fallbackModel} (Timeout: ${fallbackTimeoutMs}ms)`)
-  console.log(`               3. DeepSeek (NIM): ${fallback2Model} (Timeout: ${fallback2TimeoutMs}ms)`)
-  console.log(`               Chave principal configurada? ${primaryKey ? 'Sim (começa com ' + primaryKey.slice(0, 8) + '...)' : 'Não'}`)
-  console.log(`               Chave fallback configurada? ${fallbackKey ? 'Sim (começa com ' + fallbackKey.slice(0, 8) + '...)' : 'Não'}`)
-  console.log(`==================================================`)
-
-  // Helper: chama o endpoint NVIDIA NIM com timeout e logs ricos.
-  async function callNvidia(opts: {
-    key: string
-    model: string
-    timeoutMs: number
-    label: string
-    enableThinking?: boolean
-  }): Promise<string> {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
-    const callStartTime = Date.now()
-
-    console.log(`[IA-GERADOR] [${opts.label}] Enviando requisição HTTP para a API NVIDIA NIM...`)
-    console.log(`[IA-GERADOR] [${opts.label}] Modelo: "${opts.model}" | Timeout: ${opts.timeoutMs}ms | Thinking: ${opts.enableThinking ?? false}`)
-
-    try {
-      const body: Record<string, unknown> = {
-        model: opts.model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: opts.model.includes('glm') ? 1 : 0.7,
-        top_p: opts.model.includes('glm') ? 1 : 0.95,
-        max_tokens: 16384,
-        stream: false,
-      }
-      if (opts.enableThinking) {
-        body.chat_template_kwargs = opts.model.includes('glm')
-          ? { enable_thinking: true, clear_thinking: false }
-          : { enable_thinking: true }
-      }
-
-      const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${opts.key}`,
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-
-      const callDuration = Date.now() - callStartTime
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '')
-        const detail = errText ? ': ' + errText.slice(0, 200) : ''
-        console.error(`[IA-GERADOR] [${opts.label}] [FALHA] HTTP ${res.status} após ${callDuration}ms${detail}`)
-        throw new Error('[' + opts.label + '] Status ' + res.status + detail)
-      }
-
-      const payload = await res.json()
-      const content = payload.choices?.[0]?.message?.content
-      if (!content) {
-        console.error(`[IA-GERADOR] [${opts.label}] [FALHA] Resposta sem conteúdo (choices vazias) após ${callDuration}ms`)
-        throw new Error(`[${opts.label}] Resposta vazia da API`)
-      }
-
-      console.log(`[IA-GERADOR] [${opts.label}] [SUCESSO] Plano gerado com sucesso em ${callDuration}ms! Tamanho: ${content.length} caracteres.`)
-      return content
-    } catch (error) {
-      const callDuration = Date.now() - callStartTime
-      const errMsg = describeError(error, opts.timeoutMs)
-      console.error(`[IA-GERADOR] [${opts.label}] [ERRO EXCEÇÃO] Falhou após ${callDuration}ms: ${errMsg}`)
-      throw error
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-
-  function describeError(err: unknown, timeoutMs: number): string {
-    if (err instanceof Error && err.name === 'AbortError') {
-      return `timeout / abortado após ${timeoutMs}ms`
-    }
-    return (err as Error)?.message || 'erro desconhecido'
-  }
-
-  // 1) GLM-5.1 (primário absoluto agora que o DeepSeek instável foi movido para o fim)
-  try {
-    console.log(`\n[IA-GERADOR] [CASCATA 1/3] Tentando modelo principal: GLM-5.1...`)
-    const content = await callNvidia({
-      key: primaryKey,
-      model: primaryModel,
-      timeoutMs: primaryTimeoutMs,
-      label: 'primary/glm',
-      enableThinking: true,
-    })
-    const totalDuration = Date.now() - totalStartTime
-    console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via GLM-5.1! Tempo total: ${totalDuration}ms.`)
-    console.log(`==================================================\n`)
-    return content
-  } catch (err1) {
-    const elapsed1 = Date.now() - totalStartTime
-    console.warn(`[IA-GERADOR] [CASCATA 1/3 FALHA] GLM-5.1 falhou após ${elapsed1}ms. Tentando Gemma 2 2B...`)
-
-    // 2) Gemma 2 2B (fallback 1) - chave separada, levíssimo e instantâneo
-    try {
-      console.log(`\n[IA-GERADOR] [CASCATA 2/3] Tentando fallback 1: Gemma 2 2B...`)
-      const content = await callNvidia({
-        key: fallbackKey,
-        model: fallbackModel,
-        timeoutMs: fallbackTimeoutMs,
-        label: 'fallback1/gemma2b',
-        enableThinking: false,
-      })
-      const totalDuration = Date.now() - totalStartTime
-      console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via Gemma 2 2B! Tempo total: ${totalDuration}ms.`)
-      console.log(`==================================================\n`)
-      return content
-    } catch (err2) {
-      const elapsed2 = Date.now() - totalStartTime
-      console.warn(`[IA-GERADOR] [CASCATA 2/3 FALHA] Gemma 2 2B falhou após ${elapsed2}ms. Tentando DeepSeek v4 Flash...`)
-
-      // 3) DeepSeek v4 Flash (fallback 2) - mesma chave do GLM
-      try {
-        console.log(`\n[IA-GERADOR] [CASCATA 3/3] Tentando fallback 2: DeepSeek v4 Flash...`)
-        const content = await callNvidia({
-          key: primaryKey,
-          model: fallback2Model,
-          timeoutMs: fallback2TimeoutMs,
-          label: 'fallback2/deepseek',
-          enableThinking: false,
-        })
-        const totalDuration = Date.now() - totalStartTime
-        console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via DeepSeek v4 Flash! Tempo total: ${totalDuration}ms.`)
-        console.log(`==================================================\n`)
-        return content
-      } catch (err3) {
-        const elapsed3 = Date.now() - totalStartTime
-        console.error(`[IA-GERADOR] [CASCATA FALHA TOTAL] DeepSeek v4 Flash também falhou após ${elapsed3}ms. Usando template estático local.`)
-      }
-    }
-  }
-
-  // Fallback local caso TODAS as APIs falhem
-  return `PLANO DE AULA
-${input.title.toUpperCase()}
-
-IDENTIFICACAO
+1. IDENTIFICACAO
 Professor(a): ${input.teacher || 'Professor(a)'}
-Escola: ${input.school || 'Escola Municipal'} | Municipio: Atalaia - AL
+Escola: ${input.school || 'Escola Municipal'} | Municipio: Atalaia-AL
 Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
 Data: ${date} | Duracao: ${input.duration || '50 minutos'}
 Tema: ${input.title}
 
-OBJETIVOS DO PROFESSOR
-${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'}
-
-OBJETIVOS
-Objetivo geral:
-Desenvolver uma experiencia de aprendizagem conectada a BNCC Computacao, valorizando o cotidiano dos estudantes e o uso responsavel de tecnologias digitais.
-
+2. OBJETIVOS
+Objetivo geral: Desenvolver uma experiencia de aprendizagem alinhada a BNCC Computacao, conectando ${input.title} ao cotidiano dos estudantes de Atalaia-AL.
 Objetivos especificos:
-- Relacionar o tema da aula aos conhecimentos previos dos estudantes.
+- Relacionar o tema aos conhecimentos previos da turma.
 - Aplicar procedimentos de investigacao, registro, colaboracao ou criacao digital.
 - Produzir uma evidencia de aprendizagem individual ou coletiva.
-- Exercitar atitudes de autoria, seguranca, respeito e cidadania digital.
+- Exercitar atitudes de autoria, respeito e cidadania digital.
 
-HABILIDADES DA BNCC COMPUTACAO
+3. HABILIDADES BNCC
 ${skillBlock || 'Nenhuma habilidade encontrada.'}
 
-CONTEUDOS
-- Conceitos centrais do componente ${input.subject}.
-- Cultura digital, pensamento computacional e uso critico de recursos tecnologicos.
-- Comunicacao, registro e socializacao de descobertas.
+4. CONTEUDOS
+Conceituais:
+- Conceitos centrais do componente ${input.subject} ligados ao tema.
+- Cultura digital e pensamento computacional.
+Procedimentais:
+- Observacao, registro, organizacao e comunicacao de informacoes.
+- Uso orientado dos recursos disponiveis.
+Atitudinais:
+- Colaboracao, respeito e responsabilidade no uso da tecnologia.
 
-METODOLOGIA
+5. METODOLOGIA
 ${teacherMethodology || 'Metodologia ativa com mediacao do professor.'}
 
-O professor inicia a aula contextualizando o tema com exemplos proximos da realidade de Atalaia/AL. Em seguida, organiza a turma para uma atividade pratica em duplas ou pequenos grupos, alternando momentos de orientacao coletiva, investigacao guiada e registro das descobertas.
+O professor inicia contextualizando o tema com exemplos proximos da realidade de Atalaia-AL. Em seguida, organiza a turma em duplas ou grupos para uma atividade pratica, alternando orientacao coletiva, investigacao guiada e registro das descobertas.
 
-DESENVOLVIMENTO DA AULA
-Momento inicial:
-Apresente o tema, escute hipoteses dos estudantes e registre no quadro as ideias principais. Retome as habilidades selecionadas em linguagem simples.
+6. DESENVOLVIMENTO DA AULA
+Momento inicial: apresente o tema, escute hipoteses dos estudantes e registre no quadro as ideias principais. Retome as habilidades selecionadas em linguagem simples.
 
-Desenvolvimento:
-Proponha uma tarefa pratica com os recursos disponiveis. Os estudantes devem pesquisar, organizar informacoes, criar um produto simples ou resolver um desafio relacionado ao tema. Circule pela sala, faca perguntas, apoie grupos com mais dificuldade e incentive justificativas.
+Desenvolvimento: proponha uma tarefa pratica com os recursos disponiveis. Os estudantes devem pesquisar, organizar informacoes, criar um produto simples ou resolver um desafio relacionado ao tema. Circule pela sala, faca perguntas, apoie grupos com mais dificuldade e incentive justificativas.
 
-Encerramento:
-Convide os grupos a compartilhar resultados. Sistematize o que foi aprendido, conecte com a BNCC Computacao e registre combinados para continuidade.
+Encerramento: convide os grupos a compartilhar resultados. Sistematize o que foi aprendido, conecte com a BNCC Computacao e registre combinados para continuidade.
 
-RECURSOS DIDATICOS
+7. RECURSOS DIDATICOS
 ${input.materials || 'Quadro, caderno, celular ou computador compartilhado.'}
 
-AVALIACAO
-A avaliacao sera formativa, observando participacao, colaboracao, clareza do registro, relacao com as habilidades selecionadas e qualidade da evidencia produzida. Considere tambem uma autoavaliacao breve: o que aprendi, o que foi dificil e como usei a tecnologia com responsabilidade.
+8. AVALIACAO
+A avaliacao sera formativa, observando participacao, colaboracao, clareza do registro, relacao com as habilidades selecionadas e qualidade da evidencia produzida. Produto final: registro, apresentacao breve ou artefato criado pela turma. Criterios: participacao, pertinencia ao tema e uso responsavel da tecnologia.
+
+9. REFERENCIAS
+- BRASIL. Base Nacional Comum Curricular (BNCC). Brasilia: MEC, 2017.
+- BNCC Computacao e documentos curriculares complementares.
+
+OBJETIVOS DO PROFESSOR
+${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'}
 
 OBSERVACOES
 ${teacherNotes || 'Plano gerado para uso e edicao pelo professor.'}
 
-REFERENCIAS
-- BRASIL. Base Nacional Comum Curricular (BNCC). Brasilia: MEC, 2017.
-- BNCC Computacao e documentos curriculares complementares.
-
-Plano elaborado com base na BNCC Computacao
-Secretaria Municipal de Educacao de Atalaia/AL`
+Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao de Atalaia/AL.`
 }
