@@ -34,55 +34,18 @@ export async function POST(request: Request) {
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 2500,
-        stream: true,
       }),
     })
 
-    if (!res.ok || !res.body) {
-      throw new Error(`NVIDIA API status ${res.status}`)
-    }
+    if (!res.ok) throw new Error(`NVIDIA API retornou status ${res.status}`)
 
-    const decoder = new TextDecoder()
-    const encoder = new TextEncoder()
+    const payload = await res.json()
+    const content: string | undefined = payload.choices?.[0]?.message?.content
+    if (!content?.trim()) throw new Error('Resposta vazia da IA')
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = res.body!.getReader()
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            const lines = decoder.decode(value, { stream: true }).split('\n')
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue
-              const data = line.slice(6).trim()
-              if (data === '[DONE]') {
-                controller.close()
-                return
-              }
-              try {
-                const delta = JSON.parse(data).choices?.[0]?.delta?.content
-                if (delta) controller.enqueue(encoder.encode(delta))
-              } catch {
-                // ignore partial SSE parse errors
-              }
-            }
-          }
-        } finally {
-          controller.close()
-        }
-      },
-    })
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'X-Accel-Buffering': 'no',
-      },
-    })
-  } catch {
-    // Fallback: non-streaming call
+    return NextResponse.json({ data: { content } })
+  } catch (err) {
+    console.warn('[generate] IA principal falhou, usando fallback:', err)
     try {
       const content = await generatePlanText(values)
       return NextResponse.json({ data: { content } })

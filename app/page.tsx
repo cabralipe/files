@@ -353,50 +353,28 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(planPayload('')),
       })
+      const payload = await response.json()
 
       if (!response.ok) {
-        const payload = await response.json()
         throw new Error(payload.error || 'Erro ao gerar')
+      }
+
+      const content: string = payload.data?.content || ''
+      if (!content.trim()) {
+        throw new Error('Plano gerado vazio. Tente novamente.')
       }
 
       clearInterval(progressInterval)
       clearInterval(phraseInterval)
-      setLoadingPhrase('✨ Gerando seu plano em tempo real...')
+      setProgress(100)
+      setLoadingPhrase('✨ Plano de aula concluído com sucesso!')
 
-      const contentType = response.headers.get('content-type') || ''
-      if (contentType.includes('text/plain') && response.body) {
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let text = ''
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          text += decoder.decode(value, { stream: true })
-          setGenerated(text)
-          setProgress(Math.min(95, (text.length / 7000) * 95))
-        }
-
-        setProgress(100)
-        setLoadingPhrase('✨ Plano de aula concluído com sucesso!')
-        setTimeout(() => {
-          setGenerated(text)
-          setView('plan')
-          showToast('Plano gerado. Edite antes de salvar, se quiser.')
-          setLoading(false)
-        }, 300)
-      } else {
-        // fallback JSON
-        const payload = await response.json()
-        setProgress(100)
-        setLoadingPhrase('✨ Plano de aula concluído com sucesso!')
-        setTimeout(() => {
-          setGenerated(payload.data.content)
-          setView('plan')
-          showToast('Plano gerado. Edite antes de salvar, se quiser.')
-          setLoading(false)
-        }, 300)
-      }
+      setTimeout(() => {
+        setGenerated(content)
+        setView('plan')
+        showToast('Plano gerado. Edite antes de salvar, se quiser.')
+        setLoading(false)
+      }, 400)
     } catch (error) {
       clearInterval(progressInterval)
       clearInterval(phraseInterval)
