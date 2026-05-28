@@ -837,22 +837,22 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
   console.log(`[IA-GERADOR] Habilidades resolvidas do banco: ${selected.map(s => s.code).join(', ')} (Total: ${selected.length})`)
 
   const primaryKey = process.env.NVIDIA_API_KEY || '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'
-  const primaryModel = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash'
+  const primaryModel = process.env.NVIDIA_MODEL || 'z-ai/glm-5.1'
 
   const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || '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'
-  const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'google/gemma-4-31b-it'
+  const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'google/gemma-2-2b-it'
 
-  // GLM-5.1 usa a mesma chave do DeepSeek (NVIDIA_API_KEY) por padrão
-  const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'z-ai/glm-5.1'
+  // Usar DeepSeek v4 Flash apenas como fallback opcional de baixo timeout
+  const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'deepseek-ai/deepseek-v4-flash'
 
-  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 300000
-  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 100000
-  const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 100000
+  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 25000
+  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 12000
+  const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 8000
 
   console.log(`[IA-GERADOR] [CONFIG] Cascata configurada:`)
-  console.log(`               1. DeepSeek (NIM): ${primaryModel} (Timeout: ${primaryTimeoutMs}ms)`)
-  console.log(`               2. Gemma (NIM): ${fallbackModel} (Timeout: ${fallbackTimeoutMs}ms)`)
-  console.log(`               3. GLM-5.1 (NIM): ${fallback2Model} (Timeout: ${fallback2TimeoutMs}ms)`)
+  console.log(`               1. GLM-5.1 (NIM): ${primaryModel} (Timeout: ${primaryTimeoutMs}ms)`)
+  console.log(`               2. Gemma 2 (NIM): ${fallbackModel} (Timeout: ${fallbackTimeoutMs}ms)`)
+  console.log(`               3. DeepSeek (NIM): ${fallback2Model} (Timeout: ${fallback2TimeoutMs}ms)`)
   console.log(`               Chave principal configurada? ${primaryKey ? 'Sim (começa com ' + primaryKey.slice(0, 8) + '...)' : 'Não'}`)
   console.log(`               Chave fallback configurada? ${fallbackKey ? 'Sim (começa com ' + fallbackKey.slice(0, 8) + '...)' : 'Não'}`)
   console.log(`==================================================`)
@@ -933,58 +933,59 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
     return (err as Error)?.message || 'erro desconhecido'
   }
 
-  // 1) DeepSeek (primário absoluto agora que o Gemini foi removido)
+  // 1) GLM-5.1 (primário absoluto agora que o DeepSeek instável foi movido para o fim)
   try {
-    console.log(`\n[IA-GERADOR] [CASCATA 1/3] Tentando modelo principal: DeepSeek...`)
+    console.log(`\n[IA-GERADOR] [CASCATA 1/3] Tentando modelo principal: GLM-5.1...`)
     const content = await callNvidia({
       key: primaryKey,
       model: primaryModel,
       timeoutMs: primaryTimeoutMs,
-      label: 'primary/deepseek',
+      label: 'primary/glm',
+      enableThinking: true,
     })
     const totalDuration = Date.now() - totalStartTime
-    console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via DeepSeek! Tempo total: ${totalDuration}ms.`)
+    console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via GLM-5.1! Tempo total: ${totalDuration}ms.`)
     console.log(`==================================================\n`)
     return content
   } catch (err1) {
     const elapsed1 = Date.now() - totalStartTime
-    console.warn(`[IA-GERADOR] [CASCATA 1/3 FALHA] DeepSeek falhou após ${elapsed1}ms. Tentando Gemma...`)
+    console.warn(`[IA-GERADOR] [CASCATA 1/3 FALHA] GLM-5.1 falhou após ${elapsed1}ms. Tentando Gemma 2 2B...`)
 
-    // 2) Gemma (fallback 1) - chave separada
+    // 2) Gemma 2 2B (fallback 1) - chave separada, levíssimo e instantâneo
     try {
-      console.log(`\n[IA-GERADOR] [CASCATA 2/3] Tentando fallback 1: Gemma...`)
+      console.log(`\n[IA-GERADOR] [CASCATA 2/3] Tentando fallback 1: Gemma 2 2B...`)
       const content = await callNvidia({
         key: fallbackKey,
         model: fallbackModel,
         timeoutMs: fallbackTimeoutMs,
-        label: 'fallback1/gemma',
-        enableThinking: true,
+        label: 'fallback1/gemma2b',
+        enableThinking: false,
       })
       const totalDuration = Date.now() - totalStartTime
-      console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via Gemma! Tempo total: ${totalDuration}ms.`)
+      console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via Gemma 2 2B! Tempo total: ${totalDuration}ms.`)
       console.log(`==================================================\n`)
       return content
     } catch (err2) {
       const elapsed2 = Date.now() - totalStartTime
-      console.warn(`[IA-GERADOR] [CASCATA 2/3 FALHA] Gemma falhou após ${elapsed2}ms. Tentando GLM-5.1...`)
+      console.warn(`[IA-GERADOR] [CASCATA 2/3 FALHA] Gemma 2 2B falhou após ${elapsed2}ms. Tentando DeepSeek v4 Flash...`)
 
-      // 3) GLM-5.1 (fallback 2) - mesma chave do DeepSeek
+      // 3) DeepSeek v4 Flash (fallback 2) - mesma chave do GLM
       try {
-        console.log(`\n[IA-GERADOR] [CASCATA 3/3] Tentando fallback 2: GLM-5.1...`)
+        console.log(`\n[IA-GERADOR] [CASCATA 3/3] Tentando fallback 2: DeepSeek v4 Flash...`)
         const content = await callNvidia({
           key: primaryKey,
           model: fallback2Model,
           timeoutMs: fallback2TimeoutMs,
-          label: 'fallback2/glm',
-          enableThinking: true,
+          label: 'fallback2/deepseek',
+          enableThinking: false,
         })
         const totalDuration = Date.now() - totalStartTime
-        console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via GLM-5.1! Tempo total: ${totalDuration}ms.`)
+        console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via DeepSeek v4 Flash! Tempo total: ${totalDuration}ms.`)
         console.log(`==================================================\n`)
         return content
       } catch (err3) {
         const elapsed3 = Date.now() - totalStartTime
-        console.error(`[IA-GERADOR] [CASCATA FALHA TOTAL] GLM-5.1 também falhou após ${elapsed3}ms. Usando template estático local.`)
+        console.error(`[IA-GERADOR] [CASCATA FALHA TOTAL] DeepSeek v4 Flash também falhou após ${elapsed3}ms. Usando template estático local.`)
       }
     }
   }
