@@ -674,8 +674,8 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
   const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || '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'
   const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'google/gemma-4-31b-it'
 
-  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 25000
-  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 30000
+  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 20000
+  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 35000
 
   // Helper: chama o endpoint NVIDIA NIM com timeout. Lança erro se o status não for OK
   // ou se o tempo limite for excedido. Retorna o conteúdo da resposta (string) em sucesso.
