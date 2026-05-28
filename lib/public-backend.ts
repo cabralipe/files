@@ -667,36 +667,96 @@ ${date}
 
 ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
 
-  const nvidiaKey = process.env.NVIDIA_API_KEY || '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'
-  const nvidiaModel = 'deepseek-ai/deepseek-v4-flash'
+  // Configuração das chaves NVIDIA NIM
+  const primaryKey = process.env.NVIDIA_API_KEY || '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'
+  const primaryModel = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash'
 
-  try {
-    const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${nvidiaKey}`,
-      },
-      body: JSON.stringify({
-        model: nvidiaModel,
+  const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || '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'
+  const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'google/gemma-4-31b-it'
+
+  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 25000
+  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 30000
+
+  // Helper: chama o endpoint NVIDIA NIM com timeout. Lança erro se o status não for OK
+  // ou se o tempo limite for excedido. Retorna o conteúdo da resposta (string) em sucesso.
+  async function callNvidia(opts: {
+    key: string
+    model: string
+    timeoutMs: number
+    label: string
+    enableThinking?: boolean
+  }): Promise<string> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
+
+    try {
+      const body: Record<string, unknown> = {
+        model: opts.model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         top_p: 0.95,
-        max_tokens: 4096,
-      }),
-    })
+        max_tokens: opts.model.includes('gemma') ? 16384 : 4096,
+        stream: false,
+      }
+      if (opts.enableThinking) {
+        body.chat_template_kwargs = { enable_thinking: true }
+      }
 
-    if (!res.ok) {
-      throw new Error(`Status ${res.status}`)
-    }
+      const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${opts.key}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
 
-    const payload = await res.json()
-    const content = payload.choices?.[0]?.message?.content
-    if (content) {
+      if (!res.ok) {
+        throw new Error(`[${opts.label}] Status ${res.status}`)
+      }
+
+      const payload = await res.json()
+      const content = payload.choices?.[0]?.message?.content
+      if (!content) {
+        throw new Error(`[${opts.label}] Resposta vazia da API`)
+      }
       return content
+    } finally {
+      clearTimeout(timer)
     }
-  } catch (apiError) {
-    console.warn('Erro ao chamar NVIDIA NIM API, usando template estático local:', apiError)
+  }
+
+  // 1) Tenta o modelo primário (DeepSeek). Se falhar OU demorar demais, cai no Gemma.
+  try {
+    return await callNvidia({
+      key: primaryKey,
+      model: primaryModel,
+      timeoutMs: primaryTimeoutMs,
+      label: 'primary/deepseek',
+    })
+  } catch (primaryError) {
+    const reason = primaryError instanceof Error && primaryError.name === 'AbortError'
+      ? `timeout após ${primaryTimeoutMs}ms`
+      : (primaryError as Error)?.message || 'erro desconhecido'
+    console.warn(`DeepSeek falhou (${reason}). Tentando fallback Gemma...`)
+
+    // 2) Fallback: Gemma com a outra chave da NVIDIA
+    try {
+      return await callNvidia({
+        key: fallbackKey,
+        model: fallbackModel,
+        timeoutMs: fallbackTimeoutMs,
+        label: 'fallback/gemma',
+        enableThinking: true,
+      })
+    } catch (fallbackError) {
+      const fbReason = fallbackError instanceof Error && fallbackError.name === 'AbortError'
+        ? `timeout após ${fallbackTimeoutMs}ms`
+        : (fallbackError as Error)?.message || 'erro desconhecido'
+      console.warn(`Gemma também falhou (${fbReason}). Usando template estático local.`)
+    }
   }
 
   // Fallback local caso a API falhe

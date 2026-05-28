@@ -93,6 +93,7 @@ function normalizeText(value: string) {
 function normalizePdfText(value: string) {
   if (!value) return ''
   return value
+    .replace(/\*\*/g, '')
     .replace(/Ã¡/g, 'á')
     .replace(/Ã /g, 'à')
     .replace(/Ã¢/g, 'â')
@@ -316,14 +317,29 @@ export default function Home() {
       clearInterval(progressInterval)
       clearInterval(phraseInterval)
       setProgress(100)
-      setLoadingPhrase('✨ Plano de aula concluído com sucesso!')
+      setLoadingPhrase('✨ Escrevendo plano de aula...')
 
-      setTimeout(() => {
-        setGenerated(payload.data.content)
-        setView('plan')
-        showToast('Plano gerado. Edite antes de salvar, se quiser.')
-        setLoading(false)
-      }, 500)
+      setView('plan')
+
+      const fullText = payload.data.content
+      let currentLength = 0
+      const chunkSize = 150 // Chunks of 150 characters for smooth, highly responsive typewriter display
+
+      const typingInterval = setInterval(() => {
+        currentLength += chunkSize
+        if (currentLength >= fullText.length) {
+          clearInterval(typingInterval)
+          setGenerated(fullText)
+          setLoading(false)
+          showToast('Plano gerado com sucesso! Você já pode editar ou salvar.')
+        } else {
+          setGenerated(fullText.slice(0, currentLength) + ' ▌')
+          const textarea = document.getElementById('po') as HTMLTextAreaElement | null
+          if (textarea) {
+            textarea.scrollTop = textarea.scrollHeight
+          }
+        }
+      }, 15)
     } catch (error) {
       clearInterval(progressInterval)
       clearInterval(phraseInterval)
@@ -602,6 +618,11 @@ export default function Home() {
             {user?.user_metadata?.role === 'coordinator' && (
               <Link className="nb" href="/coordinator">
                 Coordenação
+              </Link>
+            )}
+            {(user?.user_metadata?.role === 'admin' || user?.email === 'admin@bncc.local') && (
+              <Link className="nb" href="/admin" style={{ color: 'var(--red)' }}>
+                ⚙ Admin
               </Link>
             )}
             {user ? (

@@ -58,6 +58,10 @@ export async function requireAuthenticatedUser(request: Request) {
     throw new Error('UNAUTHORIZED')
   }
 
+  if (user.user_metadata?.blocked === true) {
+    throw new Error('BLOCKED')
+  }
+
   return user
 }
 
@@ -119,4 +123,17 @@ export async function ensureUserProfile(user: User) {
   }
 
   return fallbackData
+}
+
+export async function requireAdminUser(request: Request) {
+  const user = await requireAuthenticatedUser(request)
+  const isAdmin =
+    user.user_metadata?.role === 'admin' ||
+    user.email === 'admin@bncc.local' ||
+    user.email === process.env.ADMIN_EMAIL
+
+  if (!isAdmin) {
+    throw new Error('FORBIDDEN')
+  }
+  return user
 }

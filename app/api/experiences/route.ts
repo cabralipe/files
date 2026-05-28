@@ -39,6 +39,14 @@ export async function GET(request: Request) {
             canDelete = true
           }
         }
+        // Admin can delete any experience
+        const isAdmin = currentUserProfile.role === 'admin' ||
+          currentUser.user_metadata?.role === 'admin' ||
+          currentUser.email === 'admin@bncc.local' ||
+          currentUser.email === process.env.ADMIN_EMAIL
+        if (isAdmin) {
+          canDelete = true
+        }
         enhancedData.push({
           ...exp,
           can_delete: canDelete
@@ -124,6 +132,14 @@ export async function DELETE(request: Request) {
       if (author?.school_id && author.school_id === userProfile.school_id) {
         canDelete = true
       }
+    }
+    // Admin can delete any experience
+    const isAdmin = userProfile.role === 'admin' ||
+      user.user_metadata?.role === 'admin' ||
+      user.email === 'admin@bncc.local' ||
+      user.email === process.env.ADMIN_EMAIL
+    if (isAdmin) {
+      canDelete = true
     }
     
     if (!canDelete) {

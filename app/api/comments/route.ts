@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await getSupabaseAdmin()
       .from('comments')
-      .select('id, content, created_at, user_id, users(name, avatar_url)')
+      .select('id, content, created_at, user_id, users(full_name, avatar_url)')
       .eq('experience_id', experienceId)
       .order('created_at', { ascending: false })
       .limit(limit)
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         created_at: comment.created_at,
         user: {
           id: comment.user_id,
-          name: userProfile.name || 'Professor(a)',
+          name: userProfile.full_name || 'Professor(a)',
           email: '',
           avatar_url: userProfile.avatar_url || undefined,
         },

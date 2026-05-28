@@ -26,6 +26,13 @@ export async function POST(request: Request) {
       await ensureUserProfile(data.user)
     }
 
+    if (data.user?.user_metadata?.blocked === true) {
+      return NextResponse.json(
+        { error: 'Sua conta foi bloqueada. Entre em contato com o administrador.' },
+        { status: 403 }
+      )
+    }
+
     return NextResponse.json({ user: data.user, session: data.session })
   } catch (error) {
     if (error instanceof ZodError) {

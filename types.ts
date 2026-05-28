@@ -7,7 +7,7 @@ export type User = {
   full_name: string;
   avatar_url: string | null;
   school_id: string | null;
-  role: 'teacher' | 'coordinator';
+  role: 'teacher' | 'coordinator' | 'admin';
   subject: string | null;
   bio: string | null;
   created_at: string;
