@@ -1620,6 +1620,62 @@ input:focus, select:focus, textarea:focus {
   #po { border: 0; padding: 0; }
 }
 
+/* ═════════ PAGINATION ═════════ */
+.pg-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 32px;
+  padding: 0 8px;
+  flex-wrap: wrap;
+}
+
+.pg-btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 6px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform .1s, box-shadow .1s;
+  border-radius: 0;
+}
+
+.pg-btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.pg-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.pg-btn.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.pg-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pg-ellipsis {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 0 4px;
+  color: var(--ink-muted);
+  line-height: 36px;
+}
+
 @media (max-width: 980px) {
   .play { grid-template-columns: 1fr; }
   .sb { position: static; top: auto; }

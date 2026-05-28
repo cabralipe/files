@@ -187,6 +187,7 @@ export default function Home() {
   const [progress, setProgress] = useState(0)
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (!localStorage.getItem('bncc_tutorial_seen')) {
@@ -267,6 +268,17 @@ export default function Home() {
       return matchesText && matchesGrade && matchesSubject && matchesAxis
     })
   }, [axis, grade, query, skills, subject])
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, grade, subject, axis])
+
+  const PAGE_SIZE = 24
+  const totalPages = Math.ceil(filteredSkills.length / PAGE_SIZE)
+  const pagedSkills = useMemo(
+    () => filteredSkills.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredSkills, page],
+  )
 
   const selectedSkills = useMemo(
     () => skills.filter((skill) => selected.includes(skill.id)),
@@ -769,11 +781,15 @@ export default function Home() {
                 </option>
               ))}
             </select>
-            <span className="fcount">{filteredSkills.length} resultados</span>
+            <span className="fcount">
+              {filteredSkills.length === 0
+                ? '0 resultados'
+                : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filteredSkills.length)} de ${filteredSkills.length}`}
+            </span>
           </div>
 
           <div className="grid">
-            {filteredSkills.map((skill) => {
+            {pagedSkills.map((skill) => {
               const isSelected = selected.includes(skill.id)
               return (
                 <article className={`scard ${isSelected ? 'in-plan' : ''}`} key={skill.id}>
@@ -805,6 +821,57 @@ export default function Home() {
               )
             })}
           </div>
+
+          {totalPages > 1 && (
+            <nav className="pg-nav" aria-label="Paginação">
+              <button
+                className="pg-btn"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                aria-label="Página anterior"
+              >
+                ‹
+              </button>
+
+              {(() => {
+                const items: (number | 'ellipsis')[] = []
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) items.push(i)
+                } else {
+                  items.push(1)
+                  if (page > 3) items.push('ellipsis')
+                  for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+                    items.push(i)
+                  }
+                  if (page < totalPages - 2) items.push('ellipsis')
+                  items.push(totalPages)
+                }
+                return items.map((item, idx) =>
+                  item === 'ellipsis' ? (
+                    <span key={`e${idx}`} className="pg-ellipsis">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      className={`pg-btn${page === item ? ' active' : ''}`}
+                      onClick={() => setPage(item)}
+                      aria-current={page === item ? 'page' : undefined}
+                    >
+                      {item}
+                    </button>
+                  )
+                )
+              })()}
+
+              <button
+                className="pg-btn"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                aria-label="Próxima página"
+              >
+                ›
+              </button>
+            </nav>
+          )}
         </section>
       )}
 
