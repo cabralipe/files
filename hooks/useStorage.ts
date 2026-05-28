@@ -11,6 +11,11 @@ export interface UploadProgress {
 }
 
 export function useStorage() {
+  async function getAccessToken() {
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token
+  }
+
   // Upload de arquivo
   const uploadFile = async (
     bucket: string,
@@ -85,6 +90,38 @@ export function useStorage() {
     }
   }
 
+  const uploadExperienceImageBlob = async (file: File) => {
+    try {
+      if (!file) {
+        throw new Error('Nenhum arquivo selecionado')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const token = await getAccessToken()
+      const response = await fetch('/api/uploads/experience-image', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Erro ao enviar imagem')
+      }
+
+      return {
+        path: payload.data.pathname,
+        url: payload.data.url,
+        fileName: file.name,
+      }
+    } catch (error: any) {
+      console.error('Erro ao fazer upload de imagem:', error)
+      throw error
+    }
+  }
+
   // Upload de Anexo de Plano
   const uploadPlanAttachment = async (file: File) => {
     try {
@@ -131,6 +168,7 @@ export function useStorage() {
     uploadFile,
     uploadAvatar,
     uploadExperienceImage,
+    uploadExperienceImageBlob,
     uploadPlanAttachment,
     deleteFile,
     listFiles,

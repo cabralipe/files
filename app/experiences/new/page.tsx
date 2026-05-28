@@ -49,7 +49,7 @@ const supabase = createClient(
 export default function NewExperiencePage() {
   const router = useRouter()
   const { isAuthenticated, loading: authLoading, user } = useAuth()
-  const { uploadExperienceImage } = useStorage()
+  const { uploadExperienceImageBlob } = useStorage()
   const [skills, setSkills] = useState<Skill[]>([])
   const [form, setForm] = useState<ExperienceForm>(emptyForm)
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
@@ -126,7 +126,7 @@ export default function NewExperiencePage() {
 
     setUploading(true)
     try {
-      const uploaded = await uploadExperienceImage(file)
+      const uploaded = await uploadExperienceImageBlob(file)
       updateForm('image_url', uploaded.url)
       showToast('Imagem enviada.')
     } catch (error) {

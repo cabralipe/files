@@ -92,6 +92,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
+    console.error('Error in POST /api/experiences:', error)
     return NextResponse.json({ error: 'N?o foi possivel cadastrar a experi?ncia' }, { status: 500 })
   }
 }

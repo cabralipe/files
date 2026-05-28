@@ -520,7 +520,6 @@ export async function createExperience(
       }),
       category: experience.subject,
       images: experience.image_url ? [experience.image_url] : [],
-      published: true,
       updated_at: now,
     })
     .select()
