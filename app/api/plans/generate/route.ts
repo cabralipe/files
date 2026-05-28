@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic'
 // Limite total da funcao no Vercel (segundos). Precisa ser MAIOR que a soma
 // dos timeouts internos da cascata (DeepSeek + Gemma + GLM = 70+70+90 = 230s)
 // e MENOR que o teto do plano: Hobby = 60s, Pro = 300s.
-// 360s cabe na cascata completa + buffer pra parsing e network.
-export const maxDuration = 360
+// 300s cabe na cascata completa + buffer pra parsing e network.
+export const maxDuration = 300
 
 export async function POST(request: Request) {
   try {
