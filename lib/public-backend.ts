@@ -697,8 +697,8 @@ ${date}
 ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
 
   // Configuração da cascata: Gemini -> DeepSeek -> Gemma -> GLM -> template local
-  const geminiKey = process.env.GEMINI_API_KEY || 'AIzaSyBDih4Ua8V0czXE3l-Nwmb1Dj5Akq4a6jQ'
-  const geminiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+  const geminiKey = process.env.GEMINI_API_KEY || 'AIzaSyDuiZEShkLTff8l0fPfvdGlpOXvMiN0x2M'
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
   const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 25000
 
   const primaryKey = process.env.NVIDIA_API_KEY || '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'
