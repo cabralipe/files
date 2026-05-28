@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import { createPlanSchema, buildPlanPrompt, generatePlanText } from '@/lib/public-backend'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300 // até 5 min para geração longa
 
 const NVIDIA_KEY = process.env.NVIDIA_API_KEY || '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'
 const NVIDIA_MODEL = 'deepseek-ai/deepseek-v4-flash'
@@ -33,7 +34,6 @@ export async function POST(request: Request) {
         model: NVIDIA_MODEL,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-        max_tokens: 2500,
       }),
     })
 
