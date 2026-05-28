@@ -519,7 +519,6 @@ export async function createExperience(
         skill_ids: experience.skill_ids,
       }),
       category: experience.subject,
-      images: experience.image_url ? [experience.image_url] : [],
       updated_at: now,
     })
     .select()

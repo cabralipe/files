@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob'
+import { get, put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 import { requireAuthenticatedUser } from '@/lib/supabase-server'
 
@@ -17,6 +17,52 @@ function safeFileName(name: string) {
     .replace(/[^a-zA-Z0-9._-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 120)
+}
+
+function toImageProxyUrl(pathname: string) {
+  return `/api/uploads/experience-image?pathname=${encodeURIComponent(pathname)}`
+}
+
+export async function GET(request: Request) {
+  try {
+    const token = getBlobToken()
+    if (!token) {
+      return NextResponse.json(
+        { error: 'BLOB_READ_WRITE_TOKEN nao configurado no ambiente da Vercel' },
+        { status: 500 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const pathname = searchParams.get('pathname') || ''
+
+    if (!pathname.startsWith('experiences/')) {
+      return NextResponse.json({ error: 'Imagem invalida' }, { status: 400 })
+    }
+
+    const result = await get(pathname, {
+      access: 'private',
+      token,
+    })
+
+    if (!result) {
+      return NextResponse.json({ error: 'Imagem nao encontrada' }, { status: 404 })
+    }
+
+    if (result.statusCode === 304 || !result.stream) {
+      return new Response(null, { status: 304 })
+    }
+
+    return new Response(result.stream, {
+      headers: {
+        'Content-Type': result.blob.contentType || 'application/octet-stream',
+        'Cache-Control': result.blob.cacheControl || 'public, max-age=3600',
+      },
+    })
+  } catch (error) {
+    console.error('Erro ao carregar imagem da experiencia:', error)
+    return NextResponse.json({ error: 'Nao foi possivel carregar a imagem' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {
@@ -47,7 +93,7 @@ export async function POST(request: Request) {
 
     const fileName = safeFileName(file.name) || 'experiencia.jpg'
     const blob = await put(`experiences/${user.id}/${Date.now()}-${fileName}`, file, {
-      access: 'public',
+      access: 'private',
       contentType: file.type,
       token,
     })
@@ -55,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        url: blob.url,
+        url: toImageProxyUrl(blob.pathname),
         pathname: blob.pathname,
       },
     })
