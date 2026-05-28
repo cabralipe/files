@@ -34,7 +34,7 @@ loadEnvFile(path.join(__dirname, '..', '.env.local'))
 
 const apiKey = process.env.OPENAI_API_KEY
 const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
-const maxTokens = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS || 3000)
+const maxTokens = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS || 4200)
 const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'
 const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 30000)
 
@@ -64,7 +64,7 @@ METODOLOGIA INFORMADA:
 HABILIDADES DA BNCC COMPUTACAO (1 selecionada):
 [EF01CC01] Identificar caracteristicas do proprio corpo e dos colegas, reconhecendo semelhancas e diferencas, usando recursos digitais para registro e expressao.
 
-Escreva em portugues do Brasil, com linguagem clara, direta e pratica. O plano deve ser completo, mas curto: entre 500 e 800 palavras. Evite introducoes longas, decoracao visual e repeticoes.
+Escreva em portugues do Brasil, com linguagem clara, direta e pratica. O plano deve ser completo e moderadamente detalhado: entre 750 e 1100 palavras. Evite introducoes longas, decoracao visual e repeticoes.
 
 Use exatamente esta estrutura:
 PLANO DE AULA

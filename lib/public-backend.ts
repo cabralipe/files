@@ -576,7 +576,7 @@ ${methodologyBlock}
 HABILIDADES DA BNCC COMPUTACAO (${selected.length} selecionadas):
 ${skillBlock || 'Nenhuma habilidade encontrada.'}
 
-Escreva em portugues do Brasil, com linguagem clara, direta e pratica. O plano deve ser completo, mas curto: entre 500 e 800 palavras. Evite introducoes longas, decoracao visual e repeticoes.
+Escreva em portugues do Brasil, com linguagem clara, direta e pratica. O plano deve ser completo e moderadamente detalhado: entre 750 e 1100 palavras. Evite introducoes longas, decoracao visual e repeticoes.
 
 Use exatamente esta estrutura:
 
@@ -598,18 +598,18 @@ Liste as habilidades selecionadas com codigo e aplicacao na aula.
 - Atitudinais: 1 item.
 
 5. METODOLOGIA
-Um paragrafo explicando como a metodologia sera aplicada, incluindo pensamento computacional e conexao com Atalaia-AL.
+Dois paragrafos explicando como a metodologia sera aplicada, incluindo organizacao da turma, pensamento computacional e conexao com Atalaia-AL.
 
 6. DESENVOLVIMENTO DA AULA
-- Momento inicial: tempo, acao do professor e pergunta disparadora.
-- Desenvolvimento: passo a passo da atividade principal, uso dos recursos e adaptacao se houver poucos dispositivos.
-- Encerramento: sintese e registro final.
+- Momento inicial: tempo, acao do professor, pergunta disparadora e como ativar conhecimentos previos.
+- Desenvolvimento: passo a passo da atividade principal, papel dos estudantes, uso dos recursos, intervencoes do professor e adaptacao se houver poucos dispositivos.
+- Encerramento: sintese, socializacao, registro final e encaminhamento para continuidade.
 
 7. RECURSOS DIDATICOS
 Lista objetiva dos recursos e como serao usados.
 
 8. AVALIACAO
-Avaliacao formativa, produto/evidencia final e 3 criterios observaveis.
+Avaliacao formativa, produto/evidencia final, 4 criterios observaveis e uma sugestao simples de autoavaliacao dos estudantes.
 
 9. REFERENCIAS
 BNCC e uma referencia complementar adequada.
@@ -727,7 +727,7 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
   const apiKey = process.env.OPENAI_API_KEY || ''
   const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
   const timeoutMs = envNumber('OPENAI_TIMEOUT_MS', 30000)
-  const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 1800)
+  const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 4200)
   const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'
 
   const skills = await listSkills()
