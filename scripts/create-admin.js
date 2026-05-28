@@ -34,7 +34,13 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 const targetEmail = process.argv[2] || 'admin@bncc.local'
-const defaultPassword = 'Admin@2026!'
+const defaultPassword = process.argv[3] || process.env.ADMIN_DEFAULT_PASSWORD || null
+
+if (!defaultPassword) {
+  console.error('Defina a senha via argumento ou variavel ADMIN_DEFAULT_PASSWORD')
+  console.error('   Ex: node scripts/create-admin.js admin@bncc.local "MinhaSenh@Forte"')
+  process.exit(1)
+}
 
 async function apiCall(endpoint, method = 'GET', body = null) {
   const url = `${SUPABASE_URL}/auth/v1/admin/${endpoint}`

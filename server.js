@@ -4,7 +4,7 @@ const path    = require('path');
 
 const app  = express();
 const PORT = 3000;
-const NVIDIA_KEY = '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';
+const NVIDIA_KEY = process.env.NVIDIA_API_KEY || '';
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname)));
