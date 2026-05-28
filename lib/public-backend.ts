@@ -133,6 +133,9 @@ function getSupabase() {
 function normalizeSkill(raw: Record<string, unknown>, index: number): PublicSkill {
   const code = String(raw.code || raw.id || `BNCC-${index + 1}`)
   const subject = String(raw.subject || raw.category || 'Computação')
+  const rawAxis = String(raw.axis || raw.competency || 'Tecnologia')
+  // corrige typos conhecidos no campo axis
+  const axis = rawAxis.replace(/^PP(ENSAMENTO)/i, 'P$1').trim()
 
   return {
     id: String(raw.id || code),
@@ -142,7 +145,7 @@ function normalizeSkill(raw: Record<string, unknown>, index: number): PublicSkil
     grade_level: String(raw.grade_level || 'EJA'),
     competency: String(raw.competency || subject),
     subject,
-    axis: String(raw.axis || raw.competency || 'Tecnologia'),
+    axis,
   }
 }
 
