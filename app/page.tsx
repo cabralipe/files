@@ -129,6 +129,44 @@ function normalizePdfText(value: string) {
     .replace(/[🧠📚🔍💡✏️🎨🧩🎭🍲🛠️📊⚙️✨⚡💡🎓🏫📝✏️💻🚀⭐🏷️📅⏰🕒🗒️📌]/g, '')
 }
 
+const TUTORIAL_STEPS = [
+  {
+    icon: 'BN',
+    iconStyle: { background: 'var(--red)', color: 'var(--paper-soft)' },
+    title: 'Bem-vindo ao Portal BNCC!',
+    body: 'Esta plataforma foi feita para professores de Atalaia/AL criarem planos de aula alinhados à BNCC Computação. Veja como funciona em 4 passos.',
+    tip: null,
+  },
+  {
+    icon: '⌕',
+    iconStyle: { background: 'var(--blue-wash)', color: 'var(--ink)' },
+    title: 'Pesquise as habilidades',
+    body: 'Use a aba "Pesquisar" para explorar as habilidades da BNCC. Filtre por ano, componente ou eixo temático e selecione as habilidades que quer usar.',
+    tip: 'Pesquisar',
+  },
+  {
+    icon: '✎',
+    iconStyle: { background: 'var(--mustard-wash)', color: 'var(--ink)' },
+    title: 'Crie um plano de aula',
+    body: 'Com habilidades selecionadas, vá para a aba "Plano", preencha os dados e clique em "Gerar plano". A IA cria um plano completo em segundos — você ainda pode editar!',
+    tip: 'Plano',
+  },
+  {
+    icon: '↓',
+    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
+    title: 'Salve e baixe em PDF',
+    body: 'Cadastre-se para salvar seus planos na conta e acessá-los a qualquer momento. Você também pode baixar em PDF e levar impresso para a sala de aula.',
+    tip: null,
+  },
+  {
+    icon: '♡',
+    iconStyle: { background: 'var(--plum-wash)', color: 'var(--ink)' },
+    title: 'Compartilhe experiências',
+    body: 'Clique em "Experiências" no menu para ver o que outros professores estão criando e compartilhar suas próprias práticas de sala de aula.',
+    tip: 'Experiências',
+  },
+]
+
 export default function Home() {
   const { user, signOut } = useAuth()
   const isLoggedIn = Boolean(user)
@@ -147,6 +185,14 @@ export default function Home() {
   const [activeSkill, setActiveSkill] = useState<Skill | null>(null)
   const [loadingPhrase, setLoadingPhrase] = useState('🧠 Pensando no plano...')
   const [progress, setProgress] = useState(0)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(0)
+
+  useEffect(() => {
+    if (!localStorage.getItem('bncc_tutorial_seen')) {
+      setShowTutorial(true)
+    }
+  }, [])
 
   useEffect(() => {
     void loadSkills()
@@ -589,6 +635,12 @@ export default function Home() {
     doc.save(`plano-${safeTitle || 'aula'}.pdf`)
   }
 
+  function closeTutorial() {
+    localStorage.setItem('bncc_tutorial_seen', '1')
+    setShowTutorial(false)
+    setTutorialStep(0)
+  }
+
   return (
     <main>
       <header id="hdr">
@@ -634,14 +686,17 @@ export default function Home() {
               </>
             ) : (
               <>
-                <Link className="nb" href="/auth/login">
-                  Login
+                <Link className="nb nb-login" href="/auth/login">
+                  <span className="nb-label">Login</span>
+                  <span className="nb-icon-only" aria-hidden="true">→</span>
                 </Link>
                 <Link className="nb nb-cta" href="/auth/signup">
-                  Cadastrar professor
+                  <span className="nb-label">Cadastrar professor</span>
+                  <span className="nb-icon-only" aria-hidden="true">+</span>
                 </Link>
               </>
             )}
+            <button className="nb tut-open" onClick={() => setShowTutorial(true)} aria-label="Abrir tutorial de uso">?</button>
           </nav>
         </div>
       </header>
@@ -939,6 +994,53 @@ export default function Home() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showTutorial && (
+        <div className="mbk tut-bk" onClick={closeTutorial}>
+          <div className="mdl tut-mdl" onClick={(e) => e.stopPropagation()}>
+            <button className="mdl-close" onClick={closeTutorial}>×</button>
+            <div className="tut-dots">
+              {TUTORIAL_STEPS.map((_, i) => (
+                <button
+                  key={i}
+                  className={`tut-dot ${i === tutorialStep ? 'on' : i < tutorialStep ? 'done' : ''}`}
+                  onClick={() => setTutorialStep(i)}
+                  aria-label={`Ir para passo ${i + 1}`}
+                />
+              ))}
+            </div>
+            <div className="tut-icon" style={TUTORIAL_STEPS[tutorialStep].iconStyle}>
+              {TUTORIAL_STEPS[tutorialStep].icon}
+            </div>
+            <div className="tut-step">Passo {tutorialStep + 1} de {TUTORIAL_STEPS.length}</div>
+            <h2 className="tut-title">{TUTORIAL_STEPS[tutorialStep].title}</h2>
+            <p className="tut-body">{TUTORIAL_STEPS[tutorialStep].body}</p>
+            {TUTORIAL_STEPS[tutorialStep].tip && (
+              <p className="tut-tip">
+                Clique em <span className="tut-navmock">{TUTORIAL_STEPS[tutorialStep].tip}</span> no menu do topo
+              </p>
+            )}
+            <div className="tut-actions">
+              {tutorialStep > 0 && (
+                <button className="btn btn-out" onClick={() => setTutorialStep(tutorialStep - 1)}>← Anterior</button>
+              )}
+              {tutorialStep < TUTORIAL_STEPS.length - 1 ? (
+                <button className="btn btn-pri" onClick={() => setTutorialStep(tutorialStep + 1)}>Próximo →</button>
+              ) : (
+                <button className="btn btn-pri" onClick={closeTutorial}>Entendido! ✓</button>
+              )}
+            </div>
+            <button className="tut-skip" onClick={closeTutorial}>Pular tutorial</button>
+          </div>
+        </div>
+      )}
+
+      {!user && (
+        <div className="mob-cta">
+          <Link className="btn btn-out mob-cta-btn" href="/auth/login">Entrar</Link>
+          <Link className="btn btn-pri mob-cta-btn mob-cta-main" href="/auth/signup">Cadastrar professor</Link>
         </div>
       )}
 
