@@ -826,10 +826,15 @@ ${date}
 
 ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
 
-  // Configuração da cascata: Gemini -> DeepSeek -> Gemma -> GLM -> template local
-  const geminiKey = process.env.GEMINI_API_KEY || 'AIzaSyDuiZEShkLTff8l0fPfvdGlpOXvMiN0x2M'
-  const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
-  const geminiTimeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || 25000
+  const totalStartTime = Date.now()
+  console.log(`\n==================================================`)
+  console.log(`[IA-GERADOR] [${new Date().toISOString()}] Nova solicitação de plano recebida!`)
+  console.log(`[IA-GERADOR] Tema: "${input.title}"`)
+  console.log(`[IA-GERADOR] Professor: "${input.teacher || 'Não informado'}" | Escola: "${input.school || 'Não informada'}"`)
+  console.log(`[IA-GERADOR] Ano/Turma: "${input.grade_level}" | Componente: "${input.subject}" | Duração: "${input.duration || '50 minutos'}"`)
+  console.log(`[IA-GERADOR] Materiais: "${input.materials || 'recursos básicos'}"`)
+  console.log(`[IA-GERADOR] Habilidades selecionadas (IDs): ${JSON.stringify(input.skill_ids)}`)
+  console.log(`[IA-GERADOR] Habilidades resolvidas do banco: ${selected.map(s => s.code).join(', ')} (Total: ${selected.length})`)
 
   const primaryKey = process.env.NVIDIA_API_KEY || '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'
   const primaryModel = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash'
@@ -844,49 +849,15 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
   const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 100000
   const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 100000
 
-  // Helper: chama a API oficial do Google Gemini
-  async function callGemini(opts: {
-    key: string
-    model: string
-    timeoutMs: number
-  }): Promise<string> {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
+  console.log(`[IA-GERADOR] [CONFIG] Cascata configurada:`)
+  console.log(`               1. DeepSeek (NIM): ${primaryModel} (Timeout: ${primaryTimeoutMs}ms)`)
+  console.log(`               2. Gemma (NIM): ${fallbackModel} (Timeout: ${fallbackTimeoutMs}ms)`)
+  console.log(`               3. GLM-5.1 (NIM): ${fallback2Model} (Timeout: ${fallback2TimeoutMs}ms)`)
+  console.log(`               Chave principal configurada? ${primaryKey ? 'Sim (começa com ' + primaryKey.slice(0, 8) + '...)' : 'Não'}`)
+  console.log(`               Chave fallback configurada? ${fallbackKey ? 'Sim (começa com ' + fallbackKey.slice(0, 8) + '...)' : 'Não'}`)
+  console.log(`==================================================`)
 
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${opts.model}:generateContent?key=${opts.key}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-          }
-        }),
-        signal: controller.signal,
-      })
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '')
-        const detail = errText ? ': ' + errText.slice(0, 200) : ''
-        throw new Error('[gemini] Status ' + res.status + detail)
-      }
-
-      const payload = await res.json()
-      const content = payload.candidates?.[0]?.content?.parts?.[0]?.text
-      if (!content) {
-        throw new Error('[gemini] Resposta vazia da API')
-      }
-      return content
-    } finally {
-      clearTimeout(timer)
-    }
-  }
-
-  // Helper: chama o endpoint NVIDIA NIM com timeout. Lança erro se o status não for OK
-  // ou se o tempo limite for excedido. Retorna o conteúdo da resposta (string) em sucesso.
+  // Helper: chama o endpoint NVIDIA NIM com timeout e logs ricos.
   async function callNvidia(opts: {
     key: string
     model: string
@@ -896,6 +867,10 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
   }): Promise<string> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
+    const callStartTime = Date.now()
+
+    console.log(`[IA-GERADOR] [${opts.label}] Enviando requisição HTTP para a API NVIDIA NIM...`)
+    console.log(`[IA-GERADOR] [${opts.label}] Modelo: "${opts.model}" | Timeout: ${opts.timeoutMs}ms | Thinking: ${opts.enableThinking ?? false}`)
 
     try {
       const body: Record<string, unknown> = {
@@ -907,7 +882,6 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
         stream: false,
       }
       if (opts.enableThinking) {
-        // DeepSeek/Gemma usam enable_thinking; GLM aceita clear_thinking também
         body.chat_template_kwargs = opts.model.includes('glm')
           ? { enable_thinking: true, clear_thinking: false }
           : { enable_thinking: true }
@@ -924,18 +898,29 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
         signal: controller.signal,
       })
 
+      const callDuration = Date.now() - callStartTime
+
       if (!res.ok) {
         const errText = await res.text().catch(() => '')
         const detail = errText ? ': ' + errText.slice(0, 200) : ''
+        console.error(`[IA-GERADOR] [${opts.label}] [FALHA] HTTP ${res.status} após ${callDuration}ms${detail}`)
         throw new Error('[' + opts.label + '] Status ' + res.status + detail)
       }
 
       const payload = await res.json()
       const content = payload.choices?.[0]?.message?.content
       if (!content) {
+        console.error(`[IA-GERADOR] [${opts.label}] [FALHA] Resposta sem conteúdo (choices vazias) após ${callDuration}ms`)
         throw new Error(`[${opts.label}] Resposta vazia da API`)
       }
+
+      console.log(`[IA-GERADOR] [${opts.label}] [SUCESSO] Plano gerado com sucesso em ${callDuration}ms! Tamanho: ${content.length} caracteres.`)
       return content
+    } catch (error) {
+      const callDuration = Date.now() - callStartTime
+      const errMsg = describeError(error, opts.timeoutMs)
+      console.error(`[IA-GERADOR] [${opts.label}] [ERRO EXCEÇÃO] Falhou após ${callDuration}ms: ${errMsg}`)
+      throw error
     } finally {
       clearTimeout(timer)
     }
@@ -943,56 +928,63 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
 
   function describeError(err: unknown, timeoutMs: number): string {
     if (err instanceof Error && err.name === 'AbortError') {
-      return `timeout após ${timeoutMs}ms`
+      return `timeout / abortado após ${timeoutMs}ms`
     }
     return (err as Error)?.message || 'erro desconhecido'
   }
 
-  // 1) Gemini (primário absoluto)
+  // 1) DeepSeek (primário absoluto agora que o Gemini foi removido)
   try {
-    return await callGemini({
-      key: geminiKey,
-      model: geminiModel,
-      timeoutMs: geminiTimeoutMs,
+    console.log(`\n[IA-GERADOR] [CASCATA 1/3] Tentando modelo principal: DeepSeek...`)
+    const content = await callNvidia({
+      key: primaryKey,
+      model: primaryModel,
+      timeoutMs: primaryTimeoutMs,
+      label: 'primary/deepseek',
     })
-  } catch (errGemini) {
-    console.warn('Gemini falhou (' + describeError(errGemini, geminiTimeoutMs) + '). Tentando DeepSeek...')
+    const totalDuration = Date.now() - totalStartTime
+    console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via DeepSeek! Tempo total: ${totalDuration}ms.`)
+    console.log(`==================================================\n`)
+    return content
+  } catch (err1) {
+    const elapsed1 = Date.now() - totalStartTime
+    console.warn(`[IA-GERADOR] [CASCATA 1/3 FALHA] DeepSeek falhou após ${elapsed1}ms. Tentando Gemma...`)
 
-    // 2) DeepSeek (secundário / NIM primário)
+    // 2) Gemma (fallback 1) - chave separada
     try {
-      return await callNvidia({
-        key: primaryKey,
-        model: primaryModel,
-        timeoutMs: primaryTimeoutMs,
-        label: 'primary/deepseek',
+      console.log(`\n[IA-GERADOR] [CASCATA 2/3] Tentando fallback 1: Gemma...`)
+      const content = await callNvidia({
+        key: fallbackKey,
+        model: fallbackModel,
+        timeoutMs: fallbackTimeoutMs,
+        label: 'fallback1/gemma',
+        enableThinking: true,
       })
-    } catch (err1) {
-      console.warn('DeepSeek falhou (' + describeError(err1, primaryTimeoutMs) + '). Tentando Gemma...')
+      const totalDuration = Date.now() - totalStartTime
+      console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via Gemma! Tempo total: ${totalDuration}ms.`)
+      console.log(`==================================================\n`)
+      return content
+    } catch (err2) {
+      const elapsed2 = Date.now() - totalStartTime
+      console.warn(`[IA-GERADOR] [CASCATA 2/3 FALHA] Gemma falhou após ${elapsed2}ms. Tentando GLM-5.1...`)
 
-      // 3) Gemma (fallback 1) - chave separada
+      // 3) GLM-5.1 (fallback 2) - mesma chave do DeepSeek
       try {
-        return await callNvidia({
-          key: fallbackKey,
-          model: fallbackModel,
-          timeoutMs: fallbackTimeoutMs,
-          label: 'fallback1/gemma',
+        console.log(`\n[IA-GERADOR] [CASCATA 3/3] Tentando fallback 2: GLM-5.1...`)
+        const content = await callNvidia({
+          key: primaryKey,
+          model: fallback2Model,
+          timeoutMs: fallback2TimeoutMs,
+          label: 'fallback2/glm',
           enableThinking: true,
         })
-      } catch (err2) {
-        console.warn('Gemma falhou (' + describeError(err2, fallbackTimeoutMs) + '). Tentando GLM-5.1...')
-
-        // 4) GLM-5.1 (fallback 2) - mesma chave do DeepSeek
-        try {
-          return await callNvidia({
-            key: primaryKey,
-            model: fallback2Model,
-            timeoutMs: fallback2TimeoutMs,
-            label: 'fallback2/glm',
-            enableThinking: true,
-          })
-        } catch (err3) {
-          console.warn('GLM-5.1 tambem falhou (' + describeError(err3, fallback2TimeoutMs) + '). Usando template estatico local.')
-        }
+        const totalDuration = Date.now() - totalStartTime
+        console.log(`[IA-GERADOR] [SUCESSO TOTAL] Processo finalizado com sucesso via GLM-5.1! Tempo total: ${totalDuration}ms.`)
+        console.log(`==================================================\n`)
+        return content
+      } catch (err3) {
+        const elapsed3 = Date.now() - totalStartTime
+        console.error(`[IA-GERADOR] [CASCATA FALHA TOTAL] GLM-5.1 também falhou após ${elapsed3}ms. Usando template estático local.`)
       }
     }
   }
