@@ -542,7 +542,26 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
     .join('\n\n')
   const date = input.date || new Date().toLocaleDateString('pt-BR')
 
+  const teacherObjectives = (input.objectives || '').trim()
+  const teacherMethodology = (input.methodology || '').trim()
+  const teacherNotes = (input.notes || '').trim()
+
+  const objectivesBlock = teacherObjectives
+    ? '"""' + teacherObjectives + '"""'
+    : '(em branco — infira a partir do tema e das habilidades BNCC, e marque como sugestão da IA)'
+  const methodologyBlock = teacherMethodology
+    ? '"""' + teacherMethodology + '"""'
+    : '(em branco — proponha uma metodologia ativa compatível com o tema e marque como sugestão da IA)'
+
   const prompt = `Você é especialista em educação básica, BNCC e tecnologia educacional. Crie um PLANO DE AULA COMPLETO, DETALHADO e PRÁTICO para professores da rede pública municipal de Atalaia-AL (Alagoas, Nordeste).
+
+╔══════════════════════════════════════════════════════════════
+║ INSTRUÇÕES CRÍTICAS — LEIA ANTES DE GERAR O PLANO
+╚══════════════════════════════════════════════════════════════
+1. Os campos "OBJETIVOS DO PROFESSOR" e "METODOLOGIA" abaixo foram escritos pelo próprio professor — eles são a ESPINHA DORSAL deste plano. Você DEVE incorporá-los literalmente e expandi-los, NÃO substituí-los por objetivos genéricos.
+2. Se o professor descreveu uma metodologia específica (ex.: "rotação por estações", "sala de aula invertida", "projeto investigativo"), TODA a seção de DESENVOLVIMENTO da aula precisa se estruturar EXATAMENTE em torno dessa metodologia.
+3. Os "Objetivos do professor" devem virar OBJETIVO GERAL + OBJETIVOS ESPECÍFICOS reescritos com verbos da Taxonomia de Bloom, sem perder a intenção original.
+4. Se algum dos dois campos vier vazio, infira algo coerente com o tema e com as habilidades BNCC selecionadas, mas avise no início da seção: "[Sugestão da IA — ajuste conforme sua intenção pedagógica]".
 
 DADOS DO PLANO:
 • Professor(a): ${input.teacher || "Não informado"}
@@ -552,10 +571,14 @@ DADOS DO PLANO:
 • Data: ${date}
 • Duração: ${input.duration || "50 minutos"}
 • Tema da Aula: ${input.title}
-• Objetivos do professor: ${input.objectives || "Não informado"}
 • Recursos disponíveis: ${input.materials || "recursos básicos"}
-• Metodologia: ${input.methodology || "Metodologia ativa"}
-• Observações: ${input.notes || "nenhuma"}
+• Observações do professor: ${teacherNotes || "nenhuma"}
+
+▶ OBJETIVOS DO PROFESSOR (use como base do OBJETIVO GERAL e dos ESPECÍFICOS):
+${objectivesBlock}
+
+▶ METODOLOGIA ESCOLHIDA PELO PROFESSOR (use como base do DESENVOLVIMENTO da aula):
+${methodologyBlock}
 
 HABILIDADES DA BNCC COMPUTAÇÃO (${selected.length} selecionadas):
 ${skillBlock}
@@ -578,13 +601,14 @@ Tema: ${input.title}
 ▌ OBJETIVOS
 ────────────────────────────────────────────
 OBJETIVO GERAL:
-[escreva aqui — o que os alunos serão capazes de fazer ao final da aula]
+[Reescreva os "Objetivos do professor" acima de forma clara e mensurável, em UMA frase com verbo no infinitivo (Taxonomia de Bloom). Mantenha a intenção original do professor.]
 
 OBJETIVOS ESPECÍFICOS:
-• [objetivo 1 — mensurável e específico]
-• [objetivo 2]
-• [objetivo 3]
-• [objetivo 4]
+[Quebre os objetivos do professor em 4 metas mensuráveis. Cada uma deve começar com verbo de ação (Compreender, Aplicar, Criar, Analisar, Avaliar...) e ser observável.]
+• [objetivo específico 1 — derivado do que o professor escreveu]
+• [objetivo específico 2 — derivado do que o professor escreveu]
+• [objetivo específico 3 — articulado às habilidades BNCC selecionadas]
+• [objetivo específico 4 — articulado ao tema e à realidade de Atalaia]
 
 ────────────────────────────────────────────
 ▌ HABILIDADES DA BNCC COMPUTAÇÃO
@@ -610,7 +634,12 @@ ATITUDINAIS (saber ser):
 ────────────────────────────────────────────
 ▌ METODOLOGIA
 ────────────────────────────────────────────
-[3-4 parágrafos descrevendo detalhadamente a abordagem pedagógica de ${input.methodology}, como os alunos interagirão com a tecnologia, como o pensamento computacional será integrado ao conteúdo, e como a realidade de Atalaia-AL será valorizada]
+[3-4 parágrafos OBRIGATORIAMENTE ancorados na metodologia escolhida pelo professor: "${teacherMethodology || 'metodologia ativa'}".
+
+Parágrafo 1: explique CONCRETAMENTE como essa metodologia se aplica a este tema específico (não fale em geral sobre a metodologia — fale sobre ESTA aula).
+Parágrafo 2: descreva como os alunos interagirão entre si e com a tecnologia dentro dessa metodologia (papéis, agrupamentos, momentos de fala/escuta).
+Parágrafo 3: explique como o pensamento computacional (decomposição, padrões, abstração, algoritmos) será integrado dentro dessa metodologia.
+Parágrafo 4: conecte com a realidade de Atalaia-AL (cultura nordestina, cotidiano dos alunos, exemplos locais reconhecíveis).]
 
 ────────────────────────────────────────────
 ▌ DESENVOLVIMENTO DA AULA
@@ -667,15 +696,19 @@ ${date}
 
 ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e estar pronto para uso imediato por qualquer professor. Valorize a cultura nordestina, a realidade de Atalaia-AL e use linguagem acessível.`
 
-  // Configuração das chaves NVIDIA NIM
+  // Configuração da cascata NVIDIA NIM: DeepSeek -> Gemma -> GLM -> template local
   const primaryKey = process.env.NVIDIA_API_KEY || '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'
   const primaryModel = process.env.NVIDIA_MODEL || 'deepseek-ai/deepseek-v4-flash'
 
   const fallbackKey = process.env.NVIDIA_API_KEY_FALLBACK || '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'
   const fallbackModel = process.env.NVIDIA_MODEL_FALLBACK || 'google/gemma-4-31b-it'
 
-  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 20000
-  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 35000
+  // GLM-5.1 usa a mesma chave do DeepSeek (NVIDIA_API_KEY) por padrão
+  const fallback2Model = process.env.NVIDIA_MODEL_FALLBACK_2 || 'z-ai/glm-5.1'
+
+  const primaryTimeoutMs = Number(process.env.NVIDIA_PRIMARY_TIMEOUT_MS) || 70000
+  const fallbackTimeoutMs = Number(process.env.NVIDIA_FALLBACK_TIMEOUT_MS) || 70000
+  const fallback2TimeoutMs = Number(process.env.NVIDIA_FALLBACK_2_TIMEOUT_MS) || 90000
 
   // Helper: chama o endpoint NVIDIA NIM com timeout. Lança erro se o status não for OK
   // ou se o tempo limite for excedido. Retorna o conteúdo da resposta (string) em sucesso.
@@ -693,13 +726,16 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
       const body: Record<string, unknown> = {
         model: opts.model,
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        top_p: 0.95,
-        max_tokens: opts.model.includes('gemma') ? 16384 : 4096,
+        temperature: opts.model.includes('glm') ? 1 : 0.7,
+        top_p: opts.model.includes('glm') ? 1 : 0.95,
+        max_tokens: 16384,
         stream: false,
       }
       if (opts.enableThinking) {
-        body.chat_template_kwargs = { enable_thinking: true }
+        // DeepSeek/Gemma usam enable_thinking; GLM aceita clear_thinking também
+        body.chat_template_kwargs = opts.model.includes('glm')
+          ? { enable_thinking: true, clear_thinking: false }
+          : { enable_thinking: true }
       }
 
       const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
@@ -714,7 +750,9 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
       })
 
       if (!res.ok) {
-        throw new Error(`[${opts.label}] Status ${res.status}`)
+        const errText = await res.text().catch(() => '')
+        const detail = errText ? ': ' + errText.slice(0, 200) : ''
+        throw new Error('[' + opts.label + '] Status ' + res.status + detail)
       }
 
       const payload = await res.json()
@@ -728,7 +766,14 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
     }
   }
 
-  // 1) Tenta o modelo primário (DeepSeek). Se falhar OU demorar demais, cai no Gemma.
+  function describeError(err: unknown, timeoutMs: number): string {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return `timeout após ${timeoutMs}ms`
+    }
+    return (err as Error)?.message || 'erro desconhecido'
+  }
+
+  // 1) DeepSeek (primário)
   try {
     return await callNvidia({
       key: primaryKey,
@@ -736,43 +781,53 @@ ATENÇÃO: Seja MUITO detalhado e prático. O plano deve ser autoexplicativo e e
       timeoutMs: primaryTimeoutMs,
       label: 'primary/deepseek',
     })
-  } catch (primaryError) {
-    const reason = primaryError instanceof Error && primaryError.name === 'AbortError'
-      ? `timeout após ${primaryTimeoutMs}ms`
-      : (primaryError as Error)?.message || 'erro desconhecido'
-    console.warn(`DeepSeek falhou (${reason}). Tentando fallback Gemma...`)
+  } catch (err1) {
+    console.warn('DeepSeek falhou (' + describeError(err1, primaryTimeoutMs) + '). Tentando Gemma...')
 
-    // 2) Fallback: Gemma com a outra chave da NVIDIA
+    // 2) Gemma (fallback 1) - chave separada
     try {
       return await callNvidia({
         key: fallbackKey,
         model: fallbackModel,
         timeoutMs: fallbackTimeoutMs,
-        label: 'fallback/gemma',
+        label: 'fallback1/gemma',
         enableThinking: true,
       })
-    } catch (fallbackError) {
-      const fbReason = fallbackError instanceof Error && fallbackError.name === 'AbortError'
-        ? `timeout após ${fallbackTimeoutMs}ms`
-        : (fallbackError as Error)?.message || 'erro desconhecido'
-      console.warn(`Gemma também falhou (${fbReason}). Usando template estático local.`)
+    } catch (err2) {
+      console.warn('Gemma falhou (' + describeError(err2, fallbackTimeoutMs) + '). Tentando GLM-5.1...')
+
+      // 3) GLM-5.1 (fallback 2) - mesma chave do DeepSeek
+      try {
+        return await callNvidia({
+          key: primaryKey,
+          model: fallback2Model,
+          timeoutMs: fallback2TimeoutMs,
+          label: 'fallback2/glm',
+          enableThinking: true,
+        })
+      } catch (err3) {
+        console.warn('GLM-5.1 tambem falhou (' + describeError(err3, fallback2TimeoutMs) + '). Usando template estatico local.')
+      }
     }
   }
 
-  // Fallback local caso a API falhe
+  // Fallback local caso TODAS as APIs falhem
   return `PLANO DE AULA
 ${input.title.toUpperCase()}
 
 IDENTIFICACAO
 Professor(a): ${input.teacher || 'Professor(a)'}
-Escola: ${input.school || 'Escola Municipal'} | Município: Atalaia - AL
+Escola: ${input.school || 'Escola Municipal'} | Municipio: Atalaia - AL
 Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
-Data: ${date} | Duração: ${input.duration || '50 minutos'}
+Data: ${date} | Duracao: ${input.duration || '50 minutos'}
 Tema: ${input.title}
+
+OBJETIVOS DO PROFESSOR
+${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'}
 
 OBJETIVOS
 Objetivo geral:
-Desenvolver uma experiência de aprendizagem conectada a BNCC Computação, valorizando o cotidiano dos estudantes e o uso responsavel de tecnologias digitais.
+Desenvolver uma experiencia de aprendizagem conectada a BNCC Computacao, valorizando o cotidiano dos estudantes e o uso responsavel de tecnologias digitais.
 
 Objetivos especificos:
 - Relacionar o tema da aula aos conhecimentos previos dos estudantes.
@@ -783,13 +838,13 @@ Objetivos especificos:
 HABILIDADES DA BNCC COMPUTACAO
 ${skillBlock || 'Nenhuma habilidade encontrada.'}
 
-CONTEÚDOS
+CONTEUDOS
 - Conceitos centrais do componente ${input.subject}.
 - Cultura digital, pensamento computacional e uso critico de recursos tecnologicos.
 - Comunicacao, registro e socializacao de descobertas.
 
 METODOLOGIA
-${input.methodology || 'Metodologia ativa com mediacao do professor.'}
+${teacherMethodology || 'Metodologia ativa com mediacao do professor.'}
 
 O professor inicia a aula contextualizando o tema com exemplos proximos da realidade de Atalaia/AL. Em seguida, organiza a turma para uma atividade pratica em duplas ou pequenos grupos, alternando momentos de orientacao coletiva, investigacao guiada e registro das descobertas.
 
@@ -798,24 +853,24 @@ Momento inicial:
 Apresente o tema, escute hipoteses dos estudantes e registre no quadro as ideias principais. Retome as habilidades selecionadas em linguagem simples.
 
 Desenvolvimento:
-Proponha uma tarefa pratica com os recursos disponíveis. Os estudantes devem pesquisar, organizar informacoes, criar um produto simples ou resolver um desafio relacionado ao tema. Circule pela sala, faca perguntas, apoie grupos com mais dificuldade e incentive justificativas.
+Proponha uma tarefa pratica com os recursos disponiveis. Os estudantes devem pesquisar, organizar informacoes, criar um produto simples ou resolver um desafio relacionado ao tema. Circule pela sala, faca perguntas, apoie grupos com mais dificuldade e incentive justificativas.
 
 Encerramento:
-Convide os grupos a compartilhar resultados. Sistematize o que foi aprendido, conecte com a BNCC Computação e registre combinados para continuidade.
+Convide os grupos a compartilhar resultados. Sistematize o que foi aprendido, conecte com a BNCC Computacao e registre combinados para continuidade.
 
-RECURSOS DIDÁTICOS
+RECURSOS DIDATICOS
 ${input.materials || 'Quadro, caderno, celular ou computador compartilhado.'}
 
 AVALIACAO
-A avaliação sera formativa, observando participacao, colaboracao, clareza do registro, relacao com as habilidades selecionadas e qualidade da evidencia produzida. Considere tambem uma autoavaliação breve: o que aprendi, o que foi dificil e como usei a tecnologia com responsabilidade.
+A avaliacao sera formativa, observando participacao, colaboracao, clareza do registro, relacao com as habilidades selecionadas e qualidade da evidencia produzida. Considere tambem uma autoavaliacao breve: o que aprendi, o que foi dificil e como usei a tecnologia com responsabilidade.
 
 OBSERVACOES
-${input.notes || 'Plano gerado para uso e edição pelo professor.'}
+${teacherNotes || 'Plano gerado para uso e edicao pelo professor.'}
 
 REFERENCIAS
 - BRASIL. Base Nacional Comum Curricular (BNCC). Brasilia: MEC, 2017.
-- BNCC Computação e documentos curriculares complementares.
+- BNCC Computacao e documentos curriculares complementares.
 
-Plano elaborado com base na BNCC Computação
-Secretaria Municipal de Educação de Atalaia/AL`
+Plano elaborado com base na BNCC Computacao
+Secretaria Municipal de Educacao de Atalaia/AL`
 }
