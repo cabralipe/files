@@ -13,24 +13,37 @@ export async function GET(request: Request) {
     const ago30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const ago7d  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000)
 
+    const q = (page: string) => supabase.from('analytics_events').select('*', { count: 'exact', head: true })
+      .eq('event_type', 'pageview').eq('page', page)
+
     const [
-      { count: totalViews },
-      { count: viewsToday },
-      { count: viewsLast7d },
-      { count: viewsLast30d },
+      // Computação portal
+      { count: compTotal },
+      { count: compToday },
+      { count: compLast7d },
+      { count: compLast30d },
+      // BNCC Nacional
+      { count: nacTotal },
+      { count: nacToday },
+      { count: nacLast7d },
+      { count: nacLast30d },
+      // Plans
       { count: portalPlans },
       { count: nacPlans },
+      // Top schools
       { data: schoolRows },
-      { data: plansByDayRows },
     ] = await Promise.all([
-      supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_type', 'pageview'),
-      supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_type', 'pageview').gte('created_at', todayStart.toISOString()),
-      supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_type', 'pageview').gte('created_at', ago7d.toISOString()),
-      supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_type', 'pageview').gte('created_at', ago30d.toISOString()),
+      q('/'),
+      q('/').gte('created_at', todayStart.toISOString()),
+      q('/').gte('created_at', ago7d.toISOString()),
+      q('/').gte('created_at', ago30d.toISOString()),
+      q('/bncc-nacional'),
+      q('/bncc-nacional').gte('created_at', todayStart.toISOString()),
+      q('/bncc-nacional').gte('created_at', ago7d.toISOString()),
+      q('/bncc-nacional').gte('created_at', ago30d.toISOString()),
       supabase.from('plans').select('*', { count: 'exact', head: true }),
       supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_type', 'bncc_plan_gen'),
       supabase.from('analytics_events').select('school').eq('event_type', 'bncc_plan_gen').not('school', 'is', null).neq('school', ''),
-      supabase.from('analytics_events').select('created_at').eq('event_type', 'pageview').gte('created_at', ago30d.toISOString()),
     ])
 
     // Aggregate top schools
@@ -43,28 +56,27 @@ export async function GET(request: Request) {
       .slice(0, 10)
       .map(([school, count]) => ({ school, count }))
 
-    // Daily visit counts for sparkline (last 30 days)
-    const dailyVisits: Record<string, number> = {}
-    for (const row of plansByDayRows ?? []) {
-      const day = (row.created_at as string).slice(0, 10)
-      dailyVisits[day] = (dailyVisits[day] ?? 0) + 1
-    }
-
     return NextResponse.json({
       data: {
-        visits: {
-          total:    totalViews   ?? 0,
-          today:    viewsToday   ?? 0,
-          last7d:   viewsLast7d  ?? 0,
-          last30d:  viewsLast30d ?? 0,
+        computacao: {
+          visits: {
+            total:   compTotal   ?? 0,
+            today:   compToday   ?? 0,
+            last7d:  compLast7d  ?? 0,
+            last30d: compLast30d ?? 0,
+          },
+          plans: portalPlans ?? 0,
         },
-        plans: {
-          portal:   portalPlans ?? 0,
-          nacional: nacPlans    ?? 0,
-          total:    (portalPlans ?? 0) + (nacPlans ?? 0),
+        nacional: {
+          visits: {
+            total:   nacTotal   ?? 0,
+            today:   nacToday   ?? 0,
+            last7d:  nacLast7d  ?? 0,
+            last30d: nacLast30d ?? 0,
+          },
+          plans: nacPlans ?? 0,
         },
         topSchools,
-        dailyVisits,
       },
     })
   } catch (error) {

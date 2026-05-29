@@ -69,6 +69,44 @@ const NIVEL_CONFIG: Record<Nivel, {
   },
 }
 
+const NAC_TUTORIAL_STEPS = [
+  {
+    icon: '📋',
+    iconStyle: { background: 'var(--blue)', color: 'var(--paper-soft)' },
+    title: 'Bem-vindo ao BNCC Nacional!',
+    body: 'Aqui você acessa as habilidades da Base Nacional Comum Curricular para todas as etapas: Educação Infantil, Ensino Fundamental e Ensino Médio. Crie planos de aula em segundos com ajuda da IA.',
+    tip: null,
+  },
+  {
+    icon: '🔍',
+    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
+    title: 'Pesquise as habilidades',
+    body: 'Use a aba "Pesquisar" para explorar as habilidades. Filtre por disciplina ou componente curricular, ano/faixa etária e unidade temática. Use a busca livre para encontrar qualquer conteúdo.',
+    tip: 'Pesquisar',
+  },
+  {
+    icon: '✔',
+    iconStyle: { background: 'var(--mustard-wash)', color: 'var(--ink)' },
+    title: 'Selecione as habilidades',
+    body: 'Clique em qualquer habilidade para ver os detalhes e expandir o conteúdo. Clique em "+ Selecionar" para adicioná-la ao seu plano. O botão flutuante mostra quantas você selecionou.',
+    tip: 'Plano',
+  },
+  {
+    icon: '✦',
+    iconStyle: { background: 'var(--plum-wash)', color: 'var(--ink)' },
+    title: 'Gere o plano com IA',
+    body: 'Vá para a aba "Plano", preencha o tema, professor, escola e as informações da aula. Clique em "Gerar plano com IA" e em menos de 30 segundos você terá um plano completo, pronto para editar.',
+    tip: 'Plano',
+  },
+  {
+    icon: '↓',
+    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
+    title: 'Baixe em PDF — 6 layouts',
+    body: 'Clique em "Baixar PDF" e escolha entre 6 modelos: Risográfico, Institucional, Simples, Verde Natural, Colorido e Noturno. Use "Visualizar" para ver o plano renderizado com fórmulas matemáticas em LaTeX.',
+    tip: null,
+  },
+]
+
 const PDF_LAYOUTS: { id: PdfLayout; label: string; desc: string }[] = [
   { id: 'risografico', label: 'Risográfico', desc: 'Fundo creme, acentos em vermelho coral.' },
   { id: 'institucional', label: 'Institucional', desc: 'Cabeçalho azul sólido. Visual formal.' },
@@ -213,6 +251,8 @@ export default function BnccNacionalPage() {
   const [message, setMessage] = useState('')
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(0)
 
   // Load skills when nivel changes + log pageview on first selection
   useEffect(() => {
@@ -232,8 +272,22 @@ export default function BnccNacionalPage() {
     }).catch(() => {})
   }, [nivel])
 
+  // Show tutorial on first visit after nivel is selected
+  useEffect(() => {
+    if (!nivel) return
+    if (!localStorage.getItem('bncc_nac_tutorial_seen')) {
+      setShowTutorial(true)
+    }
+  }, [nivel])
+
   useEffect(() => { setPage(1) }, [query, disciplina, ano, unidade])
   useEffect(() => { setUnidade('') }, [disciplina])
+
+  function closeTutorial() {
+    localStorage.setItem('bncc_nac_tutorial_seen', '1')
+    setShowTutorial(false)
+    setTutorialStep(0)
+  }
 
   function showToast(text: string) {
     setMessage(text)
@@ -559,6 +613,47 @@ export default function BnccNacionalPage() {
     <main>
       {message && <div id="toast" className="show" role="alert">{message}</div>}
 
+      {/* ── Tutorial ── */}
+      {showTutorial && (
+        <div className="mbk tut-bk" onClick={closeTutorial}>
+          <div className="mdl tut-mdl" onClick={(e) => e.stopPropagation()}>
+            <button className="mdl-close" onClick={closeTutorial}>×</button>
+            <div className="tut-dots">
+              {NAC_TUTORIAL_STEPS.map((_, i) => (
+                <button
+                  key={i}
+                  className={`tut-dot ${i === tutorialStep ? 'on' : i < tutorialStep ? 'done' : ''}`}
+                  onClick={() => setTutorialStep(i)}
+                  aria-label={`Ir para passo ${i + 1}`}
+                />
+              ))}
+            </div>
+            <div className="tut-icon" style={NAC_TUTORIAL_STEPS[tutorialStep].iconStyle}>
+              {NAC_TUTORIAL_STEPS[tutorialStep].icon}
+            </div>
+            <div className="tut-step">Passo {tutorialStep + 1} de {NAC_TUTORIAL_STEPS.length}</div>
+            <h2 className="tut-title">{NAC_TUTORIAL_STEPS[tutorialStep].title}</h2>
+            <p className="tut-body">{NAC_TUTORIAL_STEPS[tutorialStep].body}</p>
+            {NAC_TUTORIAL_STEPS[tutorialStep].tip && (
+              <p className="tut-tip">
+                Clique em <span className="tut-navmock">{NAC_TUTORIAL_STEPS[tutorialStep].tip}</span> no menu do topo
+              </p>
+            )}
+            <div className="tut-actions">
+              {tutorialStep > 0 && (
+                <button className="btn btn-out" onClick={() => setTutorialStep(tutorialStep - 1)}>← Anterior</button>
+              )}
+              {tutorialStep < NAC_TUTORIAL_STEPS.length - 1 ? (
+                <button className="btn btn-pri" onClick={() => setTutorialStep(tutorialStep + 1)}>Próximo →</button>
+              ) : (
+                <button className="btn btn-pri" onClick={closeTutorial}>Entendido! ✓</button>
+              )}
+            </div>
+            <button className="tut-skip" onClick={closeTutorial}>Pular tutorial</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Popup seletor de nível ── */}
       {!nivel && (
         <div className="bnac-nivel-bk">
@@ -635,6 +730,7 @@ export default function BnccNacionalPage() {
                 <button className="nb" onClick={() => setNivel(null)} title="Trocar etapa de ensino">
                   {cfg!.icon} Trocar etapa
                 </button>
+                <button className="nb tut-open" onClick={() => { setTutorialStep(0); setShowTutorial(true) }} aria-label="Abrir tutorial">?</button>
               </nav>
             </div>
           </header>

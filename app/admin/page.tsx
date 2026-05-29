@@ -34,6 +34,45 @@ async function getAccessToken() {
   return data.session?.access_token
 }
 
+function AnalyticsSection({
+  title, accent, accentWash, visits, plansLabel, plans,
+}: {
+  title: string
+  accent: string
+  accentWash: string
+  visits: { total: number; today: number; last7d: number; last30d: number }
+  plansLabel: string
+  plans: number
+}) {
+  const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: 'var(--ink-muted)', marginBottom: 8 }
+  return (
+    <div style={{ borderLeft: `4px solid ${accent}`, paddingLeft: 14 }}>
+      <div style={{ ...mono, fontSize: 12, color: 'var(--ink)', marginBottom: 12 }}>{title}</div>
+      <div style={{ ...mono }}>Visitas</div>
+      <div className="coord-stats" style={{ marginBottom: 16 }}>
+        {[
+          { label: 'Total', val: visits.total, bg: accentWash },
+          { label: 'Hoje', val: visits.today, bg: 'var(--paper-soft)' },
+          { label: 'Últimos 7 dias', val: visits.last7d, bg: 'var(--paper-soft)' },
+          { label: 'Últimos 30 dias', val: visits.last30d, bg: 'var(--paper-soft)' },
+        ].map((s) => (
+          <div key={s.label} style={{ background: s.bg }}>
+            <strong>{s.val.toLocaleString('pt-BR')}</strong>
+            <span style={{ display: 'block', marginTop: 4 }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ ...mono }}>Planos de aula gerados</div>
+      <div className="coord-stats">
+        <div style={{ background: accentWash }}>
+          <strong>{plans.toLocaleString('pt-BR')}</strong>
+          <span style={{ display: 'block', marginTop: 4 }}>{plansLabel}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated, signOut } = useAuth()
@@ -46,10 +85,15 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
   const [analytics, setAnalytics] = useState<{
-    visits: { total: number; today: number; last7d: number; last30d: number }
-    plans: { portal: number; nacional: number; total: number }
+    computacao: {
+      visits: { total: number; today: number; last7d: number; last30d: number }
+      plans: number
+    }
+    nacional: {
+      visits: { total: number; today: number; last7d: number; last30d: number }
+      plans: number
+    }
     topSchools: { school: string; count: number }[]
-    dailyVisits: Record<string, number>
   } | null>(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
@@ -513,101 +557,55 @@ export default function AdminDashboard() {
 
             {analytics && (
               <>
-                {/* Visit stats */}
-                <div style={{ marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
-                  Visitas ao site
-                </div>
-                <div className="coord-stats" style={{ marginBottom: 28 }}>
-                  {[
-                    { label: 'Total', val: analytics.visits.total, bg: 'var(--blue-wash)' },
-                    { label: 'Hoje', val: analytics.visits.today, bg: 'var(--teal-wash)' },
-                    { label: 'Últimos 7 dias', val: analytics.visits.last7d, bg: 'var(--mustard-wash)' },
-                    { label: 'Últimos 30 dias', val: analytics.visits.last30d, bg: 'var(--plum-wash)' },
-                  ].map((s) => (
-                    <div key={s.label} style={{ background: s.bg }}>
-                      <strong>{s.val.toLocaleString('pt-BR')}</strong>
-                      <span style={{ display: 'block', marginTop: 4 }}>{s.label}</span>
-                    </div>
-                  ))}
-                </div>
+                {/* ── Portal Computação Atalaia ── */}
+                <AnalyticsSection
+                  title="🖥️ Portal Computação — Atalaia/AL"
+                  accent="var(--teal)"
+                  accentWash="var(--teal-wash)"
+                  visits={analytics.computacao.visits}
+                  plansLabel="Planos gerados"
+                  plans={analytics.computacao.plans}
+                />
 
-                {/* Plan stats */}
-                <div style={{ marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
-                  Planos de aula gerados
-                </div>
-                <div className="coord-stats" style={{ marginBottom: 28 }}>
-                  {[
-                    { label: 'Total Geral', val: analytics.plans.total, bg: 'var(--red-wash)' },
-                    { label: 'Portal Computação', val: analytics.plans.portal, bg: 'var(--teal-wash)' },
-                    { label: 'BNCC Nacional', val: analytics.plans.nacional, bg: 'var(--blue-wash)' },
-                  ].map((s) => (
-                    <div key={s.label} style={{ background: s.bg }}>
-                      <strong>{s.val.toLocaleString('pt-BR')}</strong>
-                      <span style={{ display: 'block', marginTop: 4 }}>{s.label}</span>
-                    </div>
-                  ))}
-                </div>
+                <div style={{ height: 32 }} />
+
+                {/* ── BNCC Nacional ── */}
+                <AnalyticsSection
+                  title="📚 BNCC Nacional"
+                  accent="var(--blue)"
+                  accentWash="var(--blue-wash)"
+                  visits={analytics.nacional.visits}
+                  plansLabel="Planos gerados"
+                  plans={analytics.nacional.plans}
+                />
+
+                <div style={{ height: 32 }} />
 
                 {/* Top schools */}
                 <div style={{ marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
-                  Escolas que mais geraram planos (BNCC Nacional)
+                  🏫 Escolas que mais geraram planos (BNCC Nacional)
                 </div>
                 {analytics.topSchools.length === 0 ? (
-                  <div style={{
-                    padding: '24px 20px',
-                    background: 'var(--paper-soft)',
-                    border: '2px solid var(--ink-faint)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 12,
-                    color: 'var(--ink-muted)',
-                    textAlign: 'center',
-                  }}>
+                  <div style={{ padding: '24px 20px', background: 'var(--paper-soft)', border: '2px solid var(--ink-faint)', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-muted)', textAlign: 'center' }}>
                     Nenhuma escola identificada ainda. Os dados aparecerão conforme os professores informarem a escola no formulário do plano.
                   </div>
                 ) : (
-                  <div style={{
-                    background: 'var(--paper-soft)',
-                    border: '2.5px solid var(--ink)',
-                    boxShadow: 'var(--stamp)',
-                    overflow: 'hidden',
-                  }}>
+                  <div style={{ background: 'var(--paper-soft)', border: '2.5px solid var(--ink)', boxShadow: 'var(--stamp)', overflow: 'hidden' }}>
                     {analytics.topSchools.map((row, idx) => {
                       const max = analytics.topSchools[0]?.count || 1
                       const pct = Math.round((row.count / max) * 100)
                       return (
-                        <div key={row.school} style={{
-                          display: 'grid',
-                          gridTemplateColumns: '28px 1fr auto',
-                          alignItems: 'center',
-                          gap: '0 12px',
-                          padding: '10px 16px',
-                          borderBottom: idx < analytics.topSchools.length - 1 ? '1px solid var(--ink-faint)' : 'none',
-                          background: idx === 0 ? 'var(--mustard-wash)' : 'transparent',
-                        }}>
-                          <span style={{
-                            fontFamily: 'var(--font-display)',
-                            fontWeight: 900,
-                            fontSize: 15,
-                            color: idx === 0 ? 'var(--mustard-deep)' : 'var(--ink-muted)',
-                            textAlign: 'center',
-                          }}>
+                        <div key={row.school} style={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', alignItems: 'center', gap: '0 12px', padding: '10px 16px', borderBottom: idx < analytics.topSchools.length - 1 ? '1px solid var(--ink-faint)' : 'none', background: idx === 0 ? 'var(--mustard-wash)' : 'transparent' }}>
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: 15, color: idx === 0 ? 'var(--mustard-deep)' : 'var(--ink-muted)', textAlign: 'center' }}>
                             {idx + 1}
                           </span>
                           <div>
-                            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 4 }}>
-                              {row.school}
-                            </div>
+                            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 4 }}>{row.school}</div>
                             <div style={{ height: 4, background: 'var(--ink-faint)', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${pct}%`, background: idx === 0 ? 'var(--mustard-deep)' : 'var(--teal)', transition: 'width .4s' }} />
+                              <div style={{ height: '100%', width: `${pct}%`, background: idx === 0 ? 'var(--mustard-deep)' : 'var(--blue)', transition: 'width .4s' }} />
                             </div>
                           </div>
-                          <span style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontWeight: 700,
-                            fontSize: 13,
-                            color: 'var(--ink)',
-                            whiteSpace: 'nowrap',
-                          }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
                             {row.count} plano{row.count !== 1 ? 's' : ''}
                           </span>
                         </div>
