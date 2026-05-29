@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 
 type Skill = {
   id: string
@@ -28,7 +30,7 @@ type PlanForm = {
 }
 
 type Nivel = 'infantil' | 'fundamental' | 'medio'
-type PdfLayout = 'risografico' | 'institucional' | 'simples'
+type PdfLayout = 'risografico' | 'institucional' | 'simples' | 'verde' | 'colorido' | 'noturno'
 
 const NIVEL_CONFIG: Record<Nivel, {
   label: string; sub: string; file: string; icon: string
@@ -71,6 +73,9 @@ const PDF_LAYOUTS: { id: PdfLayout; label: string; desc: string }[] = [
   { id: 'risografico', label: 'Risográfico', desc: 'Fundo creme, acentos em vermelho coral.' },
   { id: 'institucional', label: 'Institucional', desc: 'Cabeçalho azul sólido. Visual formal.' },
   { id: 'simples', label: 'Simples', desc: 'Branco puro, ideal para impressão econômica.' },
+  { id: 'verde', label: 'Verde Natural', desc: 'Fundo creme-verde, acentos em verde escuro.' },
+  { id: 'colorido', label: 'Colorido', desc: 'Laranja vibrante, ótimo para Ensino Infantil.' },
+  { id: 'noturno', label: 'Noturno', desc: 'Fundo escuro, texto claro. Visual moderno.' },
 ]
 
 const emptyForm: PlanForm = {
@@ -104,9 +109,33 @@ function normalizeText(v: string) {
   return v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
+function latexExprToUnicode(expr: string): string {
+  return expr
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\{([^}]+)\}/g, '√($1)')
+    .replace(/\^2(?=[^{]|$)/g, '²').replace(/\^3(?=[^{]|$)/g, '³').replace(/\^n(?=[^{]|$)/g, 'ⁿ')
+    .replace(/\^(\{[^}]+\})/g, (_, m) => '^' + m.replace(/[{}]/g, ''))
+    .replace(/\\pi\b/g,'π').replace(/\\alpha\b/g,'α').replace(/\\beta\b/g,'β')
+    .replace(/\\gamma\b/g,'γ').replace(/\\delta\b/g,'δ').replace(/\\Delta\b/g,'Δ')
+    .replace(/\\theta\b/g,'θ').replace(/\\lambda\b/g,'λ').replace(/\\mu\b/g,'μ')
+    .replace(/\\sigma\b/g,'σ').replace(/\\Sigma\b/g,'Σ').replace(/\\sum\b/g,'Σ')
+    .replace(/\\prod\b/g,'Π').replace(/\\int\b/g,'∫').replace(/\\infty\b/g,'∞')
+    .replace(/\\times\b/g,'×').replace(/\\div\b/g,'÷').replace(/\\pm\b/g,'±')
+    .replace(/\\neq\b/g,'≠').replace(/\\leq\b/g,'≤').replace(/\\geq\b/g,'≥')
+    .replace(/\\approx\b/g,'≈').replace(/\\cdot\b/g,'·').replace(/\\ldots\b/g,'...')
+    .replace(/\\text\{([^}]+)\}/g,'$1').replace(/[{}]/g,'').trim()
+}
+
+function latexToUnicode(text: string): string {
+  return text
+    .replace(/\$\$([^$]+)\$\$/g, (_,m) => latexExprToUnicode(m))
+    .replace(/\$([^$\n]+)\$/g, (_,m) => latexExprToUnicode(m))
+}
+
 function normalizePdfText(value: string) {
   if (!value) return ''
-  return value.replace(/\*\*/g, '').replace(/Ã¡/g,'á').replace(/Ã©/g,'é').replace(/Ã³/g,'ó')
+  return latexToUnicode(value)
+    .replace(/\*\*/g, '').replace(/Ã¡/g,'á').replace(/Ã©/g,'é').replace(/Ã³/g,'ó')
     .replace(/Ãº/g,'ú').replace(/Ã§/g,'ç').replace(/Ã£/g,'ã').replace(/Ã /g,'à')
     .replace(/Ã¢/g,'â').replace(/Ãª/g,'ê').replace(/Ã­/g,'í').replace(/Ã´/g,'ô')
     .replace(/Ãµ/g,'õ').replace(/Â/g,'')
@@ -121,6 +150,44 @@ function Field({ label, children, wide, required }: { label: string; children: R
       {children}
     </label>
   )
+}
+
+function inlineHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\$\$([^$]+?)\$\$/g, (_, m) => {
+      try { return katex.renderToString(m, { throwOnError: false, displayMode: true }) } catch { return m }
+    })
+    .replace(/\$([^$\n]+?)\$/g, (_, m) => {
+      try { return katex.renderToString(m, { throwOnError: false, displayMode: false }) } catch { return m }
+    })
+}
+
+function RenderedPlan({ text }: { text: string }) {
+  const nodes: React.ReactNode[] = []
+  const SECTION_RE = /^(#{1,3}\s+|[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÀÇÈÊ\s\-/()]{5,}$)/
+  text.split('\n').forEach((line, idx) => {
+    const t = line.trim()
+    if (!t) { nodes.push(<div key={idx} className="bnac-rp-gap" />); return }
+    const blockMath = t.match(/^\$\$(.+)\$\$$/)
+    if (blockMath) {
+      const html = (() => { try { return katex.renderToString(blockMath[1], { throwOnError: false, displayMode: true }) } catch { return blockMath[1] } })()
+      nodes.push(<div key={idx} className="bnac-rp-math-block" dangerouslySetInnerHTML={{ __html: html }} />); return
+    }
+    const isSection = /^#{1,3} /.test(t) || (/^[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÀÇÈÊ\s\-/():]{5,}$/.test(t) && !/\$/.test(t) && t === t.toUpperCase() && t.length > 4)
+    if (isSection) {
+      nodes.push(<div key={idx} className="bnac-rp-sec" dangerouslySetInnerHTML={{ __html: inlineHtml(t.replace(/^#{1,3} /, '')) }} />); return
+    }
+    if (t.endsWith(':') && t.length < 80 && !/\$/.test(t)) {
+      nodes.push(<p key={idx} className="bnac-rp-lbl" dangerouslySetInnerHTML={{ __html: inlineHtml(t) }} />); return
+    }
+    if (t.startsWith('- ') || t.startsWith('• ')) {
+      nodes.push(<li key={idx} className="bnac-rp-li" dangerouslySetInnerHTML={{ __html: inlineHtml(t.slice(2)) }} />); return
+    }
+    nodes.push(<p key={idx} className="bnac-rp-p" dangerouslySetInnerHTML={{ __html: inlineHtml(t) }} />)
+  })
+  return <div className="bnac-rendered">{nodes}</div>
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -145,6 +212,7 @@ export default function BnccNacionalPage() {
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
   const [showPdfModal, setShowPdfModal] = useState(false)
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
 
   // Load skills when nivel changes
   useEffect(() => {
@@ -298,9 +366,12 @@ export default function BnccNacionalPage() {
     let y = 0
 
     const C = {
-      risografico: { bg: [250,245,227] as [number,number,number], accent: [229,57,75] as [number,number,number], body: [0,0,0] as [number,number,number], muted: [110,105,95] as [number,number,number] },
-      institucional: { bg: [255,255,255] as [number,number,number], accent: [45,64,160] as [number,number,number], body: [0,0,0] as [number,number,number], muted: [90,90,110] as [number,number,number] },
-      simples: { bg: [255,255,255] as [number,number,number], accent: [0,0,0] as [number,number,number], body: [0,0,0] as [number,number,number], muted: [100,100,100] as [number,number,number] },
+      risografico:  { bg: [250,245,227] as [number,number,number], accent: [229,57,75]  as [number,number,number], body: [0,0,0]       as [number,number,number], muted: [110,105,95]  as [number,number,number] },
+      institucional:{ bg: [255,255,255] as [number,number,number], accent: [45,64,160]  as [number,number,number], body: [0,0,0]       as [number,number,number], muted: [90,90,110]   as [number,number,number] },
+      simples:      { bg: [255,255,255] as [number,number,number], accent: [0,0,0]      as [number,number,number], body: [0,0,0]       as [number,number,number], muted: [100,100,100] as [number,number,number] },
+      verde:        { bg: [240,248,243] as [number,number,number], accent: [34,120,70]  as [number,number,number], body: [18,45,28]    as [number,number,number], muted: [80,120,95]   as [number,number,number] },
+      colorido:     { bg: [255,250,242] as [number,number,number], accent: [220,100,30] as [number,number,number], body: [40,25,10]    as [number,number,number], muted: [140,100,65]  as [number,number,number] },
+      noturno:      { bg: [22,24,35]    as [number,number,number], accent: [120,170,255]as [number,number,number], body: [230,235,245] as [number,number,number], muted: [150,155,175] as [number,number,number] },
     }[layout]
 
     const nivelLabel = nivel ? NIVEL_CONFIG[nivel].label : 'BNCC'
@@ -368,15 +439,75 @@ export default function BnccNacionalPage() {
       doc.text(t.toUpperCase(),mx,y); y+=5; rule(mx,y-1.5,pw-mx,y-1.5,0.2,C.muted)
     }
 
+    function drawVerdeHeader(first:boolean) {
+      doc.setFillColor(...C.accent); doc.rect(mx-2,y-4,8,8,'F')
+      doc.setTextColor(...C.accent); doc.setFont('helvetica','bold'); doc.setFontSize(first?13:9)
+      doc.text('PLANO DE AULA',mx+8,y); y+=6
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.muted)
+      doc.text(`BNCC — ${nivelLabel}`,mx+8,y); rule(mx,y+4,pw-mx,y+4,0.5,C.accent); y+= first?12:10
+    }
+    function addVerdeSection(t:string) {
+      addPageIfNeeded(14); y+=3
+      doc.setFillColor(...C.accent); doc.rect(mx,y-3,3,8,'F')
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...C.accent)
+      doc.text(t.toUpperCase(),mx+6,y+2); y+=10
+    }
+
+    function drawColoridoHeader(first:boolean) {
+      if (first) {
+        doc.setFillColor(...C.accent); doc.rect(0,0,pw,20,'F')
+        doc.setFillColor(255,255,255); doc.rect(0,20,pw,3,'F')
+        doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(13)
+        doc.text('PLANO DE AULA',mx,12)
+        doc.setFont('helvetica','normal'); doc.setFontSize(8)
+        doc.text(`BNCC — ${nivelLabel}`,pw-mx,14,{align:'right'}); y=30
+      } else {
+        doc.setFillColor(...C.accent); doc.rect(0,0,pw,10,'F')
+        doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8)
+        doc.text(`PLANO DE AULA — BNCC ${nivelLabel}`,mx,7); y=16
+      }
+    }
+    function addColoridoSection(t:string) {
+      addPageIfNeeded(14); y+=3
+      doc.setFillColor(...C.accent)
+      const sw = doc.getTextWidth(t.toUpperCase())*1.1+8
+      doc.rect(mx,y-4,sw,8,'F')
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255)
+      doc.text(t.toUpperCase(),mx+4,y+1); y+=10
+    }
+
+    function drawNoturnoHeader(first:boolean) {
+      rule(mx,y,pw-mx,y,0.6,C.accent); y+=6
+      doc.setFont('helvetica','bold'); doc.setFontSize(first?13:8); doc.setTextColor(...C.accent)
+      doc.text('PLANO DE AULA',mx,y); y+=5
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...C.muted)
+      doc.text(`BNCC — ${nivelLabel}`,mx,y); rule(mx,y+4,pw-mx,y+4,0.3,C.muted); y+=first?12:10
+    }
+    function addNoturnoSection(t:string) {
+      addPageIfNeeded(14); y+=4
+      rule(mx,y-2,pw-mx,y-2,0.4,C.accent)
+      doc.setFont('helvetica','bold'); doc.setFontSize(9.5); doc.setTextColor(...C.accent)
+      doc.text(t.toUpperCase(),mx,y+3); rule(mx,y+6,pw-mx,y+6,0.2,C.muted); y+=12
+    }
+
     bg(); y=18
     if (layout==='risografico') drawRisoHeader(true)
     else if (layout==='institucional') drawInstitutionalBand(true)
+    else if (layout==='verde') drawVerdeHeader(true)
+    else if (layout==='colorido') drawColoridoHeader(true)
+    else if (layout==='noturno') drawNoturnoHeader(true)
     else drawSimplesHeader()
 
     doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(...C.body)
     doc.text(title.toUpperCase(),mx,y,{maxWidth:cw}); y+=10
 
-    const addSection = layout==='risografico' ? addRisoSection : layout==='institucional' ? addInstitutionalSection : addSimplesSection
+    const addSection =
+      layout==='risografico'   ? addRisoSection :
+      layout==='institucional' ? addInstitutionalSection :
+      layout==='verde'         ? addVerdeSection :
+      layout==='colorido'      ? addColoridoSection :
+      layout==='noturno'       ? addNoturnoSection :
+      addSimplesSection
 
     addSection('Identificação')
     addWrapped(`Professor(a): ${normalizePdfText(form.teacher||'Não informado')}`)
@@ -404,7 +535,7 @@ export default function BnccNacionalPage() {
     const totalPdfPages = doc.getNumberOfPages()
     for (let p=1;p<=totalPdfPages;p++) {
       doc.setPage(p)
-      if (layout==='institucional') {
+      if (layout==='institucional' || layout==='colorido') {
         doc.setFillColor(...C.accent); doc.rect(0,ph-10,pw,10,'F')
         doc.setTextColor(255,255,255); doc.setFont('helvetica','normal'); doc.setFontSize(7.5)
         doc.text(`Página ${p} de ${totalPdfPages}`,pw/2,ph-3.5,{align:'center'})
@@ -656,7 +787,10 @@ export default function BnccNacionalPage() {
 
                 <div className="oa">
                   <div className="oa-toolbar">
-                    <span className="oa-label">Plano editável</span>
+                    <div className="bnac-view-toggle">
+                      <button className={`bnac-vt-btn${viewMode==='edit'?' on':''}`} onClick={() => setViewMode('edit')}>Editar</button>
+                      <button className={`bnac-vt-btn${viewMode==='preview'?' on':''}`} onClick={() => setViewMode('preview')} disabled={!generated}>Visualizar</button>
+                    </div>
                     <div style={{ display:'flex', gap:8 }}>
                       <button className="btn btn-gh" onClick={copyPlan} disabled={!generated}>Copiar</button>
                       <button className="btn btn-pri" disabled={!generated} onClick={() => { if (!generated) { showToast('Gere o plano primeiro.'); return } setShowPdfModal(true) }}>Baixar PDF</button>
@@ -672,7 +806,11 @@ export default function BnccNacionalPage() {
                       <div className="bnac-progress-track"><div className="bnac-progress-fill" style={{ width:`${progress}%` }} /></div>
                     </div>
                   )}
-                  <textarea id="po-nac" value={generated} onChange={(e) => setGenerated(e.target.value)} placeholder="O plano gerado aparecerá aqui. Você pode editar antes de baixar ou copiar." />
+                  {viewMode==='edit' || !generated ? (
+                    <textarea id="po-nac" value={generated} onChange={(e) => setGenerated(e.target.value)} placeholder="O plano gerado aparecerá aqui. Você pode editar antes de baixar ou copiar." style={{ display: viewMode==='preview' && generated ? 'none' : undefined }} />
+                  ) : (
+                    <RenderedPlan text={generated} />
+                  )}
                 </div>
               </div>
 

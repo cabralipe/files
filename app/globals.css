@@ -2386,6 +2386,24 @@ input:focus, select:focus, textarea:focus {
 .bnac-pdf-preview--simples .bpp-section { background: #1B1A1F; height: 2px; }
 .bnac-pdf-preview--simples .bpp-line    { background: #bbb; }
 
+/* verde preview */
+.bnac-pdf-preview--verde { background: #F0F8F3; }
+.bnac-pdf-preview--verde .bpp-header  { background: #227846; width: 12px; height: 12px; border-radius: 0; }
+.bnac-pdf-preview--verde .bpp-section { background: #227846; width: 3px; height: 8px; }
+.bnac-pdf-preview--verde .bpp-line    { background: #9ec4b0; }
+
+/* colorido preview */
+.bnac-pdf-preview--colorido { background: #FFFAF2; }
+.bnac-pdf-preview--colorido .bpp-header  { background: #DC641E; }
+.bnac-pdf-preview--colorido .bpp-section { background: #DC641E; border-radius: 1px; }
+.bnac-pdf-preview--colorido .bpp-line    { background: #f4c49e; }
+
+/* noturno preview */
+.bnac-pdf-preview--noturno { background: #161823; }
+.bnac-pdf-preview--noturno .bpp-header  { background: #78AAFF; height: 2px; }
+.bnac-pdf-preview--noturno .bpp-section { background: #78AAFF; height: 2px; }
+.bnac-pdf-preview--noturno .bpp-line    { background: #3a3d50; }
+
 .bnac-pdf-layout-info {
   display: flex;
   flex-direction: column;
@@ -2596,4 +2614,93 @@ input:focus, select:focus, textarea:focus {
   color: var(--paper);
   letter-spacing: 0.04em;
   margin-top: 8px;
+}
+
+/* edit / preview toggle */
+.bnac-view-toggle {
+  display: flex;
+  border: 1.5px solid var(--ink-faint);
+  overflow: hidden;
+}
+.bnac-vt-btn {
+  padding: 5px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background .1s, color .1s;
+}
+.bnac-vt-btn.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+.bnac-vt-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* rendered plan preview */
+.bnac-rendered {
+  padding: 20px 24px 28px;
+  background: var(--paper-soft);
+  min-height: 320px;
+  line-height: 1.7;
+  overflow-y: auto;
+}
+
+.bnac-rp-sec {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-left: 3px solid var(--teal);
+  padding-left: 8px;
+  margin: 18px 0 6px;
+}
+
+.bnac-rp-lbl {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  margin: 10px 0 2px;
+}
+
+.bnac-rp-p {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink);
+  margin: 3px 0;
+}
+
+.bnac-rp-li {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink);
+  margin: 2px 0 2px 20px;
+  list-style: disc;
+}
+
+.bnac-rp-gap {
+  height: 8px;
+}
+
+.bnac-rp-math-block {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0;
+  overflow-x: auto;
+}
+
+/* KaTeX inline adjustments */
+.bnac-rendered .katex {
+  font-size: 1em;
+}
+.bnac-rendered .katex-display {
+  margin: 8px 0;
 }
