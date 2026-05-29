@@ -63,11 +63,15 @@ function normalizeText(v: string) {
 
 function Field({ label, children, wide, required }: { label: string; children: React.ReactNode; wide?: boolean; required?: boolean }) {
   return (
-    <label className={`field ${wide ? 'wide' : ''}`}>
-      <span className="flabel">{label}{required && <span style={{ color: 'var(--red)' }}> *</span>}</span>
+    <label className={`fgr${wide ? ' s2' : ''}`}>
+      <span className="fl">{label}{required && <span className="req">*</span>}</span>
       {children}
     </label>
   )
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="bnac-form-section">{children}</div>
 }
 
 export default function BnccNacionalPage() {
@@ -385,6 +389,7 @@ export default function BnccNacionalPage() {
       {view === 'plan' && (
         <section className="pg play">
           <div>
+            {/* ── Stepper ── */}
             <div className="stbar">
               <div className="sti active">
                 <span className="stn">1</span>
@@ -400,66 +405,77 @@ export default function BnccNacionalPage() {
               </div>
             </div>
 
+            {/* ── Formulário ── */}
             <div className="pc">
               <h1 className="pct">Criar plano de aula</h1>
+
+              <SectionLabel>Identificação</SectionLabel>
               <div className="fg">
                 <Field label="Professor(a)">
-                  <input value={form.teacher} onChange={(e) => updateForm('teacher', e.target.value)} placeholder="Nome do professor" />
+                  <input value={form.teacher} onChange={(e) => updateForm('teacher', e.target.value)} placeholder="Nome completo" />
                 </Field>
                 <Field label="Escola">
                   <input value={form.school} onChange={(e) => updateForm('school', e.target.value)} placeholder="Nome da escola" />
                 </Field>
-                <Field label="Ano/Turma">
-                  <input value={form.grade_level} onChange={(e) => updateForm('grade_level', e.target.value)} placeholder="Ex.: 5º ano" />
+                <Field label="Ano / Turma">
+                  <input value={form.grade_level} onChange={(e) => updateForm('grade_level', e.target.value)} placeholder="Ex.: 5º ano A" />
                 </Field>
-                <Field label="Componente">
+                <Field label="Componente curricular">
                   <input value={form.subject} onChange={(e) => updateForm('subject', e.target.value)} placeholder="Ex.: Matemática" />
                 </Field>
-                <Field label="Data">
+                <Field label="Data da aula">
                   <input type="date" value={form.date} onChange={(e) => updateForm('date', e.target.value)} />
                 </Field>
                 <Field label="Duração">
-                  <input value={form.duration} onChange={(e) => updateForm('duration', e.target.value)} />
+                  <input value={form.duration} onChange={(e) => updateForm('duration', e.target.value)} placeholder="Ex.: 50 minutos" />
                 </Field>
+              </div>
+
+              <hr className="dv" />
+              <SectionLabel>Conteúdo da aula</SectionLabel>
+              <div className="fg">
                 <Field label="Tema da aula" wide required>
                   <input value={form.title} onChange={(e) => updateForm('title', e.target.value)} placeholder="Ex.: Frações no cotidiano" />
                 </Field>
                 <Field label="Objetivos do professor" wide>
-                  <textarea value={form.objectives} onChange={(e) => updateForm('objectives', e.target.value)} />
+                  <textarea rows={3} value={form.objectives} onChange={(e) => updateForm('objectives', e.target.value)} placeholder="O que você quer que os alunos aprendam ou desenvolvam?" />
                 </Field>
                 <Field label="Metodologia" wide>
-                  <textarea value={form.methodology} onChange={(e) => updateForm('methodology', e.target.value)} />
+                  <textarea rows={2} value={form.methodology} onChange={(e) => updateForm('methodology', e.target.value)} placeholder="Ex.: Aprendizagem ativa, trabalho em grupo, resolução de problemas…" />
                 </Field>
                 <Field label="Recursos disponíveis" wide>
-                  <textarea value={form.materials} onChange={(e) => updateForm('materials', e.target.value)} />
+                  <textarea rows={2} value={form.materials} onChange={(e) => updateForm('materials', e.target.value)} placeholder="Ex.: Quadro, caderno, celular…" />
                 </Field>
               </div>
 
-              <div className="brow">
-                <button className="btn btn-out" onClick={() => setView('skills')}>← Adicionar habilidades</button>
+              <div className="pacts" style={{ marginTop: 20 }}>
+                <button className="btn btn-out" onClick={() => setView('skills')}>← Habilidades</button>
                 <button className="btn btn-pri" disabled={loading} onClick={generatePlan}>
-                  {loading ? 'Gerando...' : 'Gerar plano'}
+                  {loading ? 'Gerando...' : '✦ Gerar plano com IA'}
                 </button>
               </div>
             </div>
 
+            {/* ── Área do plano gerado ── */}
             <div className="oa">
               <div className="oa-toolbar">
                 <span className="oa-label">Plano editável</span>
                 <button className="btn btn-gh" onClick={copyPlan} disabled={!generated}>Copiar texto</button>
               </div>
+
               {loading && (
-                <div className="gbanner flex flex-col gap-3 p-4 border-2 border-black bg-[var(--paper-soft)] relative shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] my-4" style={{ borderRadius: '0px' }}>
-                  <div className="flex items-center gap-3 w-full">
-                    <span className="spin border-2 border-black border-t-transparent w-4 h-4" style={{ borderRadius: '50%' }} />
-                    <span className="font-mono font-bold text-xs text-black">{loadingPhrase}</span>
-                    <span className="font-mono font-bold text-xs text-black ml-auto">{Math.round(progress)}%</span>
+                <div className="bnac-progress-banner">
+                  <div className="bnac-progress-top">
+                    <span className="bnac-progress-spin" />
+                    <span className="bnac-progress-phrase">{loadingPhrase}</span>
+                    <span className="bnac-progress-pct">{Math.round(progress)}%</span>
                   </div>
-                  <div className="w-full h-3 bg-white border-2 border-black relative overflow-hidden" style={{ borderRadius: '0px' }}>
-                    <div className="h-full bg-[#A6B0DD] border-r-2 border-black transition-all duration-300 ease-out" style={{ width: `${progress}%` }} />
+                  <div className="bnac-progress-track">
+                    <div className="bnac-progress-fill" style={{ width: `${progress}%` }} />
                   </div>
                 </div>
               )}
+
               <textarea
                 id="po-nac"
                 value={generated}
@@ -469,22 +485,31 @@ export default function BnccNacionalPage() {
             </div>
           </div>
 
+          {/* ── Sidebar ── */}
           <aside className="sb">
             <div className="sbt">
-              Habilidades selecionadas <span className="sbc">{selected.length}</span>
+              Habilidades <span className="sbc">{selected.length}</span>
             </div>
+
             {selectedSkills.length ? (
-              selectedSkills.map((skill) => (
-                <div className="ssi" key={skill.id}>
-                  <button className="ssrm" onClick={() => toggleSkill(skill.id)} aria-label={`Remover ${skill.code}`}>×</button>
-                  <div className="ssic">{skill.code || skill.disciplina}</div>
-                  <div className="ssio">{skill.unidade_tematica}</div>
-                  <div className="ssims">{skill.disciplina} · {skill.ano}</div>
-                </div>
-              ))
+              <>
+                {selectedSkills.map((skill) => (
+                  <div className="ssi" key={skill.id}>
+                    <button className="ssrm" onClick={() => toggleSkill(skill.id)} aria-label={`Remover ${skill.code}`}>×</button>
+                    <div className="ssic">{skill.code || '—'}</div>
+                    <div className="ssio">{skill.unidade_tematica}</div>
+                    <div className="ssims">{skill.disciplina} · {skill.ano}</div>
+                  </div>
+                ))}
+                <button className="btn btn-out" style={{ width: '100%', marginTop: 10 }} onClick={() => setView('skills')}>
+                  + Adicionar mais
+                </button>
+              </>
             ) : (
               <div className="esel">
-                Nenhuma habilidade selecionada. Use a aba <button className="link-btn" onClick={() => setView('skills')}>Pesquisar</button> para adicionar.
+                Nenhuma habilidade selecionada.{' '}
+                <button className="link-btn" onClick={() => setView('skills')}>Pesquisar</button>{' '}
+                para adicionar.
               </div>
             )}
           </aside>

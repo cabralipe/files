@@ -2126,6 +2126,35 @@ input:focus, select:focus, textarea:focus {
   .pg { padding-bottom: 90px; }
 }
 
+/* ═════════ SHARED PLAN FORM ═════════ */
+.brow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+#po-nac {
+  width: 100%;
+  min-height: 520px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  padding: 18px 20px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 0px;
+}
+
+#po-nac:focus {
+  background: var(--paper-soft);
+}
+
 /* ═════════ BNCC NACIONAL PAGE ═════════ */
 .bnac-hero {
   text-align: center;
@@ -2196,6 +2225,73 @@ input:focus, select:focus, textarea:focus {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* form section label */
+.bnac-form-section {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--ink-muted);
+  padding: 4px 8px;
+  background: var(--paper-deep);
+  border-left: 3px solid var(--ink);
+  margin-bottom: 14px;
+}
+
+/* progress banner (nacional) */
+.bnac-progress-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  background: var(--paper-soft);
+  box-shadow: 3px 3px 0 var(--ink);
+  margin-bottom: 12px;
+}
+.bnac-progress-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bnac-progress-spin {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ink-faint);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
+.bnac-progress-phrase {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+.bnac-progress-pct {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+.bnac-progress-track {
+  height: 6px;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  overflow: hidden;
+}
+.bnac-progress-fill {
+  height: 100%;
+  background: var(--blue-soft);
+  border-right: 1.5px solid var(--ink);
+  transition: width .3s ease-out;
+}
 
 /* floating action button — selected skills count */
 .bnac-fab {
