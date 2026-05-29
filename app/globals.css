@@ -2466,3 +2466,134 @@ input:focus, select:focus, textarea:focus {
 .tag.tg  { background: var(--teal-wash);   color: var(--teal-deep); }
 .tag.tef { background: var(--blue-wash);   color: var(--blue-deep); }
 .tag.ter { background: var(--red-wash);    color: var(--red-deep); }
+
+/* nivel selector popup */
+.bnac-nivel-bk {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 14, 20, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  padding: 24px 16px;
+}
+
+.bnac-nivel-mdl {
+  background: var(--paper-soft);
+  border: 2.5px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+  max-width: 680px;
+  width: 100%;
+  padding: 36px 32px 40px;
+}
+
+.bnac-nivel-hd {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.bnac-nivel-logo {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.bnac-nivel-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+  margin: 0 0 6px;
+}
+
+.bnac-nivel-sub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.bnac-nivel-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.bnac-nivel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px 16px;
+  background: var(--paper);
+  border: 2px solid var(--ink-faint);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .12s, box-shadow .12s, transform .12s;
+  position: relative;
+  padding-bottom: 22px;
+}
+.bnac-nivel-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--nivel-accent, var(--teal));
+}
+.bnac-nivel-card:hover {
+  border-color: var(--nivel-accent, var(--teal));
+  box-shadow: 4px 4px 0 var(--nivel-accent, var(--teal));
+  transform: translate(-2px, -2px);
+}
+
+.bnac-nivel-card-icon {
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.bnac-nivel-card-label {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.bnac-nivel-card-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.bnac-nivel-card-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--nivel-accent, var(--teal));
+  margin-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .bnac-nivel-cards { grid-template-columns: 1fr; }
+  .bnac-nivel-mdl   { padding: 28px 18px 32px; }
+}
+
+/* hero badge — shows selected level */
+.bnac-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--paper);
+  letter-spacing: 0.04em;
+  margin-top: 8px;
+}
