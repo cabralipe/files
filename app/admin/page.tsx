@@ -38,13 +38,20 @@ export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated, signOut } = useAuth()
 
-  const [activeTab, setActiveTab] = useState<'users' | 'experiences'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'experiences' | 'analytics'>('users')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
+  const [analytics, setAnalytics] = useState<{
+    visits: { total: number; today: number; last7d: number; last30d: number }
+    plans: { portal: number; nacional: number; total: number }
+    topSchools: { school: string; count: number }[]
+    dailyVisits: Record<string, number>
+  } | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   // Edit modal state
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
@@ -115,6 +122,23 @@ export default function AdminDashboard() {
     }
   }, [])
 
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true)
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/admin/analytics', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao carregar analytics')
+      setAnalytics(payload.data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar analytics')
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (authLoading) return
     if (!isAuthenticated) {
@@ -132,6 +156,13 @@ export default function AdminDashboard() {
       setLoading(false)
     })()
   }, [authLoading, isAuthenticated, isAdmin, router, fetchUsers, fetchExperiences])
+
+  // Load analytics lazily when tab is first opened
+  useEffect(() => {
+    if (activeTab === 'analytics' && !analytics && !analyticsLoading) {
+      void fetchAnalytics()
+    }
+  }, [activeTab, analytics, analyticsLoading, fetchAnalytics])
 
   // ─── User actions ───
 
@@ -437,7 +468,7 @@ export default function AdminDashboard() {
           marginBottom: 24,
           gap: 0,
         }}>
-          {(['users', 'experiences'] as const).map((tab) => (
+          {(['users', 'experiences', 'analytics'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -459,10 +490,135 @@ export default function AdminDashboard() {
                 letterSpacing: '.01em',
               }}
             >
-              {tab === 'users' ? 'Usuários' : 'Experiências'}
+              {tab === 'users' ? 'Usuários' : tab === 'experiences' ? 'Experiências' : 'Analytics'}
             </button>
           ))}
         </div>
+
+        {/* ══════ ANALYTICS TAB ══════ */}
+        {activeTab === 'analytics' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <span style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>Visão geral da plataforma</span>
+              <button className="btn btn-gh" onClick={() => { setAnalytics(null); void fetchAnalytics() }} disabled={analyticsLoading} style={{ fontSize: 12 }}>
+                {analyticsLoading ? '...' : '↺ Atualizar'}
+              </button>
+            </div>
+
+            {analyticsLoading && !analytics && (
+              <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink-muted)' }}>
+                Carregando dados...
+              </div>
+            )}
+
+            {analytics && (
+              <>
+                {/* Visit stats */}
+                <div style={{ marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
+                  Visitas ao site
+                </div>
+                <div className="coord-stats" style={{ marginBottom: 28 }}>
+                  {[
+                    { label: 'Total', val: analytics.visits.total, bg: 'var(--blue-wash)' },
+                    { label: 'Hoje', val: analytics.visits.today, bg: 'var(--teal-wash)' },
+                    { label: 'Últimos 7 dias', val: analytics.visits.last7d, bg: 'var(--mustard-wash)' },
+                    { label: 'Últimos 30 dias', val: analytics.visits.last30d, bg: 'var(--plum-wash)' },
+                  ].map((s) => (
+                    <div key={s.label} style={{ background: s.bg }}>
+                      <strong>{s.val.toLocaleString('pt-BR')}</strong>
+                      <span style={{ display: 'block', marginTop: 4 }}>{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Plan stats */}
+                <div style={{ marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
+                  Planos de aula gerados
+                </div>
+                <div className="coord-stats" style={{ marginBottom: 28 }}>
+                  {[
+                    { label: 'Total Geral', val: analytics.plans.total, bg: 'var(--red-wash)' },
+                    { label: 'Portal Computação', val: analytics.plans.portal, bg: 'var(--teal-wash)' },
+                    { label: 'BNCC Nacional', val: analytics.plans.nacional, bg: 'var(--blue-wash)' },
+                  ].map((s) => (
+                    <div key={s.label} style={{ background: s.bg }}>
+                      <strong>{s.val.toLocaleString('pt-BR')}</strong>
+                      <span style={{ display: 'block', marginTop: 4 }}>{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Top schools */}
+                <div style={{ marginBottom: 8, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-muted)' }}>
+                  Escolas que mais geraram planos (BNCC Nacional)
+                </div>
+                {analytics.topSchools.length === 0 ? (
+                  <div style={{
+                    padding: '24px 20px',
+                    background: 'var(--paper-soft)',
+                    border: '2px solid var(--ink-faint)',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 12,
+                    color: 'var(--ink-muted)',
+                    textAlign: 'center',
+                  }}>
+                    Nenhuma escola identificada ainda. Os dados aparecerão conforme os professores informarem a escola no formulário do plano.
+                  </div>
+                ) : (
+                  <div style={{
+                    background: 'var(--paper-soft)',
+                    border: '2.5px solid var(--ink)',
+                    boxShadow: 'var(--stamp)',
+                    overflow: 'hidden',
+                  }}>
+                    {analytics.topSchools.map((row, idx) => {
+                      const max = analytics.topSchools[0]?.count || 1
+                      const pct = Math.round((row.count / max) * 100)
+                      return (
+                        <div key={row.school} style={{
+                          display: 'grid',
+                          gridTemplateColumns: '28px 1fr auto',
+                          alignItems: 'center',
+                          gap: '0 12px',
+                          padding: '10px 16px',
+                          borderBottom: idx < analytics.topSchools.length - 1 ? '1px solid var(--ink-faint)' : 'none',
+                          background: idx === 0 ? 'var(--mustard-wash)' : 'transparent',
+                        }}>
+                          <span style={{
+                            fontFamily: 'var(--font-display)',
+                            fontWeight: 900,
+                            fontSize: 15,
+                            color: idx === 0 ? 'var(--mustard-deep)' : 'var(--ink-muted)',
+                            textAlign: 'center',
+                          }}>
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <div style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 4 }}>
+                              {row.school}
+                            </div>
+                            <div style={{ height: 4, background: 'var(--ink-faint)', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: idx === 0 ? 'var(--mustard-deep)' : 'var(--teal)', transition: 'width .4s' }} />
+                            </div>
+                          </div>
+                          <span style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            color: 'var(--ink)',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {row.count} plano{row.count !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
 
         {/* ══════ USERS TAB ══════ */}
         {activeTab === 'users' && (

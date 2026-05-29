@@ -197,6 +197,11 @@ export default function Home() {
 
   useEffect(() => {
     void loadSkills()
+    void fetch('/api/analytics/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: 'pageview', page: '/' }),
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {

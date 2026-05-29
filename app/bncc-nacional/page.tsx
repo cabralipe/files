@@ -214,7 +214,7 @@ export default function BnccNacionalPage() {
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
 
-  // Load skills when nivel changes
+  // Load skills when nivel changes + log pageview on first selection
   useEffect(() => {
     if (!nivel) return
     setSkills([])
@@ -225,6 +225,11 @@ export default function BnccNacionalPage() {
     setUnidade('')
     setPage(1)
     fetch(NIVEL_CONFIG[nivel].file).then((r) => r.json()).then(setSkills)
+    void fetch('/api/analytics/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: 'pageview', page: '/bncc-nacional' }),
+    }).catch(() => {})
   }, [nivel])
 
   useEffect(() => { setPage(1) }, [query, disciplina, ano, unidade])

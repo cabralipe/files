@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { generatePlanFromPrompt } from '@/lib/public-backend'
 
 export const dynamic = 'force-dynamic'
@@ -78,6 +79,19 @@ export async function POST(request: Request) {
     if (!content?.trim()) {
       return NextResponse.json({ error: 'Plano gerado vazio. Tente novamente.' }, { status: 500 })
     }
+
+    // Fire-and-forget analytics event
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      if (url && key) {
+        const supabase = createClient(url, key, { auth: { persistSession: false } })
+        void supabase.from('analytics_events').insert({
+          event_type: 'bncc_plan_gen',
+          school: body.school?.trim() || null,
+        })
+      }
+    } catch {}
 
     return NextResponse.json({ data: { content } })
   } catch (error) {
