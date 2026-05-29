@@ -2125,3 +2125,81 @@ input:focus, select:focus, textarea:focus {
 
   .pg { padding-bottom: 90px; }
 }
+
+/* ═════════ BNCC NACIONAL PAGE ═════════ */
+.bnac-hero {
+  text-align: center;
+  padding: 40px 16px 32px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 28px;
+}
+
+.bnac-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(28px, 5vw, 48px);
+  line-height: 1.1;
+  letter-spacing: -.03em;
+  color: var(--ink);
+  margin: 0 0 10px;
+  font-variation-settings: "opsz" 144;
+}
+
+.bnac-sub {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 0;
+}
+
+.bnac-card .cobj {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 6px 0 4px;
+}
+
+.bnac-objeto {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: var(--paper-deep);
+  border-left: 3px solid var(--ink-faint);
+}
+
+.bnac-loading,
+.bnac-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px 20px;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: center;
+}
+
+.bnac-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--ink-faint);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* discipline tag colours for nacional page */
+.tag.ti  { background: var(--plum-wash);   color: var(--plum); }
+.tag.th  { background: var(--mustard-wash); color: var(--mustard-deep); }
+.tag.tg  { background: var(--teal-wash);   color: var(--teal-deep); }
+.tag.tef { background: var(--blue-wash);   color: var(--blue-deep); }
+.tag.ter { background: var(--red-wash);    color: var(--red-deep); }
