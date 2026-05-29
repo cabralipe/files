@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 
 type Skill = {
   id: string
@@ -57,8 +56,30 @@ const discColor: Record<string, string> = {
   'Ensino Religioso': 'ter',
 }
 
+type PdfLayout = 'risografico' | 'institucional' | 'simples'
+
+const PDF_LAYOUTS: { id: PdfLayout; label: string; desc: string }[] = [
+  { id: 'risografico', label: 'Risográfico', desc: 'Fundo creme, cabeçalhos e acentos em vermelho coral. Design artesanal.' },
+  { id: 'institucional', label: 'Institucional', desc: 'Cabeçalho azul, corpo branco, seções em azul. Visual formal e limpo.' },
+  { id: 'simples', label: 'Simples', desc: 'Branco puro, tipografia preta, sem decoração. Ideal para impressão econômica.' },
+]
+
 function normalizeText(v: string) {
   return v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+}
+
+function normalizePdfText(value: string) {
+  if (!value) return ''
+  return value
+    .replace(/\*\*/g, '')
+    .replace(/Ã¡/g, 'á').replace(/Ã /g, 'à').replace(/Ã¢/g, 'â').replace(/Ã£/g, 'ã')
+    .replace(/Ã©/g, 'é').replace(/Ãª/g, 'ê').replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó').replace(/Ã´/g, 'ô').replace(/Ãµ/g, 'õ').replace(/Ãº/g, 'ú')
+    .replace(/Ã§/g, 'ç').replace(/Â/g, '')
+    .replace(/â€"|â€"/g, '-').replace(/â€œ|â€ /g, '"').replace(/â€˜|â€™/g, "'")
+    .replace(/â€¢/g, '-').replace(/�/g, '')
+    .replace(/[═─━─╴╶╸╺╼╾◽◾]/g, '-').replace(/[▌▋▊▉█■]/g, '')
+    .replace(/[🧠📚🔍💡✏️🎨🧩🎭🛠️📊⚙️✨⚡💡🎓🏫📝✏️💻🚀⭐🏷️📅⏰🕒🗒️📌]/g, '')
 }
 
 function Field({ label, children, wide, required }: { label: string; children: React.ReactNode; wide?: boolean; required?: boolean }) {
@@ -90,6 +111,7 @@ export default function BnccNacionalPage() {
   const [loadingPhrase, setLoadingPhrase] = useState('🧠 Pensando no plano...')
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
+  const [showPdfModal, setShowPdfModal] = useState(false)
 
   useEffect(() => {
     fetch('/bncc-nacional-skills.json')
@@ -216,7 +238,7 @@ export default function BnccNacionalPage() {
           clearInterval(typingInterval)
           setGenerated(fullText)
           setLoading(false)
-          showToast('Plano gerado com sucesso! Você já pode editar ou copiar.')
+          showToast('Plano gerado! Edite, copie ou baixe em PDF.')
         } else {
           setGenerated(fullText.slice(0, currentLength) + ' ▌')
           const ta = document.getElementById('po-nac') as HTMLTextAreaElement | null
@@ -236,12 +258,265 @@ export default function BnccNacionalPage() {
     navigator.clipboard.writeText(generated).then(() => showToast('Plano copiado!')).catch(() => showToast('Não foi possível copiar.'))
   }
 
+  async function downloadPdf(layout: PdfLayout) {
+    const text = normalizePdfText(generated)
+    if (!text.trim()) { showToast('Gere o plano antes de baixar em PDF.'); return }
+
+    setShowPdfModal(false)
+    const title = normalizePdfText(form.title || 'plano')
+    const safeTitle = normalizeText(title).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const marginX = 18
+    const contentWidth = pageWidth - marginX * 2
+    let y = 0
+
+    // ── colour tokens per layout ──────────────────────────────────────
+    const C = {
+      risografico: { bg: [250, 245, 227] as [number,number,number], accent: [229, 57, 75] as [number,number,number], title: [229, 57, 75] as [number,number,number], body: [0, 0, 0] as [number,number,number], muted: [110, 105, 95] as [number,number,number] },
+      institucional: { bg: [255, 255, 255] as [number,number,number], accent: [45, 64, 160] as [number,number,number], title: [45, 64, 160] as [number,number,number], body: [0, 0, 0] as [number,number,number], muted: [90, 90, 110] as [number,number,number] },
+      simples: { bg: [255, 255, 255] as [number,number,number], accent: [0, 0, 0] as [number,number,number], title: [0, 0, 0] as [number,number,number], body: [0, 0, 0] as [number,number,number], muted: [100, 100, 100] as [number,number,number] },
+    }[layout]
+
+    function drawBg() {
+      doc.setFillColor(...C.bg)
+      doc.rect(0, 0, pageWidth, pageHeight, 'F')
+    }
+
+    function rule(x1: number, y1: number, x2: number, y2: number, w = 0.25, color = C.accent) {
+      doc.setDrawColor(...color)
+      doc.setLineWidth(w)
+      doc.line(x1, y1, x2, y2)
+    }
+
+    function addPageIfNeeded(h = 10) {
+      if (y + h <= pageHeight - 20) return
+      doc.addPage()
+      drawBg()
+      y = 18
+      if (layout === 'institucional') drawInstitutionalBand(false)
+    }
+
+    function addWrapped(str: string, opts?: { size?: number; bold?: boolean; indent?: number; color?: [number, number, number] }) {
+      const size = opts?.size ?? 9
+      const indent = opts?.indent ?? 0
+      const lh = size * 0.43
+      doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal')
+      doc.setFontSize(size)
+      doc.setTextColor(...(opts?.color ?? C.body))
+      const lines = doc.splitTextToSize(str, contentWidth - indent)
+      for (const l of lines) {
+        addPageIfNeeded(lh + 1)
+        doc.text(l, marginX + indent, y)
+        y += lh
+      }
+      y += 1.5
+    }
+
+    // ── Layout: Risográfico ───────────────────────────────────────────
+    function drawRisoHeader(first: boolean) {
+      doc.setTextColor(...C.accent)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(first ? 14 : 9)
+      doc.text(first ? 'PLANO DE AULA' : 'Plano de aula', marginX, y)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...C.body)
+      doc.text('BNCC Nacional — Base Nacional Comum Curricular', marginX, y + 5)
+      rule(marginX, y + 8, pageWidth - marginX, y + 8, 0.4, C.accent)
+      y += first ? 16 : 13
+    }
+
+    function addRisoSection(t: string) {
+      addPageIfNeeded(14)
+      y += 2
+      rule(marginX, y - 2, pageWidth - marginX, y - 2, 0.5, C.accent)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...C.accent)
+      doc.text(t.toUpperCase(), marginX, y + 2.5)
+      rule(marginX, y + 5.5, pageWidth - marginX, y + 5.5, 0.5, C.accent)
+      y += 11
+    }
+
+    // ── Layout: Institucional ─────────────────────────────────────────
+    function drawInstitutionalBand(first: boolean) {
+      if (first) {
+        doc.setFillColor(...C.accent)
+        doc.rect(0, 0, pageWidth, 22, 'F')
+        doc.setTextColor(255, 255, 255)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(13)
+        doc.text('PLANO DE AULA', marginX, 13)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.text('BNCC Nacional — Base Nacional Comum Curricular', pageWidth - marginX, 15, { align: 'right' })
+        y = 28
+      } else {
+        doc.setFillColor(...C.accent)
+        doc.rect(0, 0, pageWidth, 10, 'F')
+        doc.setTextColor(255, 255, 255)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        doc.text('PLANO DE AULA — BNCC Nacional', marginX, 7)
+        y = 16
+      }
+    }
+
+    function addInstitutionalSection(t: string) {
+      addPageIfNeeded(14)
+      y += 3
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...C.accent)
+      doc.text(t.toUpperCase(), marginX, y)
+      rule(marginX, y + 2, pageWidth - marginX, y + 2, 0.4, [200, 200, 200])
+      y += 8
+    }
+
+    // ── Layout: Simples ───────────────────────────────────────────────
+    function drawSimplesHeader() {
+      rule(marginX, y, pageWidth - marginX, y, 0.6, C.body)
+      y += 5
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...C.muted)
+      doc.text('BNCC Nacional — Base Nacional Comum Curricular', marginX, y)
+      y += 6
+    }
+
+    function addSimplesSection(t: string) {
+      addPageIfNeeded(12)
+      y += 4
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(...C.body)
+      doc.text(t.toUpperCase(), marginX, y)
+      y += 5
+      rule(marginX, y - 1.5, pageWidth - marginX, y - 1.5, 0.2, C.muted)
+    }
+
+    // ── Render ────────────────────────────────────────────────────────
+    drawBg()
+    y = 18
+
+    if (layout === 'risografico') {
+      drawRisoHeader(true)
+    } else if (layout === 'institucional') {
+      drawInstitutionalBand(true)
+    } else {
+      drawSimplesHeader()
+    }
+
+    // Title
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(layout === 'simples' ? 16 : 13)
+    doc.setTextColor(...(layout === 'risografico' ? C.body : C.body))
+    doc.text(title.toUpperCase(), marginX, y, { maxWidth: contentWidth })
+    y += 10
+
+    // Identification block
+    const addSection = layout === 'risografico' ? addRisoSection : layout === 'institucional' ? addInstitutionalSection : addSimplesSection
+
+    addSection('Identificação')
+    addWrapped(`Professor(a): ${normalizePdfText(form.teacher || 'Não informado')}`)
+    addWrapped(`Escola: ${normalizePdfText(form.school || 'Não informada')}`)
+    addWrapped(`Ano/Turma: ${normalizePdfText(form.grade_level || '-')} | Componente: ${normalizePdfText(form.subject || '-')}`)
+    addWrapped(`Data: ${form.date || new Date().toLocaleDateString('pt-BR')} | Duração: ${normalizePdfText(form.duration || '-')}`)
+
+    // Content body
+    const sectionNames = new Set([
+      'OBJETIVOS', 'HABILIDADES DA BNCC', 'CONTEUDOS', 'CONTEÚDOS',
+      'METODOLOGIA', 'DESENVOLVIMENTO DA AULA', 'DESENVOLVIMENTO',
+      'RECURSOS DIDÁTICOS', 'RECURSOS DIDATICOS', 'RECURSOS',
+      'AVALIAÇÃO', 'AVALIACAO', 'OBSERVAÇÕES', 'OBSERVACOES',
+      'REFERÊNCIAS', 'REFERENCIAS',
+    ])
+    const skipHeadings = new Set(['PLANO DE AULA', title.toUpperCase(), 'IDENTIFICAÇÃO', 'IDENTIFICACAO'])
+
+    text.split('\n').forEach((rawLine) => {
+      const lineText = rawLine.trim()
+      if (!lineText) { y += 1.8; return }
+
+      const upper = lineText.toUpperCase().replace(/[^\wÀ-ÿ ]/g, '')
+      if (skipHeadings.has(lineText.toUpperCase())) return
+      if (lineText.includes('BNCC Nacional') && lineText.includes('Curricular')) return
+
+      if (sectionNames.has(upper)) { addSection(lineText); return }
+
+      if (lineText.endsWith(':') || /^(Objetivo geral|Objetivos|Momento inicial|Desenvolvimento|Encerramento)/i.test(lineText)) {
+        addWrapped(lineText, { bold: true }); return
+      }
+      if (lineText.startsWith('- ')) {
+        addWrapped(`- ${lineText.slice(2)}`, { indent: 3 }); return
+      }
+      addWrapped(lineText)
+    })
+
+    // Footer on all pages
+    const totalPdfPages = doc.getNumberOfPages()
+    for (let p = 1; p <= totalPdfPages; p++) {
+      doc.setPage(p)
+      if (layout === 'institucional') {
+        doc.setFillColor(...C.accent)
+        doc.rect(0, pageHeight - 10, pageWidth, 10, 'F')
+        doc.setTextColor(255, 255, 255)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        doc.text(`Página ${p} de ${totalPdfPages}`, pageWidth / 2, pageHeight - 3.5, { align: 'center' })
+      } else {
+        rule(marginX, pageHeight - 14, pageWidth - marginX, pageHeight - 14, 0.3, C.accent)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(...C.muted)
+        doc.text(`BNCC Nacional — Página ${p} de ${totalPdfPages}`, marginX, pageHeight - 8)
+        doc.text(new Date().toLocaleDateString('pt-BR'), pageWidth - marginX, pageHeight - 8, { align: 'right' })
+      }
+    }
+
+    doc.save(`plano-${safeTitle || 'aula'}-${layout}.pdf`)
+    showToast('PDF baixado com sucesso!')
+  }
+
   return (
     <main>
-      {message && (
-        <div id="toast" className="show" role="alert">{message}</div>
+      {message && <div id="toast" className="show" role="alert">{message}</div>}
+
+      {/* ── Modal seletor de layout PDF ── */}
+      {showPdfModal && (
+        <div className="mbk" onClick={() => setShowPdfModal(false)}>
+          <div className="bnac-pdf-mdl" onClick={(e) => e.stopPropagation()}>
+            <div className="bnac-pdf-mdl-hd">
+              <span>Escolha o layout do PDF</span>
+              <button onClick={() => setShowPdfModal(false)} aria-label="Fechar">×</button>
+            </div>
+            <div className="bnac-pdf-layouts">
+              {PDF_LAYOUTS.map((l) => (
+                <button key={l.id} className="bnac-pdf-layout-card" onClick={() => downloadPdf(l.id)}>
+                  <div className={`bnac-pdf-preview bnac-pdf-preview--${l.id}`}>
+                    <div className="bpp-header" />
+                    <div className="bpp-line" />
+                    <div className="bpp-line bpp-line--short" />
+                    <div className="bpp-section" />
+                    <div className="bpp-line" />
+                    <div className="bpp-line bpp-line--med" />
+                    <div className="bpp-line" />
+                  </div>
+                  <div className="bnac-pdf-layout-info">
+                    <span className="bnac-pdf-layout-name">{l.label}</span>
+                    <span className="bnac-pdf-layout-desc">{l.desc}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
+      {/* ── Header ── */}
       <header id="hdr">
         <div className="hdr-in">
           <div className="logo">
@@ -258,11 +533,11 @@ export default function BnccNacionalPage() {
             <button className={`nb ${view === 'plan' ? 'on' : ''}`} onClick={() => setView('plan')}>
               Plano <span className="nbadge">{selected.length}</span>
             </button>
-            <Link className="nb" href="/">← Portal Computação</Link>
           </nav>
         </div>
       </header>
 
+      {/* ── View: Pesquisar ── */}
       {view === 'skills' && (
         <section className="pg">
           <div className="bnac-hero">
@@ -346,7 +621,7 @@ export default function BnccNacionalPage() {
 
           {skills.length > 0 && filtered.length === 0 && (
             <div className="bnac-empty">
-              <p>Nenhuma habilidade encontrada para os filtros selecionados.</p>
+              <p>Nenhuma habilidade encontrada.</p>
               <button className="bsm bdet" onClick={() => { setQuery(''); setDisciplina(''); setAno(''); setUnidade('') }}>
                 Limpar filtros
               </button>
@@ -386,10 +661,10 @@ export default function BnccNacionalPage() {
         </section>
       )}
 
+      {/* ── View: Plano ── */}
       {view === 'plan' && (
         <section className="pg play">
           <div>
-            {/* ── Stepper ── */}
             <div className="stbar">
               <div className="sti active">
                 <span className="stn">1</span>
@@ -405,7 +680,6 @@ export default function BnccNacionalPage() {
               </div>
             </div>
 
-            {/* ── Formulário ── */}
             <div className="pc">
               <h1 className="pct">Criar plano de aula</h1>
 
@@ -438,10 +712,10 @@ export default function BnccNacionalPage() {
                   <input value={form.title} onChange={(e) => updateForm('title', e.target.value)} placeholder="Ex.: Frações no cotidiano" />
                 </Field>
                 <Field label="Objetivos do professor" wide>
-                  <textarea rows={3} value={form.objectives} onChange={(e) => updateForm('objectives', e.target.value)} placeholder="O que você quer que os alunos aprendam ou desenvolvam?" />
+                  <textarea rows={3} value={form.objectives} onChange={(e) => updateForm('objectives', e.target.value)} placeholder="O que você quer que os alunos aprendam?" />
                 </Field>
                 <Field label="Metodologia" wide>
-                  <textarea rows={2} value={form.methodology} onChange={(e) => updateForm('methodology', e.target.value)} placeholder="Ex.: Aprendizagem ativa, trabalho em grupo, resolução de problemas…" />
+                  <textarea rows={2} value={form.methodology} onChange={(e) => updateForm('methodology', e.target.value)} placeholder="Ex.: Aprendizagem ativa, trabalho em grupo…" />
                 </Field>
                 <Field label="Recursos disponíveis" wide>
                   <textarea rows={2} value={form.materials} onChange={(e) => updateForm('materials', e.target.value)} placeholder="Ex.: Quadro, caderno, celular…" />
@@ -456,11 +730,19 @@ export default function BnccNacionalPage() {
               </div>
             </div>
 
-            {/* ── Área do plano gerado ── */}
             <div className="oa">
               <div className="oa-toolbar">
                 <span className="oa-label">Plano editável</span>
-                <button className="btn btn-gh" onClick={copyPlan} disabled={!generated}>Copiar texto</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-gh" onClick={copyPlan} disabled={!generated}>Copiar</button>
+                  <button
+                    className="btn btn-pri"
+                    disabled={!generated}
+                    onClick={() => { if (!generated) { showToast('Gere o plano primeiro.'); return } setShowPdfModal(true) }}
+                  >
+                    Baixar PDF
+                  </button>
+                </div>
               </div>
 
               {loading && (
@@ -480,17 +762,15 @@ export default function BnccNacionalPage() {
                 id="po-nac"
                 value={generated}
                 onChange={(e) => setGenerated(e.target.value)}
-                placeholder="O plano gerado aparecerá aqui. Você pode editar o texto antes de copiar."
+                placeholder="O plano gerado aparecerá aqui. Você pode editar o texto antes de baixar ou copiar."
               />
             </div>
           </div>
 
-          {/* ── Sidebar ── */}
           <aside className="sb">
             <div className="sbt">
               Habilidades <span className="sbc">{selected.length}</span>
             </div>
-
             {selectedSkills.length ? (
               <>
                 {selectedSkills.map((skill) => (
