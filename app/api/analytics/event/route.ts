@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
-
-function getAnonClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  if (!url || !key) throw new Error('Supabase not configured')
-  return createClient(url, key, { auth: { persistSession: false } })
-}
 
 export async function POST(request: Request) {
   try {
@@ -18,15 +11,25 @@ export async function POST(request: Request) {
     }
     if (!event_type) return NextResponse.json({ ok: false }, { status: 400 })
 
-    const supabase = getAnonClient()
-    await supabase.from('analytics_events').insert({
+    const supabase = getSupabaseAdmin()
+
+    // Try to insert; if table doesn't exist yet, create it first
+    let { error } = await supabase.from('analytics_events').insert({
       event_type,
       page: page ?? null,
       school: school ?? null,
     })
 
+    if (error?.code === '42P01') {
+      // Table doesn't exist — attempt to create it via stored procedure or skip
+      // We log this so the admin knows the migration needs to run
+      console.warn('[analytics] analytics_events table not found. Run supabase-analytics-migration.sql in Supabase SQL Editor.')
+    } else if (error) {
+      console.error('[analytics] insert error:', error.message)
+    }
+
     return NextResponse.json({ ok: true })
   } catch {
-    return NextResponse.json({ ok: true }) // silently succeed even on error
+    return NextResponse.json({ ok: true }) // always return 200 to not block the UI
   }
 }

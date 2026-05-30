@@ -95,6 +95,7 @@ export default function AdminDashboard() {
     }
     topSchools: { school: string; count: number }[]
   } | null>(null)
+  const [analyticsMigrationNeeded, setAnalyticsMigrationNeeded] = useState(false)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   // Edit modal state
@@ -175,7 +176,12 @@ export default function AdminDashboard() {
       })
       const payload = await res.json()
       if (!res.ok) throw new Error(payload.error || 'Erro ao carregar analytics')
-      setAnalytics(payload.data)
+      if (payload.needsMigration) {
+        setAnalyticsMigrationNeeded(true)
+      } else {
+        setAnalytics(payload.data)
+        setAnalyticsMigrationNeeded(false)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar analytics')
     } finally {
@@ -549,9 +555,40 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {analyticsLoading && !analytics && (
+            {analyticsLoading && !analytics && !analyticsMigrationNeeded && (
               <div style={{ textAlign: 'center', padding: '48px 0', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--ink-muted)' }}>
                 Carregando dados...
+              </div>
+            )}
+
+            {analyticsMigrationNeeded && (
+              <div style={{ padding: '20px 24px', background: 'var(--mustard-wash)', border: '2px solid var(--mustard)', marginBottom: 16 }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontWeight: 800, fontSize: 14, color: 'var(--ink)', marginBottom: 8 }}>
+                  ⚠️ Tabela de analytics não encontrada
+                </div>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--ink)', margin: '0 0 12px' }}>
+                  Para ativar o rastreamento de visitas e planos, rode o seguinte SQL no <strong>Supabase SQL Editor</strong>:
+                </p>
+                <pre style={{ background: 'var(--ink)', color: 'var(--paper)', padding: '12px 16px', fontSize: 11, fontFamily: 'var(--font-mono)', overflowX: 'auto', margin: 0, lineHeight: 1.6 }}>{`CREATE TABLE IF NOT EXISTS analytics_events (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  page       TEXT,
+  school     TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_analytics_event_type_time
+  ON analytics_events (event_type, created_at DESC);
+ALTER TABLE analytics_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "analytics_insert_anon" ON analytics_events
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "analytics_select_admin" ON analytics_events
+  FOR SELECT USING (
+    auth.jwt() ->> 'email' = 'admin@bncc.local'
+    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+  );`}</pre>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-muted)', margin: '10px 0 0' }}>
+                  O arquivo completo está em <code>supabase-analytics-migration.sql</code> no repositório.
+                </p>
               </div>
             )}
 

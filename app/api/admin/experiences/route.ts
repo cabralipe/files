@@ -8,16 +8,37 @@ export async function GET(request: Request) {
     await requireAdminUser(request)
     const supabase = getSupabaseAdmin()
 
+    // Fetch experiences without relying on PostgREST FK joins (more reliable)
     const { data: experiences, error } = await supabase
       .from('successful_experiences')
-      .select('*, user:users(full_name, email, school_id)')
+      .select('id, title, user_id, description, category, grade_level, is_published, is_featured, views_count, likes_count, created_at, updated_at')
       .order('created_at', { ascending: false })
 
     if (error) {
+      // Table might not exist yet
+      if (error.code === '42P01') {
+        return NextResponse.json({ success: true, data: [] })
+      }
       throw error
     }
 
-    return NextResponse.json({ success: true, data: experiences })
+    // Fetch author names separately — avoids FK join issues
+    const userIds = [...new Set((experiences ?? []).map((e) => e.user_id).filter(Boolean))]
+    let authorMap: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('users')
+        .select('id, full_name')
+        .in('id', userIds)
+      for (const p of profiles ?? []) authorMap[p.id] = p.full_name
+    }
+
+    const mapped = (experiences ?? []).map((e) => ({
+      ...e,
+      author_name: authorMap[e.user_id] ?? '—',
+    }))
+
+    return NextResponse.json({ success: true, data: mapped })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatório' }, { status: 401 })
@@ -50,9 +71,7 @@ export async function DELETE(request: Request) {
       .delete()
       .eq('id', id)
 
-    if (error) {
-      throw error
-    }
+    if (error) throw error
 
     return NextResponse.json({ success: true })
   } catch (error) {

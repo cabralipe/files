@@ -8,29 +8,38 @@ export async function GET(request: Request) {
     await requireAdminUser(request)
     const supabase = getSupabaseAdmin()
 
+    // Verify the analytics_events table exists
+    const { error: tableCheck } = await supabase
+      .from('analytics_events')
+      .select('id', { count: 'exact', head: true })
+      .limit(1)
+
+    if (tableCheck?.code === '42P01') {
+      return NextResponse.json({ data: null, needsMigration: true })
+    }
+
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
-    const ago30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const ago7d  = new Date(Date.now() -  7 * 24 * 60 * 60 * 1000)
+    const ago30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-    const q = (page: string) => supabase.from('analytics_events').select('*', { count: 'exact', head: true })
-      .eq('event_type', 'pageview').eq('page', page)
+    const q = (page: string) =>
+      supabase.from('analytics_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_type', 'pageview')
+        .eq('page', page)
 
     const [
-      // Computação portal
       { count: compTotal },
       { count: compToday },
       { count: compLast7d },
       { count: compLast30d },
-      // BNCC Nacional
       { count: nacTotal },
       { count: nacToday },
       { count: nacLast7d },
       { count: nacLast30d },
-      // Plans
       { count: portalPlans },
       { count: nacPlans },
-      // Top schools
       { data: schoolRows },
     ] = await Promise.all([
       q('/'),
@@ -42,8 +51,14 @@ export async function GET(request: Request) {
       q('/bncc-nacional').gte('created_at', ago7d.toISOString()),
       q('/bncc-nacional').gte('created_at', ago30d.toISOString()),
       supabase.from('plans').select('*', { count: 'exact', head: true }),
-      supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('event_type', 'bncc_plan_gen'),
-      supabase.from('analytics_events').select('school').eq('event_type', 'bncc_plan_gen').not('school', 'is', null).neq('school', ''),
+      supabase.from('analytics_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_type', 'bncc_plan_gen'),
+      supabase.from('analytics_events')
+        .select('school')
+        .eq('event_type', 'bncc_plan_gen')
+        .not('school', 'is', null)
+        .neq('school', ''),
     ])
 
     // Aggregate top schools

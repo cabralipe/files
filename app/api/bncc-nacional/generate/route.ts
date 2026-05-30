@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
 import { generatePlanFromPrompt } from '@/lib/public-backend'
 
 export const dynamic = 'force-dynamic'
@@ -80,17 +80,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Plano gerado vazio. Tente novamente.' }, { status: 500 })
     }
 
-    // Fire-and-forget analytics event
+    // Fire-and-forget analytics event (service role bypasses RLS)
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-      if (url && key) {
-        const supabase = createClient(url, key, { auth: { persistSession: false } })
-        void supabase.from('analytics_events').insert({
-          event_type: 'bncc_plan_gen',
-          school: body.school?.trim() || null,
-        })
-      }
+      const supabase = getSupabaseAdmin()
+      void supabase.from('analytics_events').insert({
+        event_type: 'bncc_plan_gen',
+        school: body.school?.trim() || null,
+      })
     } catch {}
 
     return NextResponse.json({ data: { content } })
