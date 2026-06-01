@@ -266,10 +266,13 @@ export default function AdminDashboard() {
     void (async () => {
       setLoading(true)
       setError('')
-      const tasks: Promise<unknown>[] = [fetchUsers(), fetchExperiences()]
-      if (isSuperAdmin) tasks.push(fetchMunicipalities())
-      await Promise.all(tasks)
-      setLoading(false)
+      try {
+        const tasks: Promise<unknown>[] = [fetchUsers(), fetchExperiences()]
+        if (isSuperAdmin) tasks.push(fetchMunicipalities())
+        await Promise.all(tasks)
+      } finally {
+        setLoading(false)
+      }
     })()
   }, [authLoading, isAuthenticated, isAdmin, isSuperAdmin, router, fetchUsers, fetchExperiences, fetchMunicipalities])
 
