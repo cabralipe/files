@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { usePoints } from '@/hooks/usePoints'
 

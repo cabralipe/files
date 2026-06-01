@@ -174,8 +174,8 @@ function parseDurationMinutes(duration: string) {
   return match ? Number(match[0]) : 50
 }
 
-function toPlanRow(plan: PublicPlan, userId: string) {
-  return {
+function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
+  const row: Record<string, unknown> = {
     user_id: userId,
     title: plan.title,
     description: plan.notes || plan.objectives || plan.title,
@@ -184,6 +184,8 @@ function toPlanRow(plan: PublicPlan, userId: string) {
     duration: parseDurationMinutes(plan.duration),
     updated_at: plan.updated_at,
   }
+  if (municipalityId) row.municipality_id = municipalityId
+  return row
 }
 
 function mapPlanRow(row: Record<string, any>): PublicPlan {
@@ -287,7 +289,7 @@ async function ensurePublicPlanUser() {
   return authUser.id
 }
 
-export async function listPlans(userId?: string): Promise<PublicPlan[]> {
+export async function listPlans(userId?: string, municipalityId?: string): Promise<PublicPlan[]> {
   const supabase = getSupabaseAdmin()
   let query = supabase
     .from('plans')
@@ -296,7 +298,9 @@ export async function listPlans(userId?: string): Promise<PublicPlan[]> {
 
   if (userId) {
     query = query.eq('user_id', userId)
-  } else {
+  }
+  if (municipalityId) {
+    query = query.eq('municipality_id', municipalityId)
   }
 
   const { data, error } = await query
@@ -308,7 +312,11 @@ export async function listPlans(userId?: string): Promise<PublicPlan[]> {
   return (data || []).map((row) => mapPlanRow(row as Record<string, any>))
 }
 
-export async function createPlan(input: z.infer<typeof createPlanSchema>, ownerUserId?: string) {
+export async function createPlan(
+  input: z.infer<typeof createPlanSchema>,
+  ownerUserId?: string,
+  municipalityId?: string,
+) {
   const planUserId = ownerUserId || (await ensurePublicPlanUser())
   const values = createPlanSchema.parse(input)
   const now = new Date().toISOString()
@@ -327,7 +335,7 @@ export async function createPlan(input: z.infer<typeof createPlanSchema>, ownerU
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('plans')
-    .insert(toPlanRow(plan, planUserId))
+    .insert(toPlanRow(plan, planUserId, municipalityId))
     .select()
     .single()
 
@@ -446,7 +454,10 @@ export async function reviewPlan(
   return data ? mapPlanRow(data as Record<string, any>) : nextPlan
 }
 
-export async function listExperiences(userId?: string): Promise<PublicExperience[]> {
+export async function listExperiences(
+  userId?: string,
+  municipalityId?: string,
+): Promise<PublicExperience[]> {
   const supabase = getSupabaseAdmin()
   let query = supabase
     .from('successful_experiences')
@@ -455,6 +466,9 @@ export async function listExperiences(userId?: string): Promise<PublicExperience
 
   if (userId) {
     query = query.eq('user_id', userId)
+  }
+  if (municipalityId) {
+    query = query.eq('municipality_id', municipalityId)
   }
 
   const { data, error } = await query
@@ -488,6 +502,7 @@ export async function listExperiences(userId?: string): Promise<PublicExperience
 export async function createExperience(
   input: z.infer<typeof createExperienceSchema>,
   owner: ExperienceOwner,
+  municipalityId?: string,
 ) {
   const values = createExperienceSchema.parse(input)
   const now = new Date().toISOString()
@@ -501,26 +516,29 @@ export async function createExperience(
   }
 
   const supabase = getSupabaseAdmin()
+  const row: Record<string, unknown> = {
+    user_id: owner.user_id,
+    title: experience.title,
+    description: experience.description,
+    content: JSON.stringify({
+      __experience: true,
+      teacher: experience.teacher,
+      school: experience.school,
+      subject: experience.subject,
+      grade_level: experience.grade_level,
+      content: experience.content,
+      outcomes: experience.outcomes,
+      image_url: experience.image_url,
+      skill_ids: experience.skill_ids,
+    }),
+    category: experience.subject,
+    updated_at: now,
+  }
+  if (municipalityId) row.municipality_id = municipalityId
+
   const { data, error } = await supabase
     .from('successful_experiences')
-    .insert({
-      user_id: owner.user_id,
-      title: experience.title,
-      description: experience.description,
-      content: JSON.stringify({
-        __experience: true,
-        teacher: experience.teacher,
-        school: experience.school,
-        subject: experience.subject,
-        grade_level: experience.grade_level,
-        content: experience.content,
-        outcomes: experience.outcomes,
-        image_url: experience.image_url,
-        skill_ids: experience.skill_ids,
-      }),
-      category: experience.subject,
-      updated_at: now,
-    })
+    .insert(row)
     .select()
     .single()
 

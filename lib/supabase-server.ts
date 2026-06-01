@@ -65,13 +65,16 @@ export async function requireAuthenticatedUser(request: Request) {
   return user
 }
 
-export async function ensureUserProfile(user: User) {
+export async function ensureUserProfile(user: User, municipalityId?: string) {
   const supabase = getSupabaseAdmin()
   const fullName =
     (user.user_metadata?.name as string | undefined) ||
     (user.user_metadata?.full_name as string | undefined) ||
     user.email ||
     'Professor(a)'
+
+  const resolvedMuni =
+    municipalityId || (user.user_metadata?.municipality_id as string | undefined)
 
   const { data: existingProfile, error: selectError } = await supabase
     .from('users')
@@ -84,17 +87,26 @@ export async function ensureUserProfile(user: User) {
   }
 
   if (existingProfile) {
+    if (resolvedMuni && !existingProfile.municipality_id) {
+      await supabase
+        .from('users')
+        .update({ municipality_id: resolvedMuni })
+        .eq('id', user.id)
+    }
     return existingProfile
   }
 
+  const baseInsert: Record<string, unknown> = {
+    id: user.id,
+    email: user.email || `${user.id}@local.invalid`,
+    full_name: fullName,
+    avatar_url: (user.user_metadata?.avatar_url as string | undefined) || null,
+  }
+  if (resolvedMuni) baseInsert.municipality_id = resolvedMuni
+
   const { data, error } = await supabase
     .from('users')
-    .insert({
-      id: user.id,
-      email: user.email || `${user.id}@local.invalid`,
-      full_name: fullName,
-      avatar_url: (user.user_metadata?.avatar_url as string | undefined) || null,
-    })
+    .insert(baseInsert)
     .select()
     .single()
 
@@ -106,15 +118,18 @@ export async function ensureUserProfile(user: User) {
     throw error
   }
 
+  const fallbackInsert: Record<string, unknown> = {
+    id: user.id,
+    email: user.email || `${user.id}@local.invalid`,
+    name: fullName,
+    avatar_url: (user.user_metadata?.avatar_url as string | undefined) || null,
+    points: 0,
+  }
+  if (resolvedMuni) fallbackInsert.municipality_id = resolvedMuni
+
   const { data: fallbackData, error: fallbackError } = await supabase
     .from('users')
-    .insert({
-      id: user.id,
-      email: user.email || `${user.id}@local.invalid`,
-      name: fullName,
-      avatar_url: (user.user_metadata?.avatar_url as string | undefined) || null,
-      points: 0,
-    })
+    .insert(fallbackInsert)
     .select()
     .single()
 
@@ -129,10 +144,24 @@ export async function requireAdminUser(request: Request) {
   const user = await requireAuthenticatedUser(request)
   const isAdmin =
     user.user_metadata?.role === 'admin' ||
+    user.user_metadata?.role === 'municipality_admin' ||
+    user.user_metadata?.role === 'super_admin' ||
     user.email === 'admin@bncc.local' ||
     user.email === process.env.ADMIN_EMAIL
 
   if (!isAdmin) {
+    throw new Error('FORBIDDEN')
+  }
+  return user
+}
+
+export async function requireSuperAdmin(request: Request) {
+  const user = await requireAuthenticatedUser(request)
+  const isSuper =
+    user.user_metadata?.role === 'super_admin' ||
+    user.email === process.env.SUPER_ADMIN_EMAIL
+
+  if (!isSuper) {
     throw new Error('FORBIDDEN')
   }
   return user

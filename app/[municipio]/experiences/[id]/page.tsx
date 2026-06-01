@@ -1,8 +1,9 @@
 'use client'
 
 import { createClient } from '@supabase/supabase-js'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import Link from '@/lib/m-link'
+import { useParams } from 'next/navigation'
+import { useRouter } from '@/lib/m-link'
 import { useEffect, useState } from 'react'
 import CommentsSection from '@/components/CommentsSection'
 import LikesButton from '@/components/LikesButton'

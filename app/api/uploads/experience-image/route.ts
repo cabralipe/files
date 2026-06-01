@@ -1,6 +1,7 @@
 import { get, put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
 import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +37,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const pathname = searchParams.get('pathname') || ''
 
-    if (!pathname.startsWith('experiences/')) {
+    // Aceita tanto caminhos legados (experiences/...) quanto novos (municipalities/<slug>/experiences/...)
+    const isLegacy = pathname.startsWith('experiences/')
+    const isScoped = /^municipalities\/[a-z0-9-]+\/experiences\//.test(pathname)
+    if (!isLegacy && !isScoped) {
       return NextResponse.json({ error: 'Imagem invalida' }, { status: 400 })
     }
 
@@ -92,7 +96,9 @@ export async function POST(request: Request) {
     }
 
     const fileName = safeFileName(file.name) || 'experiencia.jpg'
-    const blob = await put(`experiences/${user.id}/${Date.now()}-${fileName}`, file, {
+    const municipality = await resolveMunicipality(request)
+    const prefix = municipality ? `municipalities/${municipality.slug}/` : ''
+    const blob = await put(`${prefix}experiences/${user.id}/${Date.now()}-${fileName}`, file, {
       access: 'private',
       contentType: file.type,
       token,

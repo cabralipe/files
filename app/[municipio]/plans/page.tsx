@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
+import Link from '@/lib/m-link'
 import { createClient } from '@supabase/supabase-js'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/lib/m-link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlans } from '@/hooks/usePlans'
