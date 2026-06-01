@@ -8,10 +8,11 @@ export async function GET(request: Request) {
     await requireAdminUser(request)
     const supabase = getSupabaseAdmin()
 
-    // Fetch experiences without relying on PostgREST FK joins (more reliable)
+    // Fetch all available columns so older databases do not fail when optional
+    // columns are missing from the deployed schema.
     const { data: experiences, error } = await supabase
       .from('successful_experiences')
-      .select('id, title, user_id, description, category, grade_level, is_published, is_featured, views_count, likes_count, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
