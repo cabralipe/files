@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { createPlan, listPlans } from '@/lib/public-backend'
 import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
     const user = await requireAuthenticatedUser(request)
-    const plans = await listPlans(user.id)
+    const municipality = await resolveMunicipality(request)
+    const plans = await listPlans(user.id, municipality?.id)
 
     return NextResponse.json({
       success: true,
@@ -24,8 +26,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireAuthenticatedUser(request)
+    const municipality = await resolveMunicipality(request)
     const body = await request.json()
-    const plan = await createPlan(body, user.id)
+    const plan = await createPlan(body, user.id, municipality?.id)
 
     return NextResponse.json({ success: true, data: plan, plan }, { status: 201 })
   } catch (error) {

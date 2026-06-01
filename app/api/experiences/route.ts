@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { createExperience, listExperiences } from '@/lib/public-backend'
 import { requireAuthenticatedUser, getAuthenticatedUser, ensureUserProfile, getSupabaseAdmin } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +14,9 @@ export async function GET(request: Request) {
     
     const currentUser = await getAuthenticatedUser(request)
     const filterUserId = mine ? (currentUser ? currentUser.id : (await requireAuthenticatedUser(request)).id) : undefined
-    
-    const experiences = await listExperiences(filterUserId)
+    const municipality = await resolveMunicipality(request)
+
+    const experiences = await listExperiences(filterUserId, municipality?.id)
     let data = requestedId
       ? experiences.filter((experience) => experience.id === requestedId)
       : experiences
@@ -80,7 +82,8 @@ export async function POST(request: Request) {
         user.email ||
         'Professor(a)',
     }
-    const experience = await createExperience(body, teacher)
+    const municipality = await resolveMunicipality(request)
+    const experience = await createExperience(body, teacher, municipality?.id)
 
     return NextResponse.json({ success: true, data: experience, experience }, { status: 201 })
   } catch (error) {

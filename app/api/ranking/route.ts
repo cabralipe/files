@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedUser, getSupabaseAdmin } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const limit = Math.min(Number(searchParams.get('limit') || 100), 100)
     const currentUser = await getAuthenticatedUser(request)
+    const municipality = await resolveMunicipality(request)
     const supabase = getSupabaseAdmin()
-    const { data, error } = await supabase
+    let viewQuery = supabase
       .from('ranking_view')
       .select('*')
       .limit(limit)
+    if (municipality) viewQuery = viewQuery.eq('municipality_id', municipality.id)
+    const { data, error } = await viewQuery
 
     if (!error) {
       const ranking = (data || []).map((entry) => ({
@@ -35,11 +39,13 @@ export async function GET(request: Request) {
       throw error
     }
 
-    const { data: users, error: usersError } = await supabase
+    let usersQuery = supabase
       .from('users')
-      .select('id, name, email, avatar_url, points')
+      .select('id, name, email, avatar_url, points, municipality_id')
       .order('points', { ascending: false })
       .limit(limit)
+    if (municipality) usersQuery = usersQuery.eq('municipality_id', municipality.id)
+    const { data: users, error: usersError } = await usersQuery
 
     if (usersError) {
       throw usersError

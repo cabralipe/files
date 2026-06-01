@@ -2,7 +2,7 @@ import { createClient, type User } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { ensureUserProfile, getSupabaseAdmin } from '@/lib/supabase-server'
-import { municipalSchools, teacherSubjectOptions } from '@/lib/education-options'
+import { resolveMunicipality } from '@/lib/municipality'
 
 const registerSchema = z.object({
   email: z.string().email('Email invalido'),
@@ -12,18 +12,19 @@ const registerSchema = z.object({
   school: z.string().trim().optional().default(''),
   subject: z.string().trim().optional().default(''),
 }).superRefine((values, ctx) => {
-  if (!municipalSchools.includes(values.school)) {
+  // Lista de escolas é por município; aqui só rejeita string vazia.
+  if (!values.school || values.school.trim().length < 2) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Selecione uma escola da rede municipal',
+      message: 'Informe a escola',
       path: ['school'],
     })
   }
 
-  if (values.role === 'teacher' && !teacherSubjectOptions.includes(values.subject)) {
+  if (values.role === 'teacher' && (!values.subject || values.subject.trim().length < 2)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Selecione a disciplina que leciona',
+      message: 'Informe a disciplina que leciona',
       path: ['subject'],
     })
   }
@@ -32,11 +33,20 @@ const registerSchema = z.object({
 export async function POST(request: Request) {
   try {
     const values = registerSchema.parse(await request.json())
+    const municipality = await resolveMunicipality(request)
+    if (!municipality) {
+      return NextResponse.json(
+        { error: 'Municipio nao identificado. Cadastre-se a partir da pagina do municipio.' },
+        { status: 400 },
+      )
+    }
     const metadata = {
       name: values.name,
       role: values.role,
       school: values.school,
       subject: values.role === 'teacher' ? values.subject : '',
+      municipality_id: municipality.id,
+      municipality_slug: municipality.slug,
     }
     const authClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -96,7 +106,20 @@ export async function POST(request: Request) {
     }
 
     if (user) {
-      await ensureUserProfile(user)
+      await ensureUserProfile(user, municipality.id)
+
+      // Vincula usuário ao município (tabela user_municipalities)
+      try {
+        const admin = getSupabaseAdmin()
+        await admin
+          .from('user_municipalities')
+          .upsert(
+            { user_id: user.id, municipality_id: municipality.id, role: values.role },
+            { onConflict: 'user_id,municipality_id' },
+          )
+      } catch (linkError) {
+        console.error('Falha ao vincular usuario ao municipio:', linkError)
+      }
     }
 
     const { data: sessionData, error: loginError } = await authClient.auth.signInWithPassword({

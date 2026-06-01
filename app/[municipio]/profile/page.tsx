@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@supabase/supabase-js'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/lib/m-link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 

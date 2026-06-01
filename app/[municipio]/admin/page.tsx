@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import Link from '@/lib/m-link'
+import { useRouter } from '@/lib/m-link'
 import { createClient } from '@supabase/supabase-js'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -27,6 +27,29 @@ type Experience = {
   author?: string
   author_name?: string
   created_at: string
+}
+
+type Muni = {
+  id: string
+  slug: string
+  name: string
+  state: string
+  is_active: boolean
+  primary_color: string | null
+  secondary_color: string | null
+  contact_email: string | null
+  created_at: string
+}
+
+type MuniStats = Record<string, { users: number; plans: number; experiences: number }>
+
+function slugify(name: string) {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 async function getAccessToken() {
@@ -77,7 +100,7 @@ export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated, signOut } = useAuth()
 
-  const [activeTab, setActiveTab] = useState<'users' | 'experiences' | 'analytics'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'experiences' | 'analytics' | 'municipalities'>('users')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,6 +121,23 @@ export default function AdminDashboard() {
   const [analyticsMigrationNeeded, setAnalyticsMigrationNeeded] = useState(false)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
+  // Municipality management (super admin only)
+  const [munis, setMunis] = useState<Muni[]>([])
+  const [muniStats, setMuniStats] = useState<MuniStats>({})
+  const [showMuniForm, setShowMuniForm] = useState(false)
+  const [creatingMuni, setCreatingMuni] = useState(false)
+  const [muniForm, setMuniForm] = useState({
+    name: '',
+    slug: '',
+    state: '',
+    contact_email: '',
+    primary_color: '#E5394B',
+    secondary_color: '#A6B0DD',
+    admin_name: '',
+    admin_email: '',
+    admin_password: '',
+  })
+
   // Edit modal state
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [editForm, setEditForm] = useState({
@@ -108,8 +148,17 @@ export default function AdminDashboard() {
     blocked: false,
   })
 
+  const isSuperAdmin =
+    user?.user_metadata?.role === 'super_admin' ||
+    (typeof process !== 'undefined' &&
+      !!process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL &&
+      user?.email === process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL)
+
   const isAdmin =
-    user?.user_metadata?.role === 'admin' || user?.email === 'admin@bncc.local'
+    user?.user_metadata?.role === 'admin' ||
+    user?.user_metadata?.role === 'municipality_admin' ||
+    isSuperAdmin ||
+    user?.email === 'admin@bncc.local'
 
   // Auto-dismiss messages
   useEffect(() => {
@@ -189,6 +238,21 @@ export default function AdminDashboard() {
     }
   }, [])
 
+  const fetchMunicipalities = useCallback(async () => {
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/super-admin/municipalities', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao carregar municípios')
+      setMunis(payload.data || [])
+      setMuniStats(payload.stats || {})
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar municípios')
+    }
+  }, [])
+
   useEffect(() => {
     if (authLoading) return
     if (!isAuthenticated) {
@@ -202,10 +266,84 @@ export default function AdminDashboard() {
     void (async () => {
       setLoading(true)
       setError('')
-      await Promise.all([fetchUsers(), fetchExperiences()])
+      const tasks: Promise<unknown>[] = [fetchUsers(), fetchExperiences()]
+      if (isSuperAdmin) tasks.push(fetchMunicipalities())
+      await Promise.all(tasks)
       setLoading(false)
     })()
-  }, [authLoading, isAuthenticated, isAdmin, router, fetchUsers, fetchExperiences])
+  }, [authLoading, isAuthenticated, isAdmin, isSuperAdmin, router, fetchUsers, fetchExperiences, fetchMunicipalities])
+
+  // Load analytics lazily when tab is first opened
+  useEffect(() => {
+    if (activeTab === 'analytics' && !analytics && !analyticsLoading) {
+      void fetchAnalytics()
+    }
+  }, [activeTab, analytics, analyticsLoading, fetchAnalytics])
+
+  async function createMunicipality(e: React.FormEvent) {
+    e.preventDefault()
+    setCreatingMuni(true)
+    setError('')
+    try {
+      const token = await getAccessToken()
+      const slug = muniForm.slug || slugify(muniForm.name)
+      const body: Record<string, unknown> = {
+        name: muniForm.name,
+        slug,
+        state: muniForm.state.toUpperCase(),
+        contact_email: muniForm.contact_email || undefined,
+        primary_color: muniForm.primary_color,
+        secondary_color: muniForm.secondary_color,
+      }
+      if (muniForm.admin_email && muniForm.admin_password && muniForm.admin_name) {
+        body.admin_email = muniForm.admin_email
+        body.admin_password = muniForm.admin_password
+        body.admin_name = muniForm.admin_name
+      }
+      const res = await fetch('/api/super-admin/municipalities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao criar município')
+      setMessage(`Município "${muniForm.name}" criado. Ambiente disponível em /${slug}`)
+      setMuniForm({
+        name: '', slug: '', state: '', contact_email: '',
+        primary_color: '#E5394B', secondary_color: '#A6B0DD',
+        admin_name: '', admin_email: '', admin_password: '',
+      })
+      setShowMuniForm(false)
+      await fetchMunicipalities()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar município')
+    } finally {
+      setCreatingMuni(false)
+    }
+  }
+
+  async function toggleMunicipality(m: Muni) {
+    try {
+      const token = await getAccessToken()
+      const res = await fetch(`/api/super-admin/municipalities/${m.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ is_active: !m.is_active }),
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao alterar município')
+      setMessage(m.is_active ? 'Município desativado.' : 'Município ativado.')
+      await fetchMunicipalities()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao alterar município')
+    }
+  }
 
   // Load analytics lazily when tab is first opened
   useEffect(() => {
@@ -518,7 +656,7 @@ export default function AdminDashboard() {
           marginBottom: 24,
           gap: 0,
         }}>
-          {(['users', 'experiences', 'analytics'] as const).map((tab) => (
+          {(['users', 'experiences', 'analytics', ...(isSuperAdmin ? ['municipalities'] as const : [])] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -540,7 +678,13 @@ export default function AdminDashboard() {
                 letterSpacing: '.01em',
               }}
             >
-              {tab === 'users' ? 'Usuários' : tab === 'experiences' ? 'Experiências' : 'Analytics'}
+              {tab === 'users'
+                ? 'Usuários'
+                : tab === 'experiences'
+                  ? 'Experiências'
+                  : tab === 'analytics'
+                    ? 'Analytics'
+                    : 'Municípios'}
             </button>
           ))}
         </div>
@@ -1048,6 +1192,241 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
           </div>
         )}
 
+        {/* ══════ MUNICIPALITIES TAB (super admin) ══════ */}
+        {activeTab === 'municipalities' && isSuperAdmin && (
+          <>
+            <div className="saved-head" style={{ marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, margin: 0 }}>
+                  Ambientes de municípios
+                </h2>
+                <p style={{ fontSize: 13, color: 'var(--ink-muted)', marginTop: 4 }}>
+                  Cada município tem seu próprio ambiente em /&lt;slug&gt; com todas as funcionalidades.
+                </p>
+              </div>
+              <button
+                className="btn btn-pri"
+                type="button"
+                onClick={() => setShowMuniForm((s) => !s)}
+              >
+                {showMuniForm ? 'Cancelar' : '+ Novo município'}
+              </button>
+            </div>
+
+            {showMuniForm && (
+              <form
+                onSubmit={createMunicipality}
+                style={{
+                  background: 'var(--paper-soft)',
+                  border: '2.5px solid var(--ink)',
+                  boxShadow: 'var(--stamp)',
+                  borderRadius: 0,
+                  padding: 16,
+                  marginBottom: 20,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 12,
+                }}
+              >
+                <MuniField label="Nome do município *">
+                  <input
+                    required
+                    value={muniForm.name}
+                    onChange={(e) =>
+                      setMuniForm({
+                        ...muniForm,
+                        name: e.target.value,
+                        slug: muniForm.slug || slugify(e.target.value),
+                      })
+                    }
+                    placeholder="São Paulo"
+                  />
+                </MuniField>
+                <MuniField label="Slug (URL) *">
+                  <input
+                    required
+                    value={muniForm.slug}
+                    onChange={(e) => setMuniForm({ ...muniForm, slug: slugify(e.target.value) })}
+                    placeholder="sao-paulo"
+                  />
+                </MuniField>
+                <MuniField label="UF *">
+                  <input
+                    required
+                    maxLength={2}
+                    value={muniForm.state}
+                    onChange={(e) =>
+                      setMuniForm({ ...muniForm, state: e.target.value.toUpperCase().slice(0, 2) })
+                    }
+                    placeholder="SP"
+                  />
+                </MuniField>
+                <MuniField label="E-mail de contato">
+                  <input
+                    type="email"
+                    value={muniForm.contact_email}
+                    onChange={(e) => setMuniForm({ ...muniForm, contact_email: e.target.value })}
+                    placeholder="contato@..."
+                  />
+                </MuniField>
+                <MuniField label="Cor primária">
+                  <input
+                    type="color"
+                    value={muniForm.primary_color}
+                    onChange={(e) => setMuniForm({ ...muniForm, primary_color: e.target.value })}
+                  />
+                </MuniField>
+                <MuniField label="Cor secundária">
+                  <input
+                    type="color"
+                    value={muniForm.secondary_color}
+                    onChange={(e) => setMuniForm({ ...muniForm, secondary_color: e.target.value })}
+                  />
+                </MuniField>
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--ink-faint)', paddingTop: 10, fontSize: 13, fontWeight: 700 }}>
+                  Admin inicial do município (opcional)
+                </div>
+                <MuniField label="Nome do admin">
+                  <input
+                    value={muniForm.admin_name}
+                    onChange={(e) => setMuniForm({ ...muniForm, admin_name: e.target.value })}
+                  />
+                </MuniField>
+                <MuniField label="E-mail do admin">
+                  <input
+                    type="email"
+                    value={muniForm.admin_email}
+                    onChange={(e) => setMuniForm({ ...muniForm, admin_email: e.target.value })}
+                  />
+                </MuniField>
+                <MuniField label="Senha do admin (mín. 6)">
+                  <input
+                    type="password"
+                    value={muniForm.admin_password}
+                    onChange={(e) => setMuniForm({ ...muniForm, admin_password: e.target.value })}
+                  />
+                </MuniField>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <button className="btn btn-pri" type="submit" disabled={creatingMuni}>
+                    {creatingMuni ? 'Criando...' : 'Criar município'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div style={{
+              background: 'var(--paper-soft)',
+              border: '2.5px solid var(--ink)',
+              boxShadow: 'var(--stamp)',
+              borderRadius: 0,
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1.3fr 1.2fr 0.5fr 0.7fr 0.7fr 0.9fr 0.8fr 0.9fr',
+                gap: 12,
+                padding: '12px 14px',
+                background: 'var(--mustard)',
+                borderBottom: '2px solid var(--ink)',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 800,
+                fontSize: 11,
+                textTransform: 'uppercase' as const,
+                letterSpacing: '.06em',
+                color: 'var(--ink)',
+              }}>
+                <span>Nome</span>
+                <span>URL</span>
+                <span>UF</span>
+                <span>Usuários</span>
+                <span>Planos</span>
+                <span>Experiências</span>
+                <span>Status</span>
+                <span>Ações</span>
+              </div>
+
+              {munis.length === 0 ? (
+                <div className="est">Nenhum município ainda. Crie o primeiro!</div>
+              ) : (
+                munis.map((m, idx) => {
+                  const s = muniStats[m.id] || { users: 0, plans: 0, experiences: 0 }
+                  return (
+                    <div
+                      key={m.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1.3fr 1.2fr 0.5fr 0.7fr 0.7fr 0.9fr 0.8fr 0.9fr',
+                        gap: 12,
+                        padding: '12px 14px',
+                        background: idx % 2 === 0 ? 'var(--paper-soft)' : 'var(--paper)',
+                        borderBottom: '1px solid var(--ink-faint)',
+                        alignItems: 'center',
+                        fontSize: 13,
+                        fontFamily: 'var(--font-body)',
+                        color: 'var(--ink)',
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{
+                          display: 'inline-block',
+                          width: 14,
+                          height: 14,
+                          border: '1.5px solid var(--ink)',
+                          background: m.primary_color || 'var(--ink)',
+                        }} />
+                        {m.name}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                        <Link href={`/${m.slug}`} style={{ color: 'var(--blue)' }}>/{m.slug}</Link>
+                      </span>
+                      <span>{m.state}</span>
+                      <span>{s.users}</span>
+                      <span>{s.plans}</span>
+                      <span>{s.experiences}</span>
+                      <span>
+                        <span style={{
+                          display: 'inline-block',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: 'uppercase' as const,
+                          letterSpacing: '.06em',
+                          padding: '2px 6px',
+                          border: '1.5px solid var(--ink)',
+                          background: m.is_active ? 'var(--teal)' : 'var(--ink-faint)',
+                          color: m.is_active ? 'var(--paper-soft)' : 'var(--ink)',
+                        }}>
+                          {m.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </span>
+                      <span>
+                        <button
+                          type="button"
+                          onClick={() => toggleMunicipality(m)}
+                          style={{
+                            fontFamily: 'var(--font-body)',
+                            fontWeight: 600,
+                            fontSize: 11,
+                            padding: '6px 10px',
+                            border: '2px solid var(--ink)',
+                            borderRadius: 0,
+                            background: m.is_active ? 'var(--paper)' : 'var(--teal)',
+                            color: m.is_active ? 'var(--ink)' : 'var(--paper-soft)',
+                            cursor: 'pointer',
+                            boxShadow: '2px 2px 0 var(--ink)',
+                          }}
+                        >
+                          {m.is_active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </>
+        )}
+
         {/* ══════ DECORATIVE HALFTONE ══════ */}
         <div
           aria-hidden="true"
@@ -1439,5 +1818,14 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
         </div>
       )}
     </main>
+  )
+}
+
+function MuniField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
+      <span style={{ fontWeight: 700, fontFamily: 'var(--font-body)' }}>{label}</span>
+      {children}
+    </label>
   )
 }

@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireAdminUser, getSupabaseAdmin } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    await requireAdminUser(request)
+    const adminUser = await requireAdminUser(request)
+    const isSuper = adminUser.user_metadata?.role === 'super_admin'
     const supabase = getSupabaseAdmin()
+    const municipality = await resolveMunicipality(request)
 
     const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers()
 
@@ -14,24 +17,33 @@ export async function GET(request: Request) {
       throw authError
     }
 
-    const { data: dbProfiles } = await supabase.from('users').select('*')
+    let dbQuery = supabase.from('users').select('*')
+    if (!isSuper && municipality) {
+      dbQuery = dbQuery.eq('municipality_id', municipality.id)
+    }
+    const { data: dbProfiles } = await dbQuery
 
-    const mergedUsers = authUsers.map((authUser) => {
-      const dbProfile = dbProfiles?.find((p) => p.id === authUser.id)
-      return {
-        id: authUser.id,
-        email: authUser.email,
-        full_name: dbProfile?.full_name || authUser.user_metadata?.name || '',
-        role: authUser.user_metadata?.role || dbProfile?.role || 'teacher',
-        school: authUser.user_metadata?.school || '',
-        subject: dbProfile?.subject || authUser.user_metadata?.subject || '',
-        blocked: authUser.user_metadata?.blocked === true,
-        created_at: authUser.created_at,
-        last_sign_in_at: authUser.last_sign_in_at || null,
-        avatar_url: dbProfile?.avatar_url || null,
-        points: dbProfile?.points || 0,
-      }
-    })
+    const allowedIds = new Set((dbProfiles || []).map((p) => p.id))
+
+    const mergedUsers = authUsers
+      .filter((u) => isSuper || allowedIds.has(u.id))
+      .map((authUser) => {
+        const dbProfile = dbProfiles?.find((p) => p.id === authUser.id)
+        return {
+          id: authUser.id,
+          email: authUser.email,
+          full_name: dbProfile?.full_name || authUser.user_metadata?.name || '',
+          role: authUser.user_metadata?.role || dbProfile?.role || 'teacher',
+          school: authUser.user_metadata?.school || '',
+          subject: dbProfile?.subject || authUser.user_metadata?.subject || '',
+          blocked: authUser.user_metadata?.blocked === true,
+          created_at: authUser.created_at,
+          last_sign_in_at: authUser.last_sign_in_at || null,
+          avatar_url: dbProfile?.avatar_url || null,
+          points: dbProfile?.points || 0,
+          municipality_id: dbProfile?.municipality_id || null,
+        }
+      })
 
     return NextResponse.json({ success: true, data: mergedUsers })
   } catch (error) {

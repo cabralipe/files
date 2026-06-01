@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       const { data } = await supabase
         .from('skills')
         .select('id, code, name, description, grade_level, competency, subject, axis')
-        .or(`name.ilike.${search},description.ilike.${search},code.ilike.${search}`)
+        .or(`name.ilike.${search},description.ilike.${search},code.ilike.${search},subject.ilike.${search},competency.ilike.${search},axis.ilike.${search}`)
         .limit(limit)
       results.skills = data || []
     }

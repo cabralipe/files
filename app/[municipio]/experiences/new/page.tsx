@@ -1,8 +1,8 @@
 'use client'
 
 import { createClient } from '@supabase/supabase-js'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import Link from '@/lib/m-link'
+import { useRouter } from '@/lib/m-link'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStorage } from '@/hooks/useStorage'
@@ -94,7 +94,7 @@ export default function NewExperiencePage() {
     return skills
       .filter((skill) =>
         needle
-          ? `${skill.code} ${skill.name} ${skill.subject} ${skill.axis}`.toLowerCase().includes(needle)
+          ? `${skill.code} ${skill.name} ${skill.description} ${skill.subject} ${skill.axis} ${skill.competency}`.toLowerCase().includes(needle)
           : true,
       )
       .slice(0, 8)

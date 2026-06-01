@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import Link from '@/lib/m-link'
 import { Search, Plus, BookOpen, FileText, Trash2, Download } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import { municipalSchools } from '@/lib/education-options'
