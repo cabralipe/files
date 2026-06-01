@@ -119,10 +119,22 @@ CREATE TABLE IF NOT EXISTS user_municipalities (
 CREATE INDEX IF NOT EXISTS idx_user_municipalities_user  ON user_municipalities(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_municipalities_muni  ON user_municipalities(municipality_id);
 
+-- Garante que `users.role` existe (bancos antigos podem nao ter)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'teacher';
+
 -- Backfill: cada usuário existente entra como teacher (ou role atual) em Atalaia/AL
+-- Mapeia papeis legados para os papeis aceitos pelo CHECK de user_municipalities.
 INSERT INTO user_municipalities (user_id, municipality_id, role)
-SELECT u.id, u.municipality_id, COALESCE(u.role, 'teacher')
+SELECT
+  u.id,
+  u.municipality_id,
+  CASE
+    WHEN u.role IN ('teacher','coordinator','municipality_admin') THEN u.role
+    WHEN u.role = 'admin' THEN 'municipality_admin'
+    ELSE 'teacher'
+  END
 FROM users u
+WHERE u.municipality_id IS NOT NULL
 ON CONFLICT (user_id, municipality_id) DO NOTHING;
 
 -- ---------- 7) Função helper p/ obter municipality_id atual do request ------
@@ -283,6 +295,14 @@ CREATE POLICY "um_admin_write" ON user_municipalities
   FOR ALL USING (is_super_admin()) WITH CHECK (is_super_admin());
 
 -- ---------- 10) View de ranking por município --------------------------------
+-- Garante colunas usadas pela view (bancos antigos podem nao ter todas).
+ALTER TABLE users                  ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE users                  ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE users                  ADD COLUMN IF NOT EXISTS school_id UUID;
+ALTER TABLE schools                ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+ALTER TABLE points_transactions    ADD COLUMN IF NOT EXISTS points_amount INTEGER NOT NULL DEFAULT 0;
+
 DROP VIEW IF EXISTS ranking_view;
 CREATE OR REPLACE VIEW ranking_view AS
 SELECT
