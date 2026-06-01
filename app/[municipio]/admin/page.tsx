@@ -348,13 +348,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // Load analytics lazily when tab is first opened
-  useEffect(() => {
-    if (activeTab === 'analytics' && !analytics && !analyticsLoading) {
-      void fetchAnalytics()
-    }
-  }, [activeTab, analytics, analyticsLoading, fetchAnalytics])
-
   // ─── User actions ───
 
   function openEditModal(u: AdminUser) {
