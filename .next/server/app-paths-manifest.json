@@ -1,1 +1,5 @@
-{}
+{
+  "/[municipio]/anos-iniciais/page": "app/[municipio]/anos-iniciais/page.js",
+  "/[municipio]/page": "app/[municipio]/page.js",
+  "/[municipio]/computacao/page": "app/[municipio]/computacao/page.js"
+}

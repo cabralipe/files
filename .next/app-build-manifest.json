@@ -1,3 +1,30 @@
 {
-  "pages": {}
+  "pages": {
+    "/[municipio]/anos-iniciais/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[municipio]/anos-iniciais/page.js"
+    ],
+    "/[municipio]/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[municipio]/layout.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
+    "/[municipio]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[municipio]/page.js"
+    ],
+    "/[municipio]/computacao/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[municipio]/computacao/page.js"
+    ]
+  }
 }
