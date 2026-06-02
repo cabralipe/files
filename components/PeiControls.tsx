@@ -105,8 +105,20 @@ export default function PeiControls({
 
       {planKind === 'pei' && (
         <div className="pei-student-box">
+          <div className="pei-tutorial" style={{ padding: '12px 14px', border: '2px solid var(--blue)', background: 'var(--blue-wash)', marginBottom: 4 }}>
+            <div className="pei-tutorial-title" style={{ marginBottom: 6 }}>O que e o modo PEI?</div>
+            <p className="pei-note">
+              No modo PEI, a IA usa a ficha AEE do aluno para gerar um Plano Educacional Individualizado completo,
+              com objetivos, estrategias, adaptacoes e rotina de acompanhamento personalizados.
+              O PEI segue as diretrizes da LBI e da Politica Nacional de Educacao Especial Inclusiva.
+            </p>
+            <p className="pei-note" style={{ marginTop: 6 }}>
+              <strong>Prerequisito:</strong> o aluno precisa ter ficha AEE cadastrada no painel AEE.
+            </p>
+          </div>
+
           {!user ? (
-            <p className="pei-note">Para criar PEI, faca login com uma conta autorizada.</p>
+            <p className="pei-note">Para criar PEI, faca login com uma conta autorizada (professor, AEE, coordenacao ou administracao).</p>
           ) : (
             <>
               <label className="fgr">
@@ -120,11 +132,11 @@ export default function PeiControls({
                   ))}
                 </select>
               </label>
-              {error && <p className="pei-note">{error}</p>}
+              {error && <p className="pei-note" style={{ color: 'var(--red)' }}>{error}</p>}
               {!loading && !students.length && (
                 <p className="pei-note">
                   Nenhum aluno com ficha AEE encontrado para esta escola.
-                  {canManageAee && ' Cadastre o aluno no painel AEE.'}
+                  {canManageAee && ' Cadastre o aluno no painel AEE para que ele apareca aqui.'}
                 </p>
               )}
               {canManageAee && (

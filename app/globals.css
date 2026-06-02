@@ -184,6 +184,56 @@ body {
   font-size: 24px;
 }
 
+.logo-ic--aee::before {
+  content: "AEE";
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: -.03em;
+}
+
+.logo-ic--pei::before {
+  content: "PEI";
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 13px;
+  letter-spacing: -.02em;
+}
+
+.ai-ic::before {
+  content: "AI";
+  font-family: var(--font-display);
+}
+
+.pei-tutorial {
+  background: var(--blue-wash) !important;
+  border-color: var(--blue) !important;
+}
+
+.pei-tutorial-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--blue-deep);
+  margin-bottom: 10px;
+}
+
+.pei-tutorial-steps {
+  margin: 0 0 6px 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.pei-tutorial-steps li strong {
+  color: var(--blue-deep);
+}
+
 .logo-t {
   font-family: var(--font-display);
   font-weight: 900;
