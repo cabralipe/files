@@ -119,6 +119,19 @@ export default function AeePage() {
   }
 
   async function saveStudent() {
+    if (!student.full_name.trim() || student.full_name.trim().length < 2) {
+      setError('Informe o nome completo do aluno (minimo 2 caracteres).')
+      return
+    }
+    if (!student.school_name.trim() || student.school_name.trim().length < 2) {
+      setError('Informe o nome da escola.')
+      return
+    }
+    if (!student.grade_level.trim()) {
+      setError('Informe o ano/turma do aluno.')
+      return
+    }
+
     try {
       setSaving(true)
       setError('')
@@ -146,8 +159,11 @@ export default function AeePage() {
         }),
       })
       const payload = await response.json()
+      if (response.status === 401) throw new Error('Sessao expirada. Faca login novamente.')
+      if (response.status === 403) throw new Error('Acesso restrito: apenas professor AEE, coordenacao ou administracao podem cadastrar alunos.')
+      if (response.status === 400 && payload.error === 'Municipio nao identificado') throw new Error('Municipio nao identificado. Recarregue a pagina e tente novamente.')
       if (!response.ok) throw new Error(payload.error || 'Erro ao salvar aluno')
-      setMessage('Aluno e ficha AEE salvos.')
+      setMessage('Aluno e ficha AEE salvos com sucesso.')
       setStudent(emptyStudent)
       setProfile(emptyProfile)
     } catch (err) {
