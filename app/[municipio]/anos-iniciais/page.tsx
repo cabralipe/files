@@ -14,16 +14,16 @@ type Skill = {
   desdobramento: string
 }
 
-const DISCIPLINE_COLORS: Record<string, string> = {
-  'Língua Portuguesa': '#d62839',
-  'Arte': '#9b5de5',
-  'Educação Física': '#0096c7',
-  'Geografia': '#06d6a0',
-  'História': '#fb8500',
-  'Ensino Religioso': '#4895ef',
-  'Ciências': '#2dc653',
-  'Matemática': '#023e8a',
-  'História e Geografia de Atalaia': '#bc6c25',
+const DISCIPLINE_COLORS: Record<string, { bg: string; fg: string }> = {
+  'Língua Portuguesa': { bg: 'var(--red-wash)',    fg: 'var(--red-deep)' },
+  'Arte':             { bg: 'var(--plum-wash)',    fg: 'var(--plum)' },
+  'Educação Física':  { bg: 'var(--blue-wash)',    fg: 'var(--blue)' },
+  'Geografia':        { bg: 'var(--teal-wash)',    fg: 'var(--teal)' },
+  'História':         { bg: 'var(--mustard-wash)', fg: 'var(--mustard-deep)' },
+  'Ensino Religioso': { bg: 'var(--blue-wash)',    fg: 'var(--blue-deep)' },
+  'Ciências':         { bg: 'var(--teal-wash)',    fg: 'var(--teal-deep)' },
+  'Matemática':       { bg: 'var(--red-wash)',     fg: 'var(--red-deep)' },
+  'História e Geografia de Atalaia': { bg: 'var(--mustard-wash)', fg: 'var(--mustard-deep)' },
 }
 
 function normalizeText(value: string) {
@@ -33,11 +33,14 @@ function normalizeText(value: string) {
     .toLowerCase()
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function StatCard({ value, label }: { value: number; label: string }) {
   return (
-    <div className="stat">
-      <span className="stat-n">{value}</span>
-      <span className="stat-l">{label}</span>
+    <div className="sc">
+      <div className="sc-ic" />
+      <div>
+        <div className="sc-n">{value}</div>
+        <div className="sc-l">{label}</div>
+      </div>
     </div>
   )
 }
@@ -50,7 +53,6 @@ export default function AnosIniciaisPage() {
   const [year, setYear] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  // Load data lazily
   useMemo(() => {
     void import('../../../public/anos-iniciais-skills.json').then((mod) => {
       setSkills(mod.default as Skill[])
@@ -63,14 +65,11 @@ export default function AnosIniciaisPage() {
   const years = useMemo(() => {
     const allYears = [...new Set(skills.map(s => s.year))]
     const ORDER = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano',
-      '1º e 2º Ano', '3º ao 5º Ano', '1º ao 5º Ano',
-      '1º e 2º Ano (EF)', '3º ao 5º Ano (EF)']
+      '1º e 2º Ano', '3º ao 5º Ano', '1º ao 5º Ano']
     return allYears.sort((a, b) => {
-      const ia = ORDER.indexOf(a)
-      const ib = ORDER.indexOf(b)
+      const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b)
       if (ia !== -1 && ib !== -1) return ia - ib
-      if (ia !== -1) return -1
-      if (ib !== -1) return 1
+      if (ia !== -1) return -1; if (ib !== -1) return 1
       return a.localeCompare(b, 'pt-BR')
     })
   }, [skills])
@@ -98,68 +97,32 @@ export default function AnosIniciaisPage() {
       <header id="hdr">
         <div className="hdr-in">
           <div className="logo">
-            <div className="logo-ic" style={{ background: '#06d6a0', color: '#fff' }}>AI</div>
+            <div className="logo-ic ai-ic" />
             <div>
               <div className="logo-t">Referencial Curricular · Anos Iniciais</div>
               <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
             </div>
           </div>
           <nav className="hdr-nav" aria-label="Navegação">
-            <Link className="nb" href="..">← Portal Computação</Link>
+            <Link className="nb" href="/">← Portais</Link>
+            <Link className="nb" href="/computacao">💻 BNCC Computação</Link>
           </nav>
         </div>
       </header>
 
-      {/* Portal switcher */}
-      <div style={{
-        background: '#f8f9fb',
-        borderBottom: '1px solid #e2e6ee',
-        padding: '8px 20px',
-        display: 'flex',
-        gap: 8,
-        alignItems: 'center',
-        flexWrap: 'wrap',
-      }}>
-        <span style={{ fontSize: 12, color: '#888', marginRight: 4 }}>Referencial:</span>
-        <Link
-          href=".."
-          style={{
-            padding: '4px 14px',
-            borderRadius: 20,
-            background: 'white',
-            border: '1px solid #ccc',
-            fontSize: 13,
-            color: '#555',
-            textDecoration: 'none',
-            fontWeight: 400,
-          }}
-        >
-          💻 BNCC Computação
-        </Link>
-        <span style={{
-          padding: '4px 14px',
-          borderRadius: 20,
-          background: '#1a1a2e',
-          color: 'white',
-          fontSize: 13,
-          fontWeight: 600,
-        }}>
-          📚 Anos Iniciais
-        </span>
-      </div>
-
       <section className="pg">
         {loading ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#888' }}>
-            Carregando habilidades...
+          <div className="ai-loading">
+            <div className="ai-loading-spin" />
+            <span>Carregando referencial...</span>
           </div>
         ) : (
           <>
             <div className="stats">
-              <Stat value={skills.length} label="habilidades" />
-              <Stat value={disciplines.length} label="disciplinas" />
-              <Stat value={years.length} label="anos/etapas" />
-              <Stat value={filtered.length} label="resultados" />
+              <StatCard value={skills.length} label="habilidades" />
+              <StatCard value={disciplines.length} label="disciplinas" />
+              <StatCard value={years.length} label="anos/etapas" />
+              <StatCard value={filtered.length} label="resultados" />
             </div>
 
             <div className="fbar">
@@ -167,121 +130,184 @@ export default function AnosIniciaisPage() {
                 <span className="sw-icon">⌕</span>
                 <input
                   type="search"
-                  placeholder="Pesquisar por código, habilidade ou objeto..."
+                  placeholder="Pesquisar por código, habilidade, objeto ou disciplina..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                 />
               </div>
               <select value={discipline} onChange={e => setDiscipline(e.target.value)} aria-label="Filtrar por disciplina">
                 <option value="">Todas as disciplinas</option>
-                {disciplines.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
+                {disciplines.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               <select value={year} onChange={e => setYear(e.target.value)} aria-label="Filtrar por ano">
                 <option value="">Todos os anos</option>
-                {years.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
               {(discipline || year || query) && (
                 <button
+                  className="btn btn-out ai-clear"
                   onClick={() => { setDiscipline(''); setYear(''); setQuery('') }}
-                  style={{ padding: '6px 12px', fontSize: 12, cursor: 'pointer' }}
                 >
                   ✕ Limpar
                 </button>
               )}
+              <span className="fcount">{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
             </div>
 
-            <div className="skill-list">
-              {filtered.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#888' }}>
-                  Nenhuma habilidade encontrada com os filtros aplicados.
-                </div>
-              ) : (
-                filtered.map(skill => {
-                  const color = DISCIPLINE_COLORS[skill.discipline] ?? '#666'
+            {filtered.length === 0 ? (
+              <div className="est">Nenhuma habilidade encontrada com os filtros aplicados.</div>
+            ) : (
+              <div className="ai-list">
+                {filtered.map(skill => {
+                  const color = DISCIPLINE_COLORS[skill.discipline] ?? { bg: 'var(--paper-deep)', fg: 'var(--ink)' }
                   const isOpen = expanded === skill.code
                   return (
-                    <div
+                    <article
                       key={skill.code}
-                      className={`sk ${isOpen ? 'sk-open' : ''}`}
+                      className={`ai-card${isOpen ? ' ai-card-open' : ''}`}
                       onClick={() => setExpanded(isOpen ? null : skill.code)}
-                      style={{ cursor: 'pointer', borderLeft: `4px solid ${color}` }}
                     >
-                      <div className="sk-tags" style={{ marginBottom: 6 }}>
-                        <span
-                          className="sk-tag"
-                          style={{
-                            background: color + '18',
-                            color,
-                            border: `1px solid ${color}33`,
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            fontSize: 12,
-                            marginRight: 4,
-                          }}
-                        >
-                          {skill.discipline}
-                        </span>
-                        <span
-                          style={{
-                            background: '#f0f0f0',
-                            color: '#555',
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            fontSize: 12,
-                            marginRight: 4,
-                          }}
-                        >
-                          {skill.year}
-                        </span>
-                        <span
-                          style={{
-                            background: '#1a1a2e',
-                            color: 'white',
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          {skill.code}
-                        </span>
+                      <div className="ai-card-top">
+                        <div className="ai-card-tags">
+                          <span className="ai-chip ai-chip-disc" style={{ background: color.bg, color: color.fg, borderColor: color.fg + '44' }}>
+                            {skill.discipline}
+                          </span>
+                          <span className="ai-chip">{skill.year}</span>
+                          <span className="ai-chip ai-chip-code">{skill.code}</span>
+                        </div>
+                        <div className="ai-card-obj">{skill.objeto}</div>
+                        <p className="ai-card-hab">{skill.habilidade}</p>
+                        <div className="ai-card-toggle">{isOpen ? '▲' : '▼'}</div>
                       </div>
-                      <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{skill.objeto}</div>
-                      <div style={{ fontSize: 14, lineHeight: 1.5 }}>{skill.habilidade}</div>
+
                       {isOpen && (
-                        <div
-                          onClick={e => e.stopPropagation()}
-                          style={{
-                            marginTop: 12,
-                            paddingTop: 12,
-                            borderTop: '1px solid #eee',
-                          }}
-                        >
-                          <p style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>
-                            <strong>Campo:</strong> {skill.campo} &nbsp;·&nbsp;
-                            <strong>Prática:</strong> {skill.pratica}
-                          </p>
-                          <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                            Desdobramento territorializado:
-                          </p>
-                          <p style={{ fontSize: 13, lineHeight: 1.7, color: '#333', whiteSpace: 'pre-wrap' }}>
-                            {skill.desdobramento}
-                          </p>
+                        <div className="ai-card-detail" onClick={e => e.stopPropagation()}>
+                          {(skill.campo || skill.pratica) && (
+                            <p className="ai-card-meta">
+                              {skill.campo && <><strong>Campo:</strong> {skill.campo}</>}
+                              {skill.campo && skill.pratica && ' · '}
+                              {skill.pratica && <><strong>Prática:</strong> {skill.pratica}</>}
+                            </p>
+                          )}
+                          <p className="ai-card-desdobr-label">Desdobramento territorializado:</p>
+                          <p className="ai-card-desdobr">{skill.desdobramento}</p>
                         </div>
                       )}
-                    </div>
+                    </article>
                   )
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </>
         )}
       </section>
+
+      <style>{`
+        /* logo override for AI variant */
+        .ai-ic::before { content: "AI" !important; font-size: 14px !important; letter-spacing: -.05em; }
+        .ai-ic { background: var(--teal) !important; }
+
+        /* loading */
+        .ai-loading {
+          display: flex; align-items: center; gap: 12px;
+          padding: 80px 0; justify-content: center;
+          font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted);
+        }
+        .ai-loading-spin {
+          width: 20px; height: 20px; border-radius: 50%;
+          border: 2px solid var(--ink); border-top-color: transparent;
+          animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* clear button */
+        .ai-clear { padding: 8px 14px; font-size: 12px; }
+
+        /* skill list */
+        .ai-list { display: flex; flex-direction: column; gap: 10px; }
+
+        /* skill card */
+        .ai-card {
+          background: var(--paper-soft);
+          border: 2.5px solid var(--ink);
+          box-shadow: 3px 3px 0 var(--ink);
+          cursor: pointer;
+          transition: transform .12s, box-shadow .12s;
+          position: relative;
+        }
+        .ai-card:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--ink); }
+        .ai-card-open { box-shadow: 5px 5px 0 var(--ink); }
+
+        .ai-card-top {
+          padding: 16px 42px 16px 16px;
+          position: relative;
+        }
+
+        .ai-card-tags {
+          display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+        }
+
+        .ai-chip {
+          font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+          text-transform: uppercase; letter-spacing: .1em;
+          padding: 3px 8px;
+          border: 1.5px solid var(--ink);
+          background: var(--paper);
+          color: var(--ink);
+        }
+        .ai-chip-disc {
+          border-width: 1.5px;
+        }
+        .ai-chip-code {
+          background: var(--ink); color: var(--paper-soft);
+          font-weight: 700;
+        }
+
+        .ai-card-obj {
+          font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+          letter-spacing: .08em; color: var(--ink-muted); margin-bottom: 6px;
+          font-weight: 500;
+        }
+
+        .ai-card-hab {
+          font-size: 14px; line-height: 1.55; color: var(--ink); font-weight: 500;
+          font-family: var(--font-body);
+        }
+
+        .ai-card-toggle {
+          position: absolute; top: 16px; right: 16px;
+          font-size: 10px; color: var(--ink-muted);
+          font-family: var(--font-mono);
+        }
+
+        /* expanded detail */
+        .ai-card-detail {
+          border-top: 2px solid var(--ink);
+          background: var(--paper);
+          padding: 16px;
+        }
+
+        .ai-card-meta {
+          font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted);
+          margin-bottom: 12px;
+        }
+        .ai-card-meta strong { color: var(--ink); }
+
+        .ai-card-desdobr-label {
+          font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+          text-transform: uppercase; letter-spacing: .12em; color: var(--ink);
+          margin-bottom: 8px;
+        }
+
+        .ai-card-desdobr {
+          font-size: 13px; line-height: 1.7; color: var(--ink-soft);
+          white-space: pre-wrap; font-family: var(--font-body);
+        }
+
+        @media (max-width: 600px) {
+          .ai-card-top { padding: 14px 38px 14px 14px; }
+        }
+      `}</style>
     </main>
   )
 }
