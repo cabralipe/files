@@ -449,7 +449,9 @@ export default function AdminDashboard() {
   function roleLabel(role?: string) {
     switch (role) {
       case 'admin': return 'Admin'
+      case 'aee_teacher': return 'Professor AEE'
       case 'coordinator': return 'Coordenador'
+      case 'family': return 'Familia'
       case 'teacher': return 'Professor'
       default: return role || '—'
     }
@@ -458,7 +460,9 @@ export default function AdminDashboard() {
   function roleBadgeColor(role?: string) {
     switch (role) {
       case 'admin': return { bg: 'var(--plum)', color: 'var(--paper-soft)' }
+      case 'aee_teacher': return { bg: 'var(--red)', color: 'var(--paper-soft)' }
       case 'coordinator': return { bg: 'var(--blue)', color: 'var(--paper-soft)' }
+      case 'family': return { bg: 'var(--mustard)', color: 'var(--ink)' }
       case 'teacher': return { bg: 'var(--teal)', color: 'var(--paper-soft)' }
       default: return { bg: 'var(--paper)', color: 'var(--ink)' }
     }
@@ -1643,7 +1647,9 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
                     }}
                   >
                     <option value="teacher">Professor</option>
+                    <option value="aee_teacher">Professor AEE</option>
                     <option value="coordinator">Coordenador</option>
+                    <option value="family">Familia/responsavel</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>

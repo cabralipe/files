@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS user_municipalities (
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   municipality_id UUID NOT NULL REFERENCES municipalities(id) ON DELETE CASCADE,
   role            TEXT NOT NULL DEFAULT 'teacher'
-                  CHECK (role IN ('teacher','coordinator','municipality_admin')),
+                  CHECK (role IN ('teacher','aee_teacher','coordinator','family','municipality_admin','admin','super_admin')),
   is_active       BOOLEAN NOT NULL DEFAULT true,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, municipality_id)
@@ -129,7 +129,7 @@ SELECT
   u.id,
   u.municipality_id,
   CASE
-    WHEN u.role IN ('teacher','coordinator','municipality_admin') THEN u.role
+    WHEN u.role IN ('teacher','aee_teacher','coordinator','family','municipality_admin','admin','super_admin') THEN u.role
     WHEN u.role = 'admin' THEN 'municipality_admin'
     ELSE 'teacher'
   END
@@ -305,7 +305,67 @@ ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS plan_status TEXT NOT
 ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS revisao_regente BOOLEAN DEFAULT false;
 ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS colaboracao_aee JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS consulta_familia JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS is_pei BOOLEAN DEFAULT false;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS student_id UUID;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS pei_snapshot JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE points_transactions    ADD COLUMN IF NOT EXISTS points_amount INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  municipality_id UUID REFERENCES municipalities(id),
+  school_id UUID,
+  school_name TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  birth_date DATE,
+  grade_level TEXT NOT NULL,
+  class_name TEXT,
+  shift TEXT NOT NULL DEFAULT 'manha' CHECK (shift IN ('manha', 'tarde', 'noite', 'integral')),
+  enrollment_number TEXT,
+  active BOOLEAN DEFAULT true,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS student_aee_profiles (
+  student_id UUID PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+  public_target TEXT NOT NULL DEFAULT 'outro',
+  diagnosis_report TEXT,
+  cid_or_notes TEXT,
+  educational_needs TEXT,
+  learning_barriers TEXT[] DEFAULT '{}',
+  communication_profile TEXT,
+  autonomy_profile TEXT,
+  social_interaction TEXT,
+  sensory_aspects TEXT,
+  motor_aspects TEXT,
+  cognitive_aspects TEXT,
+  reading_writing_level TEXT,
+  math_level TEXT,
+  interests TEXT[] DEFAULT '{}',
+  strengths TEXT[] DEFAULT '{}',
+  difficulties TEXT[] DEFAULT '{}',
+  accessibility_resources TEXT[] DEFAULT '{}',
+  assistive_technology TEXT[] DEFAULT '{}',
+  curricular_adaptations TEXT[] DEFAULT '{}',
+  evaluation_adaptations TEXT[] DEFAULT '{}',
+  family_notes TEXT,
+  external_supports TEXT,
+  medication_notes TEXT,
+  emergency_notes TEXT,
+  privacy_level TEXT NOT NULL DEFAULT 'restrito',
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS family_student_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  relationship TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(family_user_id, student_id)
+);
 
 DROP VIEW IF EXISTS ranking_view;
 CREATE OR REPLACE VIEW ranking_view AS

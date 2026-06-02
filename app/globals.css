@@ -2330,6 +2330,41 @@ input:focus, select:focus, textarea:focus {
   line-height: 1.55;
 }
 
+.pei-mode-panel {
+  border: 2px solid var(--ink);
+  background: var(--paper-soft);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.pei-mode-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pei-mode-option {
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.pei-mode-option.on {
+  background: var(--red);
+  color: var(--paper-soft);
+}
+
+.pei-student-box {
+  display: grid;
+  gap: 12px;
+}
+
 /* ── PDF layout selector modal ── */
 .bnac-pdf-mdl {
   background: var(--paper-soft);

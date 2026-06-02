@@ -8,7 +8,7 @@ const registerSchema = z.object({
   email: z.string().email('Email invalido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
   name: z.string().trim().min(2, 'Informe o nome'),
-  role: z.enum(['teacher', 'coordinator']).default('teacher'),
+  role: z.enum(['teacher', 'aee_teacher', 'coordinator', 'family']).default('teacher'),
   school: z.string().trim().optional().default(''),
   subject: z.string().trim().optional().default(''),
 }).superRefine((values, ctx) => {

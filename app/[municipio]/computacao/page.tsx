@@ -5,6 +5,7 @@ import Link from '@/lib/m-link'
 import { municipalSchools } from '@/lib/education-options'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
+import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -43,6 +44,9 @@ type Plan = {
   coordinator_note?: string
   is_published?: boolean
   plan_status?: 'rascunho' | 'vigente' | 'arquivado' | 'substituido'
+  is_pei?: boolean
+  student_id?: string
+  pei_snapshot?: Record<string, unknown>
   revisao_regente?: boolean
   colaboracao_aee?: AeeCollaboration
   consulta_familia?: FamilyConsultation
@@ -239,6 +243,9 @@ export default function Home() {
   const [subject, setSubject] = useState('')
   const [axis, setAxis] = useState('')
   const [form, setForm] = useState<PlanForm>(emptyForm)
+  const [planKind, setPlanKind] = useState<PlanKind>('plano')
+  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
   const [revisaoRegente, setRevisaoRegente] = useState(false)
   const [aee, setAee] = useState<AeeCollaboration>(emptyAeeCollaboration)
@@ -385,6 +392,9 @@ export default function Home() {
       ...form,
       skill_ids: selected,
       content,
+      is_pei: planKind === 'pei',
+      student_id: planKind === 'pei' ? selectedStudentId : '',
+      pei_snapshot: planKind === 'pei' ? { student: selectedStudent } : {},
       revisao_regente: revisaoRegente,
       colaboracao_aee: aee,
       consulta_familia: family,
@@ -401,6 +411,16 @@ export default function Home() {
 
     if (!selected.length) {
       showToast('Selecione ao menos uma habilidade.')
+      return
+    }
+
+    if (planKind === 'pei' && !user) {
+      showToast('Faça login para gerar PEI.')
+      return
+    }
+
+    if (planKind === 'pei' && !selectedStudentId) {
+      showToast('Selecione o aluno para gerar o PEI.')
       return
     }
 
@@ -463,10 +483,25 @@ export default function Home() {
     }, 2200)
 
     try {
-      const response = await fetch('/api/plans/generate', {
+      const token = planKind === 'pei' ? await getAccessToken() : ''
+      const response = await fetch(planKind === 'pei' ? '/api/pei/generate' : '/api/plans/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(planPayload('')),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(
+          planKind === 'pei'
+            ? {
+                student_id: selectedStudentId,
+                portal: 'computacao',
+                plan: planPayload(''),
+                skills_context: selectedSkills
+                  .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
+                  .join('\n\n'),
+              }
+            : planPayload(''),
+        ),
       })
       const payload = await response.json()
 
@@ -581,6 +616,9 @@ export default function Home() {
     })
     setSelected(plan.skill_ids)
     setGenerated(plan.content)
+    setPlanKind(plan.is_pei ? 'pei' : 'plano')
+    setSelectedStudentId(plan.student_id || '')
+    setSelectedStudent((plan.pei_snapshot?.student as PeiStudent | undefined) || null)
     setRevisaoRegente(Boolean(plan.revisao_regente))
     setAee({ ...emptyAeeCollaboration, ...(plan.colaboracao_aee || {}) })
     setFamily({ ...emptyFamilyConsultation, ...(plan.consulta_familia || {}) })
@@ -598,6 +636,9 @@ export default function Home() {
     }))
     setSelected([])
     setGenerated('')
+    setPlanKind('plano')
+    setSelectedStudentId('')
+    setSelectedStudent(null)
     setRevisaoRegente(false)
     setAee(emptyAeeCollaboration)
     setFamily(emptyFamilyConsultation)
@@ -840,6 +881,11 @@ export default function Home() {
                 Coordenação
               </Link>
             )}
+            {['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) && (
+              <Link className="nb" href="/aee">
+                AEE
+              </Link>
+            )}
             {(user?.user_metadata?.role === 'admin' || user?.email === 'admin@bncc.local') && (
               <Link className="nb" href="/admin" style={{ color: 'var(--red)' }}>
                 ⚙ Admin
@@ -1038,6 +1084,17 @@ export default function Home() {
 
             <div className="pc">
               <h1 className="pct">Criar plano de aula</h1>
+              <PeiControls
+                user={user}
+                school={form.school}
+                planKind={planKind}
+                selectedStudentId={selectedStudentId}
+                onPlanKindChange={setPlanKind}
+                onStudentChange={(studentId, student) => {
+                  setSelectedStudentId(studentId)
+                  setSelectedStudent(student || null)
+                }}
+              />
               <div className="fg">
                 <Field label="Professor(a)">
                   <input value={form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} placeholder="Nome do professor" />

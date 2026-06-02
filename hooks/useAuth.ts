@@ -8,7 +8,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 export type AuthUser = User
-export type UserRole = 'teacher' | 'coordinator' | 'admin'
+export type UserRole = 'teacher' | 'aee_teacher' | 'coordinator' | 'family' | 'admin' | 'super_admin'
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null)

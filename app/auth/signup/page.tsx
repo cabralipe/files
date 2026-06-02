@@ -27,7 +27,7 @@ export default function SignUp() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'role' && value === 'coordinator' ? { subject: '' } : {}),
+      ...(name === 'role' && value !== 'teacher' ? { subject: '' } : {}),
     }))
   }
 
@@ -62,13 +62,14 @@ export default function SignUp() {
         formData.email,
         formData.password,
         formData.name,
-        formData.role as 'teacher' | 'coordinator',
+        formData.role as 'teacher' | 'aee_teacher' | 'coordinator' | 'family',
         formData.school,
         formData.subject,
       )
       setSuccess('Cadastro realizado com sucesso.')
       setTimeout(() => {
-        router.push(data.user?.user_metadata?.role === 'coordinator' ? '/coordinator' : '/')
+        const role = data.user?.user_metadata?.role
+        router.push(role === 'coordinator' ? '/coordinator' : role === 'aee_teacher' ? '/aee' : role === 'family' ? '/family' : '/')
       }, 800)
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar')
@@ -131,7 +132,9 @@ export default function SignUp() {
                 onChange={handleChange}
               >
                 <option value="teacher">Professor(a)</option>
+                <option value="aee_teacher">Professor(a) AEE / sala especial</option>
                 <option value="coordinator">Coordenador(a)</option>
+                <option value="family">Família/responsável</option>
               </select>
             </label>
 

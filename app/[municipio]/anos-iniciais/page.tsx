@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
 import { municipalSchools } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
+import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -110,6 +111,11 @@ function Field({ label, children, wide }: { label: string; children: React.React
   )
 }
 
+async function getAccessToken() {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AnosIniciaisPage() {
@@ -133,6 +139,9 @@ export default function AnosIniciaisPage() {
 
   // plan state
   const [form, setForm] = useState<PlanForm>(emptyForm)
+  const [planKind, setPlanKind] = useState<PlanKind>('plano')
+  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [generated, setGenerated] = useState('')
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -243,6 +252,8 @@ export default function AnosIniciaisPage() {
     if (!form.title.trim()) { showToast('Informe o tema do plano.'); return }
     if (!form.grade_level.trim()) { showToast('Informe o ano/turma.'); return }
     if (!selected.length) { showToast('Selecione ao menos uma habilidade.'); return }
+    if (planKind === 'pei' && !user) { showToast('Faça login para gerar PEI.'); return }
+    if (planKind === 'pei' && !selectedStudentId) { showToast('Selecione o aluno para gerar o PEI.'); return }
 
     const skills_context = selected
       .map(s => `[${s.code}] ${s.habilidade}${s.objeto ? `\nObjeto: ${s.objeto}` : ''}${s.desdobramento ? `\nDesdobramento: ${s.desdobramento.slice(0, 300)}` : ''}`)
@@ -265,10 +276,18 @@ export default function AnosIniciaisPage() {
     }, 2200)
 
     try {
-      const res = await fetch('/api/plans/generate-ai', {
+      const token = planKind === 'pei' ? await getAccessToken() : ''
+      const res = await fetch(planKind === 'pei' ? '/api/pei/generate' : '/api/plans/generate-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, skills_context }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(
+          planKind === 'pei'
+            ? { student_id: selectedStudentId, portal: 'anos_iniciais', plan: form, skills_context }
+            : { ...form, skills_context },
+        ),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao gerar')
@@ -446,6 +465,9 @@ export default function AnosIniciaisPage() {
               Salvos <span className="nbadge">{saved.length}</span>
             </button>
             <Link className="nb" href="/computacao">BNCC Comp.</Link>
+            {['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) && (
+              <Link className="nb" href="/aee">AEE</Link>
+            )}
             <Link className="nb" href={slug ? `/${slug}` : '/'} style={{ opacity: .65, fontSize: 12 }}>Portais</Link>
             {user ? (
               <button className="nb" onClick={() => void signOut()}>Sair</button>
@@ -646,6 +668,17 @@ export default function AnosIniciaisPage() {
 
             <div className="pc">
               <h1 className="pct">Criar plano de aula · Anos Iniciais</h1>
+              <PeiControls
+                user={user}
+                school={form.school}
+                planKind={planKind}
+                selectedStudentId={selectedStudentId}
+                onPlanKindChange={setPlanKind}
+                onStudentChange={(studentId, student) => {
+                  setSelectedStudentId(studentId)
+                  setSelectedStudent(student || null)
+                }}
+              />
               <div className="fg">
                 <Field label="Professor(a)">
                   <input value={form.teacher} onChange={e => updateForm('teacher', e.target.value)} placeholder="Nome completo" />

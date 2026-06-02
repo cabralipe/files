@@ -101,8 +101,8 @@ export async function PUT(request: Request) {
       throw updateError
     }
 
-    // Update DB profile role only if it's a valid DB value (teacher or coordinator)
-    if (role && (role === 'teacher' || role === 'coordinator')) {
+    const validDbRoles = ['teacher', 'aee_teacher', 'coordinator', 'family', 'admin', 'super_admin']
+    if (role && validDbRoles.includes(role)) {
       await supabase.from('users').update({ role }).eq('id', userId)
     }
 

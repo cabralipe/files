@@ -7,7 +7,7 @@ export type User = {
   full_name: string;
   avatar_url: string | null;
   school_id: string | null;
-  role: 'teacher' | 'coordinator' | 'admin';
+  role: 'teacher' | 'aee_teacher' | 'coordinator' | 'family' | 'admin' | 'super_admin';
   subject: string | null;
   bio: string | null;
   created_at: string;
@@ -48,6 +48,9 @@ export type Plan = {
   objectives: string | null;
   pdf_url: string | null;
   is_published: boolean;
+  is_pei: boolean;
+  student_id: string | null;
+  pei_snapshot: Record<string, unknown> | null;
   views_count: number;
   coordinator_viewed_at: string | null;
   coordinator_id: string | null;

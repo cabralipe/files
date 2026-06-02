@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { createClient } from '@supabase/supabase-js'
+import { useAuth } from '@/hooks/useAuth'
+import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
+)
 
 type Skill = {
   id: string
@@ -232,7 +240,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="bnac-form-section">{children}</div>
 }
 
+async function getAccessToken() {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token
+}
+
 export default function BnccNacionalPage() {
+  const { user } = useAuth()
   const [nivel, setNivel] = useState<Nivel | null>(null)
   const [skills, setSkills] = useState<Skill[]>([])
   const [view, setView] = useState<'skills' | 'plan'>('skills')
@@ -244,6 +258,9 @@ export default function BnccNacionalPage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [form, setForm] = useState<PlanForm>(emptyForm)
+  const [planKind, setPlanKind] = useState<PlanKind>('plano')
+  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [generated, setGenerated] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingPhrase, setLoadingPhrase] = useState('🧠 Pensando no plano...')
@@ -338,6 +355,8 @@ export default function BnccNacionalPage() {
   async function generatePlan() {
     if (!form.title.trim()) { showToast('Informe o tema do plano.'); return }
     if (!selected.length) { showToast('Selecione ao menos uma habilidade.'); return }
+    if (planKind === 'pei' && !user) { showToast('Faça login para gerar PEI.'); return }
+    if (planKind === 'pei' && !selectedStudentId) { showToast('Selecione o aluno para gerar o PEI.'); return }
 
     const phrases = [
       '🧠 Analisando as habilidades selecionadas...',
@@ -366,18 +385,33 @@ export default function BnccNacionalPage() {
     }, 2200)
 
     try {
-      const response = await fetch('/api/bncc-nacional/generate', {
+      const token = planKind === 'pei' ? await getAccessToken() : ''
+      const response = await fetch(planKind === 'pei' ? '/api/pei/generate' : '/api/bncc-nacional/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          skills: selectedSkills.map((s) => ({
-            code: s.code, disciplina: s.disciplina,
-            unidade_tematica: s.unidade_tematica,
-            objeto_conhecimento: s.objeto_conhecimento,
-            habilidade: s.habilidade,
-          })),
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(
+          planKind === 'pei'
+            ? {
+                student_id: selectedStudentId,
+                portal: 'bncc_nacional',
+                plan: { ...form, pei_snapshot: { student: selectedStudent } },
+                skills_context: selectedSkills
+                  .map((s) => `[${s.code}] ${s.disciplina} - ${s.unidade_tematica}\n${s.habilidade}`)
+                  .join('\n\n'),
+              }
+            : {
+                ...form,
+                skills: selectedSkills.map((s) => ({
+                  code: s.code, disciplina: s.disciplina,
+                  unidade_tematica: s.unidade_tematica,
+                  objeto_conhecimento: s.objeto_conhecimento,
+                  habilidade: s.habilidade,
+                })),
+              },
+        ),
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Erro ao gerar')
@@ -390,7 +424,7 @@ export default function BnccNacionalPage() {
         cur += 150
         if (cur >= content.length) {
           clearInterval(ti); setGenerated(content); setLoading(false)
-          showToast('Plano gerado! Edite, copie ou baixe em PDF.')
+          showToast(planKind === 'pei' ? 'PEI gerado! Revise, copie ou baixe em PDF.' : 'Plano gerado! Edite, copie ou baixe em PDF.')
         } else {
           setGenerated(content.slice(0, cur) + ' ▌')
           const ta = document.getElementById('po-nac') as HTMLTextAreaElement | null
@@ -864,6 +898,17 @@ export default function BnccNacionalPage() {
                 <div className="pc">
                   <h1 className="pct">Criar plano de aula</h1>
                   <SectionLabel>Identificação</SectionLabel>
+                  <PeiControls
+                    user={user}
+                    school={form.school}
+                    planKind={planKind}
+                    selectedStudentId={selectedStudentId}
+                    onPlanKindChange={setPlanKind}
+                    onStudentChange={(studentId, student) => {
+                      setSelectedStudentId(studentId)
+                      setSelectedStudent(student || null)
+                    }}
+                  />
                   <div className="fg">
                     <Field label="Professor(a)"><input value={form.teacher} onChange={(e) => updateForm('teacher', e.target.value)} placeholder="Nome completo" /></Field>
                     <Field label="Escola"><input value={form.school} onChange={(e) => updateForm('school', e.target.value)} placeholder="Nome da escola" /></Field>

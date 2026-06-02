@@ -36,6 +36,9 @@ export type PublicPlan = {
   coordinator_note?: string
   is_published?: boolean
   plan_status?: 'rascunho' | 'vigente' | 'arquivado' | 'substituido'
+  is_pei?: boolean
+  student_id?: string
+  pei_snapshot?: Record<string, unknown>
   revisao_regente?: boolean
   colaboracao_aee?: PlanAeeCollaboration
   consulta_familia?: PlanFamilyConsultation
@@ -100,6 +103,9 @@ const planSchemaBase = {
   content: z.string().trim().optional().default(''),
   is_published: z.boolean().optional().default(false),
   plan_status: z.enum(['rascunho', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
+  is_pei: z.boolean().optional().default(false),
+  student_id: z.string().trim().optional().default(''),
+  pei_snapshot: z.record(z.unknown()).optional().default({}),
   revisao_regente: z.boolean().optional().default(false),
   colaboracao_aee: z.object({
     professor_id: z.string().trim().optional().default(''),
@@ -236,6 +242,9 @@ function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
     materials: plan.materials,
     objectives: plan.objectives,
     is_published: Boolean(plan.is_published),
+    is_pei: Boolean(plan.is_pei),
+    student_id: plan.student_id || null,
+    pei_snapshot: plan.pei_snapshot || {},
     updated_at: plan.updated_at,
   }
   if (municipalityId) row.municipality_id = municipalityId
@@ -254,6 +263,7 @@ function validatePublicationReadiness(plan: PublicPlan) {
   const missing: string[] = []
 
   if (!plan.revisao_regente) missing.push('revisao humana do professor regente')
+  if (plan.is_pei && !hasText(plan.student_id)) missing.push('aluno vinculado ao PEI')
   if (!aee || !hasText(aee.nome) || !hasText(aee.data) || !hasText(aee.contribuicoes)) {
     missing.push('colaboracao registrada do AEE')
   }
@@ -281,6 +291,9 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
       coordinator_note: parsed.plan.coordinator_note || row.coordinator_note || '',
       is_published: Boolean(row.is_published || parsed.plan.is_published),
       plan_status: parsed.plan.plan_status || (row.is_published ? 'vigente' : 'rascunho'),
+      is_pei: Boolean(row.is_pei || parsed.plan.is_pei),
+      student_id: parsed.plan.student_id || row.student_id || '',
+      pei_snapshot: parsed.plan.pei_snapshot || row.pei_snapshot || {},
       revisao_regente: Boolean(parsed.plan.revisao_regente),
       colaboracao_aee: parsed.plan.colaboracao_aee,
       consulta_familia: parsed.plan.consulta_familia,
@@ -309,6 +322,9 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
     coordinator_note: String(row.coordinator_note || ''),
     is_published: Boolean(row.is_published),
     plan_status: row.is_published ? 'vigente' : 'rascunho',
+    is_pei: Boolean(row.is_pei),
+    student_id: String(row.student_id || ''),
+    pei_snapshot: row.pei_snapshot || {},
     revisao_regente: false,
     created_at: String(row.created_at || ''),
     updated_at: String(row.updated_at || row.created_at || ''),
@@ -420,6 +436,9 @@ export async function createPlan(
     coordinator_note: '',
     is_published: values.is_published,
     plan_status: values.is_published ? 'vigente' : values.plan_status,
+    is_pei: values.is_pei,
+    student_id: values.student_id,
+    pei_snapshot: values.pei_snapshot,
     revisao_regente: values.revisao_regente,
     colaboracao_aee: values.colaboracao_aee,
     consulta_familia: values.consulta_familia,

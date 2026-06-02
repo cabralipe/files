@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   full_name TEXT NOT NULL,
   avatar_url TEXT,
   school_id UUID REFERENCES schools(id),
-  role TEXT NOT NULL DEFAULT 'teacher' CHECK (role IN ('teacher', 'coordinator')),
+  role TEXT NOT NULL DEFAULT 'teacher' CHECK (role IN ('teacher', 'aee_teacher', 'coordinator', 'family', 'admin', 'super_admin')),
   subject TEXT,
   bio TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -65,6 +65,9 @@ CREATE TABLE IF NOT EXISTS plans (
   revisao_regente BOOLEAN DEFAULT false,
   colaboracao_aee JSONB DEFAULT '{}'::jsonb,
   consulta_familia JSONB DEFAULT '{}'::jsonb,
+  is_pei BOOLEAN DEFAULT false,
+  student_id UUID,
+  pei_snapshot JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -78,6 +81,66 @@ CREATE TABLE IF NOT EXISTS plan_skills (
   skill_id UUID NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(plan_id, skill_id)
+);
+
+-- ============================================
+-- 5B. ALUNOS E FICHA AEE/PEI
+-- ============================================
+CREATE TABLE IF NOT EXISTS students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  municipality_id UUID,
+  school_id UUID REFERENCES schools(id),
+  school_name TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  birth_date DATE,
+  grade_level TEXT NOT NULL,
+  class_name TEXT,
+  shift TEXT NOT NULL DEFAULT 'manha' CHECK (shift IN ('manha', 'tarde', 'noite', 'integral')),
+  enrollment_number TEXT,
+  active BOOLEAN DEFAULT true,
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS student_aee_profiles (
+  student_id UUID PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+  public_target TEXT NOT NULL DEFAULT 'outro',
+  diagnosis_report TEXT,
+  cid_or_notes TEXT,
+  educational_needs TEXT,
+  learning_barriers TEXT[] DEFAULT '{}',
+  communication_profile TEXT,
+  autonomy_profile TEXT,
+  social_interaction TEXT,
+  sensory_aspects TEXT,
+  motor_aspects TEXT,
+  cognitive_aspects TEXT,
+  reading_writing_level TEXT,
+  math_level TEXT,
+  interests TEXT[] DEFAULT '{}',
+  strengths TEXT[] DEFAULT '{}',
+  difficulties TEXT[] DEFAULT '{}',
+  accessibility_resources TEXT[] DEFAULT '{}',
+  assistive_technology TEXT[] DEFAULT '{}',
+  curricular_adaptations TEXT[] DEFAULT '{}',
+  evaluation_adaptations TEXT[] DEFAULT '{}',
+  family_notes TEXT,
+  external_supports TEXT,
+  medication_notes TEXT,
+  emergency_notes TEXT,
+  privacy_level TEXT NOT NULL DEFAULT 'restrito',
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS family_student_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  relationship TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(family_user_id, student_id)
 );
 
 -- ============================================
@@ -176,6 +239,9 @@ CREATE INDEX idx_plans_grade_level ON plans(grade_level);
 CREATE INDEX idx_plans_subject ON plans(subject);
 CREATE INDEX idx_plans_is_published ON plans(is_published);
 CREATE INDEX idx_plans_coordinator_viewed_at ON plans(coordinator_viewed_at);
+CREATE INDEX idx_students_school_name ON students(school_name);
+CREATE INDEX idx_students_municipality_id ON students(municipality_id);
+CREATE INDEX idx_family_student_links_user ON family_student_links(family_user_id);
 
 CREATE INDEX idx_experiences_user_id ON successful_experiences(user_id);
 CREATE INDEX idx_experiences_category ON successful_experiences(category);
@@ -194,6 +260,8 @@ CREATE INDEX idx_likes_experience_id ON likes(experience_id);
 
 -- MigraÃ§Ãµes idempotentes para bancos jÃ¡ criados
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'teacher';
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('teacher', 'aee_teacher', 'coordinator', 'family', 'admin', 'super_admin'));
 ALTER TABLE users ADD COLUMN IF NOT EXISTS subject TEXT;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS coordinator_viewed_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS coordinator_id UUID REFERENCES users(id);
@@ -202,7 +270,13 @@ ALTER TABLE plans ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'ra
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS revisao_regente BOOLEAN DEFAULT false;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS colaboracao_aee JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS consulta_familia JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS is_pei BOOLEAN DEFAULT false;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS student_id UUID;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS pei_snapshot JSONB DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS idx_plans_coordinator_viewed_at ON plans(coordinator_viewed_at);
+CREATE INDEX IF NOT EXISTS idx_students_school_name ON students(school_name);
+CREATE INDEX IF NOT EXISTS idx_students_municipality_id ON students(municipality_id);
+CREATE INDEX IF NOT EXISTS idx_family_student_links_user ON family_student_links(family_user_id);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -213,6 +287,9 @@ ALTER TABLE successful_experiences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE points_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_aee_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE family_student_links ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para users
 CREATE POLICY "Users can view own profile" ON users
@@ -280,3 +357,32 @@ CREATE POLICY "Users can update own comments" ON comments
 
 CREATE POLICY "Users can delete own comments" ON comments
   FOR DELETE USING (auth.uid()::uuid = user_id);
+
+-- Politicas para dados sensiveis de estudantes/AEE.
+-- O backend usa service role nas APIs validadas; estas politicas protegem acessos diretos.
+CREATE POLICY "Pedagogical users can view students" ON students
+  FOR SELECT USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('teacher', 'aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin')
+  );
+
+CREATE POLICY "AEE and coordination can manage students" ON students
+  FOR ALL USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin')
+  ) WITH CHECK (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin')
+  );
+
+CREATE POLICY "Pedagogical users can view AEE profiles" ON student_aee_profiles
+  FOR SELECT USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('teacher', 'aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin')
+  );
+
+CREATE POLICY "AEE and coordination can manage AEE profiles" ON student_aee_profiles
+  FOR ALL USING (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin')
+  ) WITH CHECK (
+    (auth.jwt() -> 'user_metadata' ->> 'role') IN ('aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin')
+  );
+
+CREATE POLICY "Family can view own student links" ON family_student_links
+  FOR SELECT USING (family_user_id = auth.uid()::uuid);

@@ -35,7 +35,8 @@ export default function Login() {
 
     try {
       const data = await signIn(formData.email, formData.password)
-      router.push(data.user?.user_metadata?.role === 'coordinator' ? '/coordinator' : '/')
+      const role = data.user?.user_metadata?.role
+      router.push(role === 'coordinator' ? '/coordinator' : role === 'aee_teacher' ? '/aee' : role === 'family' ? '/family' : '/')
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login')
     }
