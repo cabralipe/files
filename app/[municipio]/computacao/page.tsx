@@ -1068,16 +1068,20 @@ export default function Home() {
                 <span className="stn">3</span>
                 <span className="stl">Plano gerado</span>
               </div>
-              <div className={`sti ${revisaoRegente && aee.nome && aee.contribuicoes ? 'done' : ''}`}>
-                <span className="stn">5</span>
-                <span className="stl">Revisao colaborativa</span>
-              </div>
-              <div className={`sti ${family.responsavel_nome && family.concordancia !== 'pendente' ? 'done' : ''}`}>
-                <span className="stn">6</span>
-                <span className="stl">Familia</span>
-              </div>
+              {planKind === 'pei' && (
+                <>
+                  <div className={`sti ${revisaoRegente && aee.nome && aee.contribuicoes ? 'done' : ''}`}>
+                    <span className="stn">5</span>
+                    <span className="stl">Revisao colaborativa</span>
+                  </div>
+                  <div className={`sti ${family.responsavel_nome && family.concordancia !== 'pendente' ? 'done' : ''}`}>
+                    <span className="stn">6</span>
+                    <span className="stl">Familia</span>
+                  </div>
+                </>
+              )}
               <div className={`sti ${generated ? 'done' : ''}`}>
-                <span className="stn">7</span>
+                <span className="stn">{planKind === 'pei' ? '7' : '4'}</span>
                 <span className="stl">Salvar/Publicar</span>
               </div>
             </div>
@@ -1181,86 +1185,106 @@ export default function Home() {
                 onChange={(event) => setGenerated(event.target.value)}
                 placeholder="O plano gerado aparecerá aqui. Você pode editar o texto antes de salvar."
               />
-              <div className="pei-flow">
-                <section className="pei-block">
-                  <div className="bnac-form-section">Passo 5 - Revisao colaborativa</div>
-                  <label className="pei-check">
-                    <input type="checkbox" checked={revisaoRegente} onChange={(event) => setRevisaoRegente(event.target.checked)} />
-                    Professor regente revisou as secoes do PEI
-                  </label>
-                  <div className="fg">
-                    <Field label="Professor sala especial/AEE">
-                      <input value={aee.nome} onChange={(event) => updateAee('nome', event.target.value)} placeholder="Nome do profissional" />
-                    </Field>
-                    <Field label="ID/matricula do AEE">
-                      <input value={aee.professor_id} onChange={(event) => updateAee('professor_id', event.target.value)} placeholder="Opcional" />
-                    </Field>
-                    <Field label="Data da colaboracao">
-                      <input type="date" value={aee.data} onChange={(event) => updateAee('data', event.target.value)} />
-                    </Field>
-                    <Field label="Funcao">
-                      <input value={aee.funcao} onChange={(event) => updateAee('funcao', event.target.value)} />
-                    </Field>
-                    <Field label="Contribuicoes do AEE" wide>
-                      <textarea value={aee.contribuicoes} onChange={(event) => updateAee('contribuicoes', event.target.value)} placeholder="Barreiras, comunicacao, estrategias de apoio e avaliacao." />
-                    </Field>
-                    <Field label="Recursos indicados" wide>
-                      <textarea value={joinList(aee.recursos_indicados)} onChange={(event) => updateAee('recursos_indicados', splitList(event.target.value))} placeholder="Um recurso por linha" />
-                    </Field>
-                    <Field label="Adaptacoes sugeridas" wide>
-                      <textarea value={joinList(aee.adaptacoes_sugeridas)} onChange={(event) => updateAee('adaptacoes_sugeridas', splitList(event.target.value))} placeholder="Uma adaptacao por linha" />
-                    </Field>
-                    <Field label="Parecer do AEE" wide>
-                      <textarea value={aee.parecer} onChange={(event) => updateAee('parecer', event.target.value)} />
-                    </Field>
-                  </div>
-                </section>
-                <section className="pei-block">
-                  <div className="bnac-form-section">Passo 6 - Consulta e aprovacao da familia</div>
-                  <div className="fg">
-                    <Field label="Responsavel consultado">
-                      <input value={family.responsavel_nome} onChange={(event) => updateFamily('responsavel_nome', event.target.value)} />
-                    </Field>
-                    <Field label="Parentesco">
-                      <input value={family.parentesco} onChange={(event) => updateFamily('parentesco', event.target.value)} />
-                    </Field>
-                    <Field label="Data da consulta">
-                      <input type="date" value={family.data_consulta} onChange={(event) => updateFamily('data_consulta', event.target.value)} />
-                    </Field>
-                    <Field label="Formato">
-                      <select value={family.formato} onChange={(event) => updateFamily('formato', event.target.value as FamilyConsultation['formato'])}>
-                        <option value="presencial">Presencial</option>
-                        <option value="telefone">Telefone</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="reuniao_online">Reuniao online</option>
-                        <option value="outro">Outro</option>
-                      </select>
-                    </Field>
-                    <Field label="Status da familia" wide>
-                      <select value={family.concordancia} onChange={(event) => updateFamily('concordancia', event.target.value as FamilyConsultation['concordancia'])}>
-                        <option value="pendente">Pendente</option>
-                        <option value="aprovado">Aprovado pela familia</option>
-                        <option value="ciencia_sem_aprovacao">Ciencia sem aprovacao formal</option>
-                      </select>
-                    </Field>
-                    <Field label="Informacoes relevantes" wide>
-                      <textarea value={family.informacoes_relevantes} onChange={(event) => updateFamily('informacoes_relevantes', event.target.value)} placeholder="Rotina, autonomia, comunicacao, interesses, dificuldades em casa, medicacao quando informada espontaneamente e acompanhamentos externos." />
-                    </Field>
-                    <Field label="Expectativas da familia" wide>
-                      <textarea value={family.expectativas} onChange={(event) => updateFamily('expectativas', event.target.value)} />
-                    </Field>
-                    <Field label="Observacoes e encaminhamentos" wide>
-                      <textarea value={family.observacoes} onChange={(event) => updateFamily('observacoes', event.target.value)} placeholder="Justificativa e encaminhamento para nova reuniao quando houver ciencia sem aprovacao." />
-                    </Field>
-                  </div>
-                </section>
-                <section className="pei-block">
-                  <div className="bnac-form-section">Passo 7 - Salvar/Publicar</div>
-                  <p className="pei-note">
-                    Publicar como vigente exige revisao do professor regente, colaboracao do AEE, validacao da coordenacao, consulta familiar e aprovacao ou ciencia formal da familia.
-                  </p>
-                </section>
-              </div>
+              {planKind === 'pei' && (
+                <div className="pei-flow">
+                  <section className="pei-block pei-tutorial">
+                    <div className="pei-tutorial-title">Como funciona o PEI</div>
+                    <ol className="pei-tutorial-steps">
+                      <li><strong>Passo 1–3</strong> — Preencha os dados do plano, selecione habilidades BNCC e gere o documento com IA.</li>
+                      <li><strong>Passo 5 (AEE)</strong> — O professor da sala de recursos revisa e registra contribuicoes, recursos e adaptacoes.</li>
+                      <li><strong>Passo 6 (Familia)</strong> — Registre a consulta com a familia e o grau de concordancia.</li>
+                      <li><strong>Passo 7 (Salvar)</strong> — Salve como rascunho ou publique como vigente. Publicar exige revisao, AEE e consulta familiar registrados.</li>
+                    </ol>
+                    <p className="pei-note" style={{ marginTop: 8 }}>
+                      O PEI e um documento pedagogico colaborativo. Nao substitui laudo clinico nem diagnostico medico.
+                      Deve ser revisado bimestralmente e ficar acessivel a equipe pedagogica e a familia.
+                    </p>
+                  </section>
+                  <section className="pei-block">
+                    <div className="bnac-form-section">Passo 5 - Revisao colaborativa (AEE)</div>
+                    <label className="pei-check">
+                      <input type="checkbox" checked={revisaoRegente} onChange={(event) => setRevisaoRegente(event.target.checked)} />
+                      Professor regente revisou as secoes do PEI
+                    </label>
+                    <div className="fg">
+                      <Field label="Professor sala especial/AEE">
+                        <input value={aee.nome} onChange={(event) => updateAee('nome', event.target.value)} placeholder="Nome do profissional" />
+                      </Field>
+                      <Field label="ID/matricula do AEE">
+                        <input value={aee.professor_id} onChange={(event) => updateAee('professor_id', event.target.value)} placeholder="Opcional" />
+                      </Field>
+                      <Field label="Data da colaboracao">
+                        <input type="date" value={aee.data} onChange={(event) => updateAee('data', event.target.value)} />
+                      </Field>
+                      <Field label="Funcao">
+                        <input value={aee.funcao} onChange={(event) => updateAee('funcao', event.target.value)} />
+                      </Field>
+                      <Field label="Contribuicoes do AEE" wide>
+                        <textarea value={aee.contribuicoes} onChange={(event) => updateAee('contribuicoes', event.target.value)} placeholder="Barreiras identificadas, estrategias de comunicacao, apoio na avaliacao e sugestoes de adaptacao." />
+                      </Field>
+                      <Field label="Recursos indicados" wide>
+                        <textarea value={joinList(aee.recursos_indicados)} onChange={(event) => updateAee('recursos_indicados', splitList(event.target.value))} placeholder="Um recurso por linha" />
+                      </Field>
+                      <Field label="Adaptacoes sugeridas" wide>
+                        <textarea value={joinList(aee.adaptacoes_sugeridas)} onChange={(event) => updateAee('adaptacoes_sugeridas', splitList(event.target.value))} placeholder="Uma adaptacao por linha" />
+                      </Field>
+                      <Field label="Parecer do AEE" wide>
+                        <textarea value={aee.parecer} onChange={(event) => updateAee('parecer', event.target.value)} />
+                      </Field>
+                    </div>
+                  </section>
+                  <section className="pei-block">
+                    <div className="bnac-form-section">Passo 6 - Consulta e aprovacao da familia</div>
+                    <p className="pei-note" style={{ marginBottom: 12 }}>
+                      A participacao da familia e prevista na Lei Brasileira de Inclusao. Registre a consulta mesmo que seja informal (telefone, WhatsApp).
+                    </p>
+                    <div className="fg">
+                      <Field label="Responsavel consultado">
+                        <input value={family.responsavel_nome} onChange={(event) => updateFamily('responsavel_nome', event.target.value)} />
+                      </Field>
+                      <Field label="Parentesco">
+                        <input value={family.parentesco} onChange={(event) => updateFamily('parentesco', event.target.value)} />
+                      </Field>
+                      <Field label="Data da consulta">
+                        <input type="date" value={family.data_consulta} onChange={(event) => updateFamily('data_consulta', event.target.value)} />
+                      </Field>
+                      <Field label="Formato">
+                        <select value={family.formato} onChange={(event) => updateFamily('formato', event.target.value as FamilyConsultation['formato'])}>
+                          <option value="presencial">Presencial</option>
+                          <option value="telefone">Telefone</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="reuniao_online">Reuniao online</option>
+                          <option value="outro">Outro</option>
+                        </select>
+                      </Field>
+                      <Field label="Status da familia" wide>
+                        <select value={family.concordancia} onChange={(event) => updateFamily('concordancia', event.target.value as FamilyConsultation['concordancia'])}>
+                          <option value="pendente">Pendente</option>
+                          <option value="aprovado">Aprovado pela familia</option>
+                          <option value="ciencia_sem_aprovacao">Ciencia sem aprovacao formal</option>
+                        </select>
+                      </Field>
+                      <Field label="Informacoes relevantes" wide>
+                        <textarea value={family.informacoes_relevantes} onChange={(event) => updateFamily('informacoes_relevantes', event.target.value)} placeholder="Rotina, autonomia, comunicacao, interesses, dificuldades em casa, medicacao quando informada espontaneamente e acompanhamentos externos." />
+                      </Field>
+                      <Field label="Expectativas da familia" wide>
+                        <textarea value={family.expectativas} onChange={(event) => updateFamily('expectativas', event.target.value)} />
+                      </Field>
+                      <Field label="Observacoes e encaminhamentos" wide>
+                        <textarea value={family.observacoes} onChange={(event) => updateFamily('observacoes', event.target.value)} placeholder="Justificativa e encaminhamento para nova reuniao quando houver ciencia sem aprovacao." />
+                      </Field>
+                    </div>
+                  </section>
+                  <section className="pei-block">
+                    <div className="bnac-form-section">Passo 7 - Salvar/Publicar</div>
+                    <p className="pei-note">
+                      Publicar como vigente exige revisao do professor regente, colaboracao do AEE registrada,
+                      consulta familiar e aprovacao ou ciencia formal da familia. O PEI publicado fica visivel
+                      para a coordenacao e para a conta de familia vinculada ao aluno.
+                    </p>
+                  </section>
+                </div>
+              )}
             </div>
           </div>
 

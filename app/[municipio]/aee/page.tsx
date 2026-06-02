@@ -166,7 +166,7 @@ export default function AeePage() {
       <header id="hdr">
         <div className="hdr-in">
           <Link href="/" className="logo">
-            <div className="logo-ic">AEE</div>
+            <div className="logo-ic logo-ic--aee" />
             <div>
               <div className="logo-t">Sala especial / AEE</div>
               <div className="logo-s">Cadastro de alunos e ficha para PEI</div>
@@ -185,6 +185,20 @@ export default function AeePage() {
             <h1>Cadastro AEE do estudante</h1>
             <p>Ficha restrita usada pela IA para gerar PEI individualizado.</p>
           </div>
+        </div>
+
+        <div className="pei-block pei-tutorial" style={{ marginBottom: 20 }}>
+          <div className="pei-tutorial-title">Como funciona o cadastro AEE</div>
+          <ol className="pei-tutorial-steps">
+            <li><strong>Cadastre o aluno</strong> — Preencha nome, escola, ano e turno. O cadastro e vinculado ao municipio automaticamente.</li>
+            <li><strong>Preencha a ficha AEE</strong> — Descreva necessidades educacionais, barreiras, potencialidades e recursos. Quanto mais completa, melhor sera o PEI gerado pela IA.</li>
+            <li><strong>Salve</strong> — Apos salvar, o aluno aparece no seletor PEI dos portais BNCC Computacao e Anos Iniciais.</li>
+            <li><strong>Gere o PEI</strong> — Nos portais, selecione &quot;PEI&quot;, escolha o aluno e clique em &quot;Gerar plano&quot;. A IA usara a ficha AEE para criar um plano individualizado.</li>
+          </ol>
+          <p className="pei-note" style={{ marginTop: 8 }}>
+            A ficha AEE e de acesso restrito (professor AEE, coordenacao, administracao). Dados de saude informados
+            espontaneamente sao tratados apenas como contexto pedagogico.
+          </p>
         </div>
 
         {!user && <div className="al-error">Faca login para acessar o cadastro AEE.</div>}

@@ -63,7 +63,7 @@ export default function FamilyPage() {
       <header id="hdr">
         <div className="hdr-in">
           <Link href="/" className="logo">
-            <div className="logo-ic">PEI</div>
+            <div className="logo-ic logo-ic--pei" />
             <div>
               <div className="logo-t">Acesso da familia</div>
               <div className="logo-s">Consulta e ciencia do PEI</div>
@@ -78,6 +78,19 @@ export default function FamilyPage() {
             <h1>PEIs vinculados</h1>
             <p>Area restrita para responsaveis legais.</p>
           </div>
+        </div>
+
+        <div className="pei-block pei-tutorial" style={{ marginBottom: 20 }}>
+          <div className="pei-tutorial-title">Sobre o PEI — Plano Educacional Individualizado</div>
+          <ol className="pei-tutorial-steps">
+            <li><strong>O que e o PEI?</strong> — E um plano criado pela escola para apoiar o aprendizado do seu filho(a), respeitando as necessidades e potencialidades individuais.</li>
+            <li><strong>O que aparece aqui?</strong> — Os PEIs vinculados ao(s) aluno(s) que a escola associou a sua conta de responsavel.</li>
+            <li><strong>Status &quot;Vigente&quot;</strong> — O PEI esta ativo e sendo utilizado pela escola neste periodo.</li>
+            <li><strong>Status &quot;Rascunho&quot;</strong> — O PEI ainda esta em elaboracao pela equipe pedagogica.</li>
+          </ol>
+          <p className="pei-note" style={{ marginTop: 8 }}>
+            Em caso de duvidas sobre o PEI do seu filho(a), entre em contato diretamente com a escola ou com o professor AEE responsavel.
+          </p>
         </div>
 
         {!user && <div className="al-error">Faca login com a conta de familia/responsavel.</div>}
