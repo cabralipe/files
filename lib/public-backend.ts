@@ -257,13 +257,14 @@ function hasText(value: unknown) {
 
 function validatePublicationReadiness(plan: PublicPlan) {
   if (!plan.is_published && plan.plan_status !== 'vigente') return
+  if (!plan.is_pei) return
 
   const aee = plan.colaboracao_aee
   const familia = plan.consulta_familia
   const missing: string[] = []
 
   if (!plan.revisao_regente) missing.push('revisao humana do professor regente')
-  if (plan.is_pei && !hasText(plan.student_id)) missing.push('aluno vinculado ao PEI')
+  if (!hasText(plan.student_id)) missing.push('aluno vinculado ao PEI')
   if (!aee || !hasText(aee.nome) || !hasText(aee.data) || !hasText(aee.contribuicoes)) {
     missing.push('colaboracao registrada do AEE')
   }

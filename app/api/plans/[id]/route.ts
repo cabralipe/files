@@ -12,8 +12,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const plan = await updatePlan(params.id, body)
 
     if (!plan) {
-      return NextResponse.json({ error: 'Plano n?o encontrado' }, { status: 404 })
-    }
+      return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
+}
 
     return NextResponse.json({ success: true, data: plan, plan })
   } catch (error) {
@@ -32,7 +32,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       )
     }
 
-    return NextResponse.json({ error: 'N?o foi possivel atualizar o plano' }, { status: 500 })
+    return NextResponse.json({ error: 'Nao foi possivel atualizar o plano' }, { status: 500 })
   }
 }
 
@@ -46,7 +46,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   const deleted = await deletePlan(params.id)
 
   if (!deleted) {
-    return NextResponse.json({ error: 'Plano n?o encontrado' }, { status: 404 })
+    return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
   }
 
   return NextResponse.json({ success: true, ok: true })

@@ -16,8 +16,19 @@ type FamilyPei = {
   content: string
   is_published: boolean
   plan_status?: string
+  student_id?: string
   consulta_familia?: Record<string, string>
   created_at: string
+}
+
+type StudentLink = {
+  student_id: string
+  relationship: string
+  students: {
+    full_name: string
+    school_name: string
+    grade_level: string
+  } | null
 }
 
 async function getAccessToken() {
@@ -28,6 +39,7 @@ async function getAccessToken() {
 export default function FamilyPage() {
   const { user, loading: authLoading } = useAuth()
   const [peis, setPeis] = useState<FamilyPei[]>([])
+  const [studentMap, setStudentMap] = useState<Record<string, StudentLink>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -48,6 +60,12 @@ export default function FamilyPage() {
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || 'Erro ao carregar PEIs')
         setPeis(payload.data || [])
+        const links: StudentLink[] = payload.links || []
+        const map: Record<string, StudentLink> = {}
+        for (const link of links) {
+          if (link.student_id) map[link.student_id] = link
+        }
+        setStudentMap(map)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao carregar PEIs')
       } finally {
@@ -57,6 +75,12 @@ export default function FamilyPage() {
 
     void loadPeis()
   }, [authLoading, user])
+
+  function concordanciaLabel(value?: string) {
+    if (value === 'aprovado') return 'Aprovado'
+    if (value === 'ciencia_sem_aprovacao') return 'Ciencia sem aprovacao'
+    return 'Pendente'
+  }
 
   return (
     <main>
@@ -99,21 +123,34 @@ export default function FamilyPage() {
 
         {!loading && user && (
           <div className="plans-grid">
-            {peis.length ? peis.map((pei) => (
-              <article className="plan-item" key={pei.id}>
-                <div className="pi-header">
-                  <div>
-                    <h2 className="pi-title">{pei.title}</h2>
-                    <div className="pi-date">{new Date(pei.created_at).toLocaleString('pt-BR')}</div>
+            {peis.length ? peis.map((pei) => {
+              const link = pei.student_id ? studentMap[pei.student_id] : undefined
+              const studentName = link?.students?.full_name
+              const studentSchool = link?.students?.school_name
+              const studentGrade = link?.students?.grade_level
+              return (
+                <article className="plan-item" key={pei.id}>
+                  <div className="pi-header">
+                    <div>
+                      <h2 className="pi-title">{pei.title}</h2>
+                      <div className="pi-date">{new Date(pei.created_at).toLocaleString('pt-BR')}</div>
+                    </div>
                   </div>
-                </div>
-                <div className="pi-meta">
-                  <span className="tag tcd">{pei.is_published ? 'Vigente' : 'Rascunho'}</span>
-                  <span className="tag ta">{pei.consulta_familia?.concordancia || 'pendente'}</span>
-                </div>
-                <p className="plan-preview">{pei.content?.slice(0, 260) || 'PEI sem conteudo disponivel.'}</p>
-              </article>
-            )) : (
+                  {studentName && (
+                    <p className="exp-author" style={{ marginBottom: 6 }}>
+                      {studentName}
+                      {studentGrade ? ` · ${studentGrade}` : ''}
+                      {studentSchool ? ` · ${studentSchool}` : ''}
+                    </p>
+                  )}
+                  <div className="pi-meta">
+                    <span className="tag tcd">{pei.is_published ? 'Vigente' : 'Rascunho'}</span>
+                    <span className="tag ta">{concordanciaLabel(pei.consulta_familia?.concordancia)}</span>
+                  </div>
+                  <p className="plan-preview">{pei.content?.slice(0, 260) || 'PEI sem conteudo disponivel.'}</p>
+                </article>
+              )
+            }) : (
               <div className="est">Nenhum PEI vinculado a esta conta ainda.</div>
             )}
           </div>

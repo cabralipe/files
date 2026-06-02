@@ -579,7 +579,9 @@ export default function Home() {
       await loadPlans()
       setEditingPlanId(payload.data?.id || editingPlanId)
       setView('saved')
-      showToast(publish ? 'PEI publicado como vigente.' : 'PEI salvo como rascunho.')
+      showToast(publish
+        ? (planKind === 'pei' ? 'PEI publicado como vigente.' : 'Plano publicado.')
+        : (planKind === 'pei' ? 'PEI salvo como rascunho.' : 'Plano salvo.'))
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao salvar plano')
     } finally {
