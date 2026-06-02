@@ -41,6 +41,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
+    if (error instanceof Error && error.message.startsWith('PUBLICATION_BLOCKED:')) {
+      return NextResponse.json(
+        { error: `Publicacao bloqueada. Pendencias: ${error.message.replace('PUBLICATION_BLOCKED:', '')}` },
+        { status: 422 },
+      )
+    }
+
     return NextResponse.json({ error: 'N?o foi possivel criar o plano' }, { status: 500 })
   }
 }

@@ -301,6 +301,10 @@ ALTER TABLE users                  ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE users                  ADD COLUMN IF NOT EXISTS school_id UUID;
 ALTER TABLE schools                ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'rascunho';
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS revisao_regente BOOLEAN DEFAULT false;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS colaboracao_aee JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE plans                  ADD COLUMN IF NOT EXISTS consulta_familia JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE points_transactions    ADD COLUMN IF NOT EXISTS points_amount INTEGER NOT NULL DEFAULT 0;
 
 DROP VIEW IF EXISTS ranking_view;

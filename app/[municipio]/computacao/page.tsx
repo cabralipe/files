@@ -41,6 +41,33 @@ type Plan = {
   coordinator_viewed_at?: string
   coordinator_name?: string
   coordinator_note?: string
+  is_published?: boolean
+  plan_status?: 'rascunho' | 'vigente' | 'arquivado' | 'substituido'
+  revisao_regente?: boolean
+  colaboracao_aee?: AeeCollaboration
+  consulta_familia?: FamilyConsultation
+}
+
+type AeeCollaboration = {
+  professor_id: string
+  nome: string
+  data: string
+  funcao: string
+  contribuicoes: string
+  recursos_indicados: string[]
+  adaptacoes_sugeridas: string[]
+  parecer: string
+}
+
+type FamilyConsultation = {
+  responsavel_nome: string
+  parentesco: string
+  data_consulta: string
+  formato: 'presencial' | 'telefone' | 'whatsapp' | 'reuniao_online' | 'outro'
+  informacoes_relevantes: string
+  expectativas: string
+  concordancia: 'aprovado' | 'ciencia_sem_aprovacao' | 'pendente'
+  observacoes: string
 }
 
 type PlanForm = {
@@ -69,6 +96,39 @@ const emptyForm: PlanForm = {
   objectives: '',
   materials: 'Quadro, caderno, celular ou computador compartilhado',
   notes: '',
+}
+
+const emptyAeeCollaboration: AeeCollaboration = {
+  professor_id: '',
+  nome: '',
+  data: new Date().toISOString().slice(0, 10),
+  funcao: 'Professor da sala especial/AEE',
+  contribuicoes: '',
+  recursos_indicados: [],
+  adaptacoes_sugeridas: [],
+  parecer: '',
+}
+
+const emptyFamilyConsultation: FamilyConsultation = {
+  responsavel_nome: '',
+  parentesco: '',
+  data_consulta: new Date().toISOString().slice(0, 10),
+  formato: 'presencial',
+  informacoes_relevantes: '',
+  expectativas: '',
+  concordancia: 'pendente',
+  observacoes: '',
+}
+
+function splitList(value: string) {
+  return value
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function joinList(value?: string[]) {
+  return (value || []).join('\n')
 }
 
 const tagClass: Record<string, string> = {
@@ -179,6 +239,10 @@ export default function Home() {
   const [subject, setSubject] = useState('')
   const [axis, setAxis] = useState('')
   const [form, setForm] = useState<PlanForm>(emptyForm)
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [revisaoRegente, setRevisaoRegente] = useState(false)
+  const [aee, setAee] = useState<AeeCollaboration>(emptyAeeCollaboration)
+  const [family, setFamily] = useState<FamilyConsultation>(emptyFamilyConsultation)
   const [generated, setGenerated] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -308,11 +372,24 @@ export default function Home() {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  function planPayload(content = generated) {
+  function updateAee<K extends keyof AeeCollaboration>(field: K, value: AeeCollaboration[K]) {
+    setAee((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateFamily<K extends keyof FamilyConsultation>(field: K, value: FamilyConsultation[K]) {
+    setFamily((current) => ({ ...current, [field]: value }))
+  }
+
+  function planPayload(content = generated, publish = false) {
     return {
       ...form,
       skill_ids: selected,
       content,
+      revisao_regente: revisaoRegente,
+      colaboracao_aee: aee,
+      consulta_familia: family,
+      is_published: publish,
+      plan_status: publish ? 'vigente' : 'rascunho',
     }
   }
 
@@ -436,7 +513,7 @@ export default function Home() {
     }
   }
 
-  async function savePlan() {
+  async function savePlan(publish = false) {
     if (!user) {
       showToast('Faça login para salvar planos. Visitantes podem apenas gerar e baixar PDF.')
       return
@@ -450,13 +527,13 @@ export default function Home() {
     setLoading(true)
     try {
       const token = await getAccessToken()
-      const response = await fetch('/api/plans', {
-        method: 'POST',
+      const response = await fetch(editingPlanId ? `/api/plans/${editingPlanId}` : '/api/plans', {
+        method: editingPlanId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(planPayload(generated)),
+        body: JSON.stringify(planPayload(generated, publish)),
       })
       const payload = await response.json()
 
@@ -465,8 +542,9 @@ export default function Home() {
       }
 
       await loadPlans()
+      setEditingPlanId(payload.data?.id || editingPlanId)
       setView('saved')
-      showToast('Plano salvo em Meus Planos.')
+      showToast(publish ? 'PEI publicado como vigente.' : 'PEI salvo como rascunho.')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao salvar plano')
     } finally {
@@ -487,6 +565,7 @@ export default function Home() {
   }
 
   function loadSavedPlan(plan: Plan) {
+    setEditingPlanId(plan.id)
     setForm({
       title: plan.title,
       teacher: plan.teacher,
@@ -502,8 +581,27 @@ export default function Home() {
     })
     setSelected(plan.skill_ids)
     setGenerated(plan.content)
+    setRevisaoRegente(Boolean(plan.revisao_regente))
+    setAee({ ...emptyAeeCollaboration, ...(plan.colaboracao_aee || {}) })
+    setFamily({ ...emptyFamilyConsultation, ...(plan.consulta_familia || {}) })
     setView('plan')
     showToast('Plano carregado para edição.')
+  }
+
+  function startNewPlan() {
+    setEditingPlanId(null)
+    setForm((current) => ({
+      ...emptyForm,
+      teacher: current.teacher,
+      school: current.school,
+      subject: current.subject,
+    }))
+    setSelected([])
+    setGenerated('')
+    setRevisaoRegente(false)
+    setAee(emptyAeeCollaboration)
+    setFamily(emptyFamilyConsultation)
+    setView('plan')
   }
 
   async function downloadPlanPdf(plan?: Plan) {
@@ -532,6 +630,8 @@ export default function Home() {
       date: form.date,
       duration: form.duration,
       skill_ids: selected,
+      colaboracao_aee: aee,
+      consulta_familia: family,
     }
 
     function drawPaperBackground() {
@@ -662,6 +762,31 @@ export default function Home() {
 
       addWrapped(lineText)
     })
+
+    const aeePdf = plan?.colaboracao_aee || aee
+    const familyPdf = plan?.consulta_familia || family
+
+    addSection('Colaboracao do professor da sala especial/AEE')
+    addWrapped(`Nome: ${normalizePdfText(aeePdf.nome || '')}`)
+    addWrapped(`Funcao: ${normalizePdfText(aeePdf.funcao || 'Professor da sala especial/AEE')}`)
+    addWrapped(`Data: ${aeePdf.data || ''}`)
+    addWrapped(`Contribuicoes registradas: ${normalizePdfText(aeePdf.contribuicoes || '')}`)
+    addWrapped(`Recursos/adaptacoes sugeridos: ${normalizePdfText([...(aeePdf.recursos_indicados || []), ...(aeePdf.adaptacoes_sugeridas || [])].join('; '))}`)
+    y += 5
+    addWrapped('Assinatura: ______________________________________________')
+
+    addSection('Consulta e aprovacao da familia/responsavel')
+    addWrapped(`Nome do responsavel: ${normalizePdfText(familyPdf.responsavel_nome || '')}`)
+    addWrapped(`Parentesco: ${normalizePdfText(familyPdf.parentesco || '')}`)
+    addWrapped(`Data da consulta: ${familyPdf.data_consulta || ''}`)
+    addWrapped(`Forma da consulta: ${normalizePdfText(familyPdf.formato || '')}`)
+    addWrapped(`Contribuicoes da familia: ${normalizePdfText(familyPdf.informacoes_relevantes || '')}`)
+    addWrapped(`Status: ${familyPdf.concordancia === 'aprovado' ? '(x) Aprovado' : '( ) Aprovado'}  ${familyPdf.concordancia === 'ciencia_sem_aprovacao' ? '(x) Ciencia sem aprovacao formal' : '( ) Ciencia sem aprovacao formal'}  ${familyPdf.concordancia === 'pendente' ? '(x) Pendente de nova reuniao' : '( ) Pendente de nova reuniao'}`)
+    y += 5
+    addWrapped('Assinatura do responsavel: ______________________________')
+    addWrapped('Assinatura da coordenacao pedagogica: ___________________')
+    addWrapped('Assinatura do professor regente: ________________________')
+    addWrapped('Assinatura do professor da sala especial/AEE: ___________')
 
     const totalPages = doc.getNumberOfPages()
     for (let page = 1; page <= totalPages; page += 1) {
@@ -897,6 +1022,18 @@ export default function Home() {
                 <span className="stn">3</span>
                 <span className="stl">Plano gerado</span>
               </div>
+              <div className={`sti ${revisaoRegente && aee.nome && aee.contribuicoes ? 'done' : ''}`}>
+                <span className="stn">5</span>
+                <span className="stl">Revisao colaborativa</span>
+              </div>
+              <div className={`sti ${family.responsavel_nome && family.concordancia !== 'pendente' ? 'done' : ''}`}>
+                <span className="stn">6</span>
+                <span className="stl">Familia</span>
+              </div>
+              <div className={`sti ${generated ? 'done' : ''}`}>
+                <span className="stn">7</span>
+                <span className="stl">Salvar/Publicar</span>
+              </div>
             </div>
 
             <div className="pc">
@@ -956,7 +1093,10 @@ export default function Home() {
                 <span className="oa-label">Plano editável</span>
                 <button className="btn btn-gh" onClick={() => void downloadPlanPdf()}>Baixar PDF</button>
                 {isLoggedIn ? (
-                  <button className="btn btn-suc" disabled={loading || !generated} onClick={savePlan}>Salvar</button>
+                  <>
+                    <button className="btn btn-suc" disabled={loading || !generated} onClick={() => void savePlan(false)}>Salvar rascunho</button>
+                    <button className="btn btn-pri" disabled={loading || !generated} onClick={() => void savePlan(true)}>Publicar vigente</button>
+                  </>
                 ) : (
                   <Link className="btn btn-suc" href="/auth/login">Login para salvar</Link>
                 )}
@@ -984,6 +1124,86 @@ export default function Home() {
                 onChange={(event) => setGenerated(event.target.value)}
                 placeholder="O plano gerado aparecerá aqui. Você pode editar o texto antes de salvar."
               />
+              <div className="pei-flow">
+                <section className="pei-block">
+                  <div className="bnac-form-section">Passo 5 - Revisao colaborativa</div>
+                  <label className="pei-check">
+                    <input type="checkbox" checked={revisaoRegente} onChange={(event) => setRevisaoRegente(event.target.checked)} />
+                    Professor regente revisou as secoes do PEI
+                  </label>
+                  <div className="fg">
+                    <Field label="Professor sala especial/AEE">
+                      <input value={aee.nome} onChange={(event) => updateAee('nome', event.target.value)} placeholder="Nome do profissional" />
+                    </Field>
+                    <Field label="ID/matricula do AEE">
+                      <input value={aee.professor_id} onChange={(event) => updateAee('professor_id', event.target.value)} placeholder="Opcional" />
+                    </Field>
+                    <Field label="Data da colaboracao">
+                      <input type="date" value={aee.data} onChange={(event) => updateAee('data', event.target.value)} />
+                    </Field>
+                    <Field label="Funcao">
+                      <input value={aee.funcao} onChange={(event) => updateAee('funcao', event.target.value)} />
+                    </Field>
+                    <Field label="Contribuicoes do AEE" wide>
+                      <textarea value={aee.contribuicoes} onChange={(event) => updateAee('contribuicoes', event.target.value)} placeholder="Barreiras, comunicacao, estrategias de apoio e avaliacao." />
+                    </Field>
+                    <Field label="Recursos indicados" wide>
+                      <textarea value={joinList(aee.recursos_indicados)} onChange={(event) => updateAee('recursos_indicados', splitList(event.target.value))} placeholder="Um recurso por linha" />
+                    </Field>
+                    <Field label="Adaptacoes sugeridas" wide>
+                      <textarea value={joinList(aee.adaptacoes_sugeridas)} onChange={(event) => updateAee('adaptacoes_sugeridas', splitList(event.target.value))} placeholder="Uma adaptacao por linha" />
+                    </Field>
+                    <Field label="Parecer do AEE" wide>
+                      <textarea value={aee.parecer} onChange={(event) => updateAee('parecer', event.target.value)} />
+                    </Field>
+                  </div>
+                </section>
+                <section className="pei-block">
+                  <div className="bnac-form-section">Passo 6 - Consulta e aprovacao da familia</div>
+                  <div className="fg">
+                    <Field label="Responsavel consultado">
+                      <input value={family.responsavel_nome} onChange={(event) => updateFamily('responsavel_nome', event.target.value)} />
+                    </Field>
+                    <Field label="Parentesco">
+                      <input value={family.parentesco} onChange={(event) => updateFamily('parentesco', event.target.value)} />
+                    </Field>
+                    <Field label="Data da consulta">
+                      <input type="date" value={family.data_consulta} onChange={(event) => updateFamily('data_consulta', event.target.value)} />
+                    </Field>
+                    <Field label="Formato">
+                      <select value={family.formato} onChange={(event) => updateFamily('formato', event.target.value as FamilyConsultation['formato'])}>
+                        <option value="presencial">Presencial</option>
+                        <option value="telefone">Telefone</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="reuniao_online">Reuniao online</option>
+                        <option value="outro">Outro</option>
+                      </select>
+                    </Field>
+                    <Field label="Status da familia" wide>
+                      <select value={family.concordancia} onChange={(event) => updateFamily('concordancia', event.target.value as FamilyConsultation['concordancia'])}>
+                        <option value="pendente">Pendente</option>
+                        <option value="aprovado">Aprovado pela familia</option>
+                        <option value="ciencia_sem_aprovacao">Ciencia sem aprovacao formal</option>
+                      </select>
+                    </Field>
+                    <Field label="Informacoes relevantes" wide>
+                      <textarea value={family.informacoes_relevantes} onChange={(event) => updateFamily('informacoes_relevantes', event.target.value)} placeholder="Rotina, autonomia, comunicacao, interesses, dificuldades em casa, medicacao quando informada espontaneamente e acompanhamentos externos." />
+                    </Field>
+                    <Field label="Expectativas da familia" wide>
+                      <textarea value={family.expectativas} onChange={(event) => updateFamily('expectativas', event.target.value)} />
+                    </Field>
+                    <Field label="Observacoes e encaminhamentos" wide>
+                      <textarea value={family.observacoes} onChange={(event) => updateFamily('observacoes', event.target.value)} placeholder="Justificativa e encaminhamento para nova reuniao quando houver ciencia sem aprovacao." />
+                    </Field>
+                  </div>
+                </section>
+                <section className="pei-block">
+                  <div className="bnac-form-section">Passo 7 - Salvar/Publicar</div>
+                  <p className="pei-note">
+                    Publicar como vigente exige revisao do professor regente, colaboracao do AEE, validacao da coordenacao, consulta familiar e aprovacao ou ciencia formal da familia.
+                  </p>
+                </section>
+              </div>
             </div>
           </div>
 
@@ -1016,7 +1236,7 @@ export default function Home() {
               <h1>Meus Planos</h1>
               <p>Planos salvos na sua conta.</p>
             </div>
-            <button className="btn btn-pri" onClick={() => setView('plan')}>+ Criar Novo Plano</button>
+            <button className="btn btn-pri" onClick={startNewPlan}>+ Criar Novo Plano</button>
           </div>
           <div className="plans-grid">
             {plans.length ? (
@@ -1033,6 +1253,7 @@ export default function Home() {
                     <span className={`tag ${tagClass[plan.subject] || 'tm'}`}>{plan.subject}</span>
                     <span className="tag ta">{plan.duration}</span>
                     <span className="tag ta">{plan.skill_ids.length} habilidades</span>
+                    <span className="tag tcd">{plan.is_published ? 'Vigente' : 'Rascunho'}</span>
                   </div>
                   <p className="plan-preview">{plan.content.slice(0, 180)}...</p>
                   <div className="review-status">

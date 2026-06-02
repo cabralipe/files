@@ -176,7 +176,7 @@ export default function CoordinatorDashboard() {
         <div className="saved-head">
           <div>
             <h1>Planos da escola</h1>
-            <p>Veja professor, data de criação, status de visualização e registre ressalvas.</p>
+            <p>Veja professor, data de criação, status de validação e registre ressalvas.</p>
           </div>
         </div>
 
@@ -192,7 +192,7 @@ export default function CoordinatorDashboard() {
               </div>
               <div>
                 <strong>{stats.reviewed}</strong>
-                <span>visualizados</span>
+                <span>validados</span>
               </div>
               <div>
                 <strong>{stats.pending}</strong>
@@ -226,7 +226,7 @@ export default function CoordinatorDashboard() {
                       </span>
                       <span>{plan.teacher || 'Professor(a)'}</span>
                       <span>{new Date(plan.created_at).toLocaleDateString('pt-BR')}</span>
-                      <span>{plan.coordinator_viewed_at ? 'Visualizado' : 'Pendente'}</span>
+                      <span>{plan.coordinator_viewed_at ? 'Validado' : 'Pendente'}</span>
                     </button>
                   ))
                 ) : (
@@ -246,15 +246,15 @@ export default function CoordinatorDashboard() {
                     <textarea
                       value={note}
                       onChange={(event) => setNote(event.target.value)}
-                      placeholder="Digite ressalvas, orientações ou deixe em branco para marcar apenas como visualizado."
+                      placeholder="Digite ressalvas, orientações ou deixe em branco para validar o documento."
                     />
                     <button className="btn btn-pri" disabled={saving} onClick={saveReview} type="button">
-                      {saving ? 'Salvando...' : 'Salvar visualização e ressalva'}
+                      {saving ? 'Salvando...' : 'Salvar validação e ressalva'}
                     </button>
                     <div className="coord-preview">{selectedPlan.content}</div>
                   </>
                 ) : (
-                  <div className="est">Selecione um plano para visualizar e registrar ressalvas.</div>
+                  <div className="est">Selecione um plano para validar e registrar ressalvas.</div>
                 )}
               </aside>
             </div>

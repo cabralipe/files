@@ -2293,6 +2293,43 @@ input:focus, select:focus, textarea:focus {
   transition: width .3s ease-out;
 }
 
+.pei-flow {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.pei-block {
+  border: 2px solid var(--ink);
+  background: var(--paper-soft);
+  padding: 14px;
+}
+
+.pei-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.pei-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--red);
+}
+
+.pei-note {
+  margin: 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 /* ── PDF layout selector modal ── */
 .bnac-pdf-mdl {
   background: var(--paper-soft);

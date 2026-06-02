@@ -25,6 +25,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
+    if (error instanceof Error && error.message.startsWith('PUBLICATION_BLOCKED:')) {
+      return NextResponse.json(
+        { error: `Publicacao bloqueada. Pendencias: ${error.message.replace('PUBLICATION_BLOCKED:', '')}` },
+        { status: 422 },
+      )
+    }
+
     return NextResponse.json({ error: 'N?o foi possivel atualizar o plano' }, { status: 500 })
   }
 }

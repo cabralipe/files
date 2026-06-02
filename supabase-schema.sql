@@ -61,6 +61,10 @@ CREATE TABLE IF NOT EXISTS plans (
   coordinator_viewed_at TIMESTAMP WITH TIME ZONE,
   coordinator_id UUID REFERENCES users(id),
   coordinator_note TEXT,
+  plan_status TEXT NOT NULL DEFAULT 'rascunho' CHECK (plan_status IN ('rascunho', 'vigente', 'arquivado', 'substituido')),
+  revisao_regente BOOLEAN DEFAULT false,
+  colaboracao_aee JSONB DEFAULT '{}'::jsonb,
+  consulta_familia JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -194,6 +198,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS subject TEXT;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS coordinator_viewed_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS coordinator_id UUID REFERENCES users(id);
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS coordinator_note TEXT;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'rascunho';
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS revisao_regente BOOLEAN DEFAULT false;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS colaboracao_aee JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE plans ADD COLUMN IF NOT EXISTS consulta_familia JSONB DEFAULT '{}'::jsonb;
 CREATE INDEX IF NOT EXISTS idx_plans_coordinator_viewed_at ON plans(coordinator_viewed_at);
 
 -- ============================================

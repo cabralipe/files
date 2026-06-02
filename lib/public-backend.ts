@@ -34,8 +34,35 @@ export type PublicPlan = {
   coordinator_viewed_at?: string
   coordinator_name?: string
   coordinator_note?: string
+  is_published?: boolean
+  plan_status?: 'rascunho' | 'vigente' | 'arquivado' | 'substituido'
+  revisao_regente?: boolean
+  colaboracao_aee?: PlanAeeCollaboration
+  consulta_familia?: PlanFamilyConsultation
   created_at: string
   updated_at: string
+}
+
+export type PlanAeeCollaboration = {
+  professor_id: string
+  nome: string
+  data: string
+  funcao: string
+  contribuicoes: string
+  recursos_indicados: string[]
+  adaptacoes_sugeridas: string[]
+  parecer: string
+}
+
+export type PlanFamilyConsultation = {
+  responsavel_nome: string
+  parentesco: string
+  data_consulta: string
+  formato: 'presencial' | 'telefone' | 'whatsapp' | 'reuniao_online' | 'outro'
+  informacoes_relevantes: string
+  expectativas: string
+  concordancia: 'aprovado' | 'ciencia_sem_aprovacao' | 'pendente'
+  observacoes: string
 }
 
 export type PublicExperience = {
@@ -71,6 +98,29 @@ const planSchemaBase = {
   notes: z.string().trim().optional().default(''),
   skill_ids: z.array(z.string().trim()).min(1, 'Selecione ao menos uma habilidade'),
   content: z.string().trim().optional().default(''),
+  is_published: z.boolean().optional().default(false),
+  plan_status: z.enum(['rascunho', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
+  revisao_regente: z.boolean().optional().default(false),
+  colaboracao_aee: z.object({
+    professor_id: z.string().trim().optional().default(''),
+    nome: z.string().trim().optional().default(''),
+    data: z.string().trim().optional().default(''),
+    funcao: z.string().trim().optional().default('Professor da sala especial/AEE'),
+    contribuicoes: z.string().trim().optional().default(''),
+    recursos_indicados: z.array(z.string().trim()).optional().default([]),
+    adaptacoes_sugeridas: z.array(z.string().trim()).optional().default([]),
+    parecer: z.string().trim().optional().default(''),
+  }).optional(),
+  consulta_familia: z.object({
+    responsavel_nome: z.string().trim().optional().default(''),
+    parentesco: z.string().trim().optional().default(''),
+    data_consulta: z.string().trim().optional().default(''),
+    formato: z.enum(['presencial', 'telefone', 'whatsapp', 'reuniao_online', 'outro']).optional().default('presencial'),
+    informacoes_relevantes: z.string().trim().optional().default(''),
+    expectativas: z.string().trim().optional().default(''),
+    concordancia: z.enum(['aprovado', 'ciencia_sem_aprovacao', 'pendente']).optional().default('pendente'),
+    observacoes: z.string().trim().optional().default(''),
+  }).optional(),
 }
 
 export const createPlanSchema = z.object(planSchemaBase)
@@ -180,12 +230,44 @@ function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
     title: plan.title,
     description: plan.notes || plan.objectives || plan.title,
     grade_level: plan.grade_level,
+    subject: plan.subject,
     content: JSON.stringify({ __publicPlan: true, plan }),
     duration: parseDurationMinutes(plan.duration),
+    materials: plan.materials,
+    objectives: plan.objectives,
+    is_published: Boolean(plan.is_published),
     updated_at: plan.updated_at,
   }
   if (municipalityId) row.municipality_id = municipalityId
   return row
+}
+
+function hasText(value: unknown) {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function validatePublicationReadiness(plan: PublicPlan) {
+  if (!plan.is_published && plan.plan_status !== 'vigente') return
+
+  const aee = plan.colaboracao_aee
+  const familia = plan.consulta_familia
+  const missing: string[] = []
+
+  if (!plan.revisao_regente) missing.push('revisao humana do professor regente')
+  if (!aee || !hasText(aee.nome) || !hasText(aee.data) || !hasText(aee.contribuicoes)) {
+    missing.push('colaboracao registrada do AEE')
+  }
+  if (!plan.coordinator_viewed_at) missing.push('validacao da coordenacao pedagogica')
+  if (!familia || !hasText(familia.responsavel_nome) || !hasText(familia.data_consulta)) {
+    missing.push('consulta familiar registrada')
+  }
+  if (!familia || familia.concordancia === 'pendente') {
+    missing.push('aprovacao ou ciencia formal da familia/responsavel')
+  }
+
+  if (missing.length) {
+    throw new Error(`PUBLICATION_BLOCKED:${missing.join(', ')}`)
+  }
 }
 
 function mapPlanRow(row: Record<string, any>): PublicPlan {
@@ -197,6 +279,11 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
       coordinator_viewed_at: parsed.plan.coordinator_viewed_at || row.coordinator_viewed_at || '',
       coordinator_name: parsed.plan.coordinator_name || '',
       coordinator_note: parsed.plan.coordinator_note || row.coordinator_note || '',
+      is_published: Boolean(row.is_published || parsed.plan.is_published),
+      plan_status: parsed.plan.plan_status || (row.is_published ? 'vigente' : 'rascunho'),
+      revisao_regente: Boolean(parsed.plan.revisao_regente),
+      colaboracao_aee: parsed.plan.colaboracao_aee,
+      consulta_familia: parsed.plan.consulta_familia,
       created_at: row.created_at,
       updated_at: row.updated_at,
     }
@@ -220,6 +307,9 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
     coordinator_viewed_at: String(row.coordinator_viewed_at || ''),
     coordinator_name: '',
     coordinator_note: String(row.coordinator_note || ''),
+    is_published: Boolean(row.is_published),
+    plan_status: row.is_published ? 'vigente' : 'rascunho',
+    revisao_regente: false,
     created_at: String(row.created_at || ''),
     updated_at: String(row.updated_at || row.created_at || ''),
   }
@@ -328,9 +418,16 @@ export async function createPlan(
     coordinator_viewed_at: '',
     coordinator_name: '',
     coordinator_note: '',
+    is_published: values.is_published,
+    plan_status: values.is_published ? 'vigente' : values.plan_status,
+    revisao_regente: values.revisao_regente,
+    colaboracao_aee: values.colaboracao_aee,
+    consulta_familia: values.consulta_familia,
     created_at: now,
     updated_at: now,
   }
+
+  validatePublicationReadiness(plan)
 
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
@@ -368,8 +465,15 @@ export async function updatePlan(id: string, input: z.infer<typeof updatePlanSch
   const nextPlan = {
     ...mapPlanRow(current as Record<string, any>),
     ...updates,
+    is_published: updates.is_published ?? mapPlanRow(current as Record<string, any>).is_published ?? false,
+    plan_status:
+      updates.is_published === true
+        ? 'vigente'
+        : updates.plan_status || mapPlanRow(current as Record<string, any>).plan_status || 'rascunho',
     updated_at: new Date().toISOString(),
   }
+
+  validatePublicationReadiness(nextPlan)
 
   const { error } = await supabase.from('plans').update(toPlanRow(nextPlan, current.user_id)).eq('id', id)
 

@@ -52,6 +52,28 @@ export type Plan = {
   coordinator_viewed_at: string | null;
   coordinator_id: string | null;
   coordinator_note: string | null;
+  plan_status: 'rascunho' | 'vigente' | 'arquivado' | 'substituido';
+  revisao_regente: boolean;
+  colaboracao_aee: {
+    professor_id: string;
+    nome: string;
+    data: string;
+    funcao: string;
+    contribuicoes: string;
+    recursos_indicados: string[];
+    adaptacoes_sugeridas: string[];
+    parecer: string;
+  } | null;
+  consulta_familia: {
+    responsavel_nome: string;
+    parentesco: string;
+    data_consulta: string;
+    formato: 'presencial' | 'telefone' | 'whatsapp' | 'reuniao_online' | 'outro';
+    informacoes_relevantes: string;
+    expectativas: string;
+    concordancia: 'aprovado' | 'ciencia_sem_aprovacao' | 'pendente';
+    observacoes: string;
+  } | null;
   created_at: string;
   updated_at: string;
   user?: User;
