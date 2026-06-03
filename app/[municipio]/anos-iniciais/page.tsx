@@ -43,7 +43,7 @@ const emptyForm: PlanForm = {
   school: 'Escola Municipal',
   grade_level: '',
   subject: 'Anos Iniciais',
-  date: new Date().toISOString().slice(0, 10),
+  date: '',
   duration: '50 minutos',
   objectives: '',
   methodology: '',
@@ -76,7 +76,7 @@ type FamilyConsultation = {
 const emptyAeeCollaboration: AeeCollaboration = {
   professor_id: '',
   nome: '',
-  data: new Date().toISOString().slice(0, 10),
+  data: '',
   funcao: 'Professor da sala especial/AEE',
   contribuicoes: '',
   recursos_indicados: [],
@@ -87,7 +87,7 @@ const emptyAeeCollaboration: AeeCollaboration = {
 const emptyFamilyConsultation: FamilyConsultation = {
   responsavel_nome: '',
   parentesco: '',
-  data_consulta: new Date().toISOString().slice(0, 10),
+  data_consulta: '',
   formato: 'presencial',
   informacoes_relevantes: '',
   expectativas: '',
@@ -205,6 +205,14 @@ export default function AnosIniciaisPage() {
 
   // saved plans (localStorage)
   const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string }>>([])
+
+  // Set today's date after mount to avoid SSR/client timezone mismatch
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    setForm((f) => f.date ? f : { ...f, date: today })
+    setAee((a) => a.data ? a : { ...a, data: today })
+    setFamily((fam) => fam.data_consulta ? fam : { ...fam, data_consulta: today })
+  }, [])
 
   // Load skills JSON
   useEffect(() => {

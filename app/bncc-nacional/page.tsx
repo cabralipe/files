@@ -122,7 +122,7 @@ const PDF_LAYOUTS: { id: PdfLayout; label: string; desc: string }[] = [
 
 const emptyForm: PlanForm = {
   title: '', teacher: '', school: '', grade_level: '', subject: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: '',
   duration: '50 minutos', methodology: 'Aprendizagem ativa',
   objectives: '', materials: 'Quadro, caderno, celular ou computador compartilhado', notes: '',
 }
@@ -266,6 +266,12 @@ export default function BnccNacionalPage() {
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
+
+  // Set today's date after mount to avoid SSR/client timezone mismatch
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    setForm((f) => f.date ? f : { ...f, date: today })
+  }, [])
 
   // Load skills when nivel changes + log pageview on first selection
   useEffect(() => {

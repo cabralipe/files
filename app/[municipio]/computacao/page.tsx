@@ -91,7 +91,7 @@ const emptyForm: PlanForm = {
   school: 'Escola Municipal',
   grade_level: '5',
   subject: 'Computação',
-  date: new Date().toISOString().slice(0, 10),
+  date: '',
   duration: '50 minutos',
   methodology: 'Aprendizagem baseada em projeto',
   objectives: '',
@@ -102,7 +102,7 @@ const emptyForm: PlanForm = {
 const emptyAeeCollaboration: AeeCollaboration = {
   professor_id: '',
   nome: '',
-  data: new Date().toISOString().slice(0, 10),
+  data: '',
   funcao: 'Professor da sala especial/AEE',
   contribuicoes: '',
   recursos_indicados: [],
@@ -113,7 +113,7 @@ const emptyAeeCollaboration: AeeCollaboration = {
 const emptyFamilyConsultation: FamilyConsultation = {
   responsavel_nome: '',
   parentesco: '',
-  data_consulta: new Date().toISOString().slice(0, 10),
+  data_consulta: '',
   formato: 'presencial',
   informacoes_relevantes: '',
   expectativas: '',
@@ -256,6 +256,13 @@ export default function Home() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    setForm((f) => f.date ? f : { ...f, date: today })
+    setAee((a) => a.data ? a : { ...a, data: today })
+    setFamily((fam) => fam.data_consulta ? fam : { ...fam, data_consulta: today })
+  }, [])
 
   useEffect(() => {
     if (!localStorage.getItem('bncc_tutorial_seen')) {

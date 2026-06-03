@@ -106,7 +106,11 @@ export async function POST(request: Request) {
     }
 
     if (user) {
-      await ensureUserProfile(user, municipality.id)
+      try {
+        await ensureUserProfile(user, municipality.id)
+      } catch (profileError) {
+        console.error('[register] ensureUserProfile failed:', profileError)
+      }
 
       // Vincula usuário ao município (tabela user_municipalities)
       try {
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
+    console.error('[register] unhandled error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao cadastrar' },
       { status: 500 },
