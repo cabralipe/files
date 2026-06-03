@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { requireAuthenticatedUser, getSupabaseAdmin } from '@/lib/supabase-server'
+import { requireAuthenticatedUser, getSupabaseAdmin, ensureUserProfile } from '@/lib/supabase-server'
 import { resolveMunicipality, getMunicipalityById } from '@/lib/municipality'
 import { canManageAeeStudents, createStudentWithProfileSchema, getUserRole } from '@/lib/pei'
 
@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
     }
 
+    await ensureUserProfile(user, municipality.id)
     const values = createStudentWithProfileSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
     const now = new Date().toISOString()
