@@ -707,7 +707,7 @@ export default function BnccNacionalPage() {
                   <span className="bnac-nivel-card-icon">{nc.icon}</span>
                   <span className="bnac-nivel-card-label">{nc.label}</span>
                   <span className="bnac-nivel-card-sub">{nc.sub}</span>
-                  <span className="bnac-nivel-card-count">{nc.count.toLocaleString('pt-BR')} habilidades</span>
+                  <span className="bnac-nivel-card-count" suppressHydrationWarning>{nc.count.toLocaleString('pt-BR')} habilidades</span>
                 </button>
               ))}
             </div>

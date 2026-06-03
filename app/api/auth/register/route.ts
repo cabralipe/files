@@ -67,27 +67,20 @@ export async function POST(request: Request) {
       })
 
       if (createError) {
-        // "User already registered" — find and update the existing user
-        if (
-          createError.message?.toLowerCase().includes('already registered') ||
-          createError.message?.toLowerCase().includes('already exists') ||
-          (createError as any).code === 'email_exists'
-        ) {
-          const { data: existingAuthUsers, error: listError } = await admin.auth.admin.listUsers({ perPage: 1000 })
-          if (listError) throw listError
-          const existingUser = existingAuthUsers.users.find((u) => u.email === values.email)
-          if (!existingUser) throw createError
-
-          const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(existingUser.id, {
-            password: values.password,
-            email_confirm: true,
-            user_metadata: metadata,
-          })
-          if (updateError) throw updateError
-          user = updated.user
-        } else {
-          throw createError
+        const msg = createError.message?.toLowerCase() ?? ''
+        const isAlreadyExists =
+          msg.includes('already registered') ||
+          msg.includes('already exists') ||
+          msg.includes('database error finding users') ||
+          (createError as any).code === 'email_exists' ||
+          (createError as any).status === 422
+        if (isAlreadyExists) {
+          return NextResponse.json(
+            { error: 'Este email já possui cadastro. Faça login ou use "Esqueceu a senha?" para recuperar o acesso.' },
+            { status: 409 },
+          )
         }
+        throw createError
       } else {
         user = created.user
       }
