@@ -16,8 +16,14 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, profile })
   } catch (error) {
-    const status = error instanceof Error && error.message === 'UNAUTHORIZED' ? 401 : 500
-    return NextResponse.json({ error: status === 401 ? 'Login obrigatorio' : 'Erro ao obter perfil' }, { status })
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+    }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[GET /api/profile]', error)
+    return NextResponse.json({ error: 'Erro ao obter perfil' }, { status: 500 })
   }
 }
 
@@ -70,7 +76,13 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
-    const status = error instanceof Error && error.message === 'UNAUTHORIZED' ? 401 : 500
-    return NextResponse.json({ error: status === 401 ? 'Login obrigatorio' : 'Erro ao atualizar perfil' }, { status })
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+    }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[PUT /api/profile]', error)
+    return NextResponse.json({ error: 'Erro ao atualizar perfil' }, { status: 500 })
   }
 }

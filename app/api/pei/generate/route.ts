@@ -67,9 +67,13 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio para gerar PEI' }, { status: 401 })
     }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
+    console.error('[POST /api/pei/generate]', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao gerar PEI' }, { status: 500 })
   }
 }

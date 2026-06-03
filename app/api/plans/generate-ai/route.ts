@@ -201,6 +201,7 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
+    console.error('[POST /api/plans/generate-ai]', error)
     const message = error instanceof Error ? error.message : 'Erro ao gerar plano'
     return NextResponse.json({ error: message }, { status: 500 })
   }

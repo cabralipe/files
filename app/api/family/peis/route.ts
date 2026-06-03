@@ -37,6 +37,10 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
     }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[GET /api/family/peis]', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao carregar PEIs' }, { status: 500 })
   }
 }

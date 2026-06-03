@@ -38,13 +38,34 @@ export async function GET(request: Request) {
     }
 
     const { data, error } = await query
-    if (error) throw error
+
+    // Se a relação student_aee_profiles não foi reconhecida pelo PostgREST
+    // (falta de FK registrada), tenta sem o join e retorna perfis vazio.
+    if (error) {
+      if (error.message?.includes('student_aee_profiles') || error.code === 'PGRST200') {
+        console.warn('[GET /api/students] FK student_aee_profiles nao resolvida, buscando sem join:', error.message)
+        const { data: fallback, error: fallbackError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('municipality_id', municipality.id)
+          .eq('active', true)
+          .order('full_name', { ascending: true })
+        if (fallbackError) throw fallbackError
+        const withEmpty = (fallback || []).map((s) => ({ ...s, student_aee_profiles: [] }))
+        return NextResponse.json({ success: true, data: withEmpty })
+      }
+      throw error
+    }
 
     return NextResponse.json({ success: true, data: data || [] })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
     }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[GET /api/students]', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao listar alunos' }, { status: 500 })
   }
 }
@@ -102,9 +123,13 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
     }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
+    console.error('[POST /api/students]', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao salvar aluno' }, { status: 500 })
   }
 }

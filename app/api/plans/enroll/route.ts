@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
+    console.error('[POST /api/plans/enroll]', error)
     return NextResponse.json({ error: 'Erro ao registrar plano' }, { status: 500 })
   }
 }
@@ -76,6 +77,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
 
+    console.error('[DELETE /api/plans/enroll]', error)
     return NextResponse.json({ error: 'Erro ao remover registro do plano' }, { status: 500 })
   }
 }

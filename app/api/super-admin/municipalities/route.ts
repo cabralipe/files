@@ -127,7 +127,7 @@ function errorResponse(error: unknown, fallback: string) {
   if (error instanceof Error && error.message === 'UNAUTHORIZED') {
     return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
   }
-  if (error instanceof Error && error.message === 'FORBIDDEN') {
+  if (error instanceof Error && ['FORBIDDEN', 'BLOCKED'].includes(error.message)) {
     return NextResponse.json({ error: 'Acesso negado (super admin)' }, { status: 403 })
   }
   console.error(fallback, error)

@@ -40,7 +40,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })
     }
-
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[PUT /api/coordinator/plans/[id]/review]', error)
     return NextResponse.json({ error: 'Nao foi possivel revisar o plano' }, { status: 500 })
   }
 }

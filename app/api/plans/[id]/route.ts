@@ -20,18 +20,19 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
     }
-
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
-
     if (error instanceof Error && error.message.startsWith('PUBLICATION_BLOCKED:')) {
       return NextResponse.json(
         { error: `Publicacao bloqueada. Pendencias: ${error.message.replace('PUBLICATION_BLOCKED:', '')}` },
         { status: 422 },
       )
     }
-
+    console.error('[PUT /api/plans/[id]]', error)
     return NextResponse.json({ error: 'Nao foi possivel atualizar o plano' }, { status: 500 })
   }
 }
@@ -39,15 +40,19 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     await requireAuthenticatedUser(request)
-  } catch {
-    return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+    const deleted = await deletePlan(params.id)
+    if (!deleted) {
+      return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
+    }
+    return NextResponse.json({ success: true, ok: true })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+    }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[DELETE /api/plans/[id]]', error)
+    return NextResponse.json({ error: 'Nao foi possivel excluir o plano' }, { status: 500 })
   }
-
-  const deleted = await deletePlan(params.id)
-
-  if (!deleted) {
-    return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
-  }
-
-  return NextResponse.json({ success: true, ok: true })
 }

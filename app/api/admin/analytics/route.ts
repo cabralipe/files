@@ -95,7 +95,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    if (error instanceof Error && ['UNAUTHORIZED', 'FORBIDDEN'].includes(error.message)) {
+    if (error instanceof Error && ['UNAUTHORIZED', 'FORBIDDEN', 'BLOCKED'].includes(error.message)) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
     }
     console.error('Admin analytics error:', error)

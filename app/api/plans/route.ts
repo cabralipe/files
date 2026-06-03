@@ -18,8 +18,15 @@ export async function GET(request: Request) {
       plans,
       total: plans.length,
     })
-  } catch {
-    return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+    }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[GET /api/plans]', error)
+    return NextResponse.json({ error: 'Nao foi possivel listar os planos' }, { status: 500 })
   }
 }
 

@@ -31,7 +31,10 @@ export async function GET(request: Request) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })
     }
-
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
+    console.error('[GET /api/coordinator/plans]', error)
     return NextResponse.json({ error: 'Nao foi possivel carregar os planos' }, { status: 500 })
   }
 }
