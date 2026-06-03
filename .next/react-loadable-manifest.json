@@ -1,16 +1,4 @@
 {
-  "app\\[municipio]\\anos-iniciais\\page.tsx -> ../../../public/anos-iniciais-skills.json": {
-    "id": "app\\[municipio]\\anos-iniciais\\page.tsx -> ../../../public/anos-iniciais-skills.json",
-    "files": [
-      "static/chunks/_app-pages-browser_public_anos-iniciais-skills_json.js"
-    ]
-  },
-  "app\\[municipio]\\anos-iniciais\\page.tsx -> jspdf": {
-    "id": "app\\[municipio]\\anos-iniciais\\page.tsx -> jspdf",
-    "files": [
-      "static/chunks/_app-pages-browser_node_modules_jspdf_dist_jspdf_es_min_js.js"
-    ]
-  },
   "app\\[municipio]\\computacao\\page.tsx -> jspdf": {
     "id": "app\\[municipio]\\computacao\\page.tsx -> jspdf",
     "files": [
