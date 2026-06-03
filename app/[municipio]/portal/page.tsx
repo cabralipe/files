@@ -1,15 +1,13 @@
 'use client'
 
+import { supabase } from '@/lib/supabase-client'
+
 import { useEffect, useState } from 'react'
 import Link from '@/lib/m-link'
 import { Search, Plus, BookOpen, FileText, Trash2, Download } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
 import { municipalSchools } from '@/lib/education-options'
 import { useAuth } from '@/hooks/useAuth'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 interface Skill {
   id: string

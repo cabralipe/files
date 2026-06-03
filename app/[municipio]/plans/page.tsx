@@ -1,7 +1,8 @@
 'use client'
 
+import { supabase } from '@/lib/supabase-client'
+
 import Link from '@/lib/m-link'
-import { createClient } from '@supabase/supabase-js'
 import { useRouter } from '@/lib/m-link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
@@ -23,10 +24,6 @@ type Plan = {
   coordinator_note?: string
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
 
 export default function PlansPage() {
   const router = useRouter()

@@ -1,14 +1,11 @@
 'use client'
 
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase-client'
+
 import { useRouter } from '@/lib/m-link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
 
 type UserProfile = {
   id: string

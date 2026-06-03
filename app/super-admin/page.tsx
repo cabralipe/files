@@ -1,14 +1,10 @@
-'use client'
+﻿'use client'
 
+import { supabase } from '@/lib/supabase-client'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
 import { useAuth } from '@/hooks/useAuth'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
 
 type Muni = {
   id: string
@@ -367,3 +363,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   )
 }
+

@@ -43,7 +43,7 @@ export default function SignUp() {
     }
 
     if (formData.role === 'teacher' && !formData.subject) {
-      setError('Informe a disciplina que vocÃª leciona')
+      setError('Informe a disciplina que você leciona')
       return
     }
 

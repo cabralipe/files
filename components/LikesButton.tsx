@@ -1,18 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { Heart } from 'lucide-react'
+import { supabase } from '@/lib/supabase-client'
 
 interface LikesButtonProps {
   experienceId: string
   userId: string
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
 
 export default function LikesButton({ experienceId, userId }: LikesButtonProps) {
   const [liked, setLiked] = useState(false)

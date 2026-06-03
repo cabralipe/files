@@ -1,15 +1,12 @@
 'use client'
 
+import { supabase } from '@/lib/supabase-client'
+
 import { useState } from 'react'
 import Link from '@/lib/m-link'
-import { createClient } from '@supabase/supabase-js'
 import { useAuth } from '@/hooks/useAuth'
 import { municipalSchools } from '@/lib/education-options'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
 
 type StudentForm = {
   full_name: string

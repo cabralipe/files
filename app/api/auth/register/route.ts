@@ -57,38 +57,38 @@ export async function POST(request: Request) {
 
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const admin = getSupabaseAdmin()
-      const { data: existingAuthUsers, error: listError } = await admin.auth.admin.listUsers()
 
-      if (listError) {
-        throw listError
-      }
+      // Try to create the user; if already registered, update instead
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email: values.email,
+        password: values.password,
+        email_confirm: true,
+        user_metadata: metadata,
+      })
 
-      const existingUser = existingAuthUsers.users.find((item) => item.email === values.email)
+      if (createError) {
+        // "User already registered" — find and update the existing user
+        if (
+          createError.message?.toLowerCase().includes('already registered') ||
+          createError.message?.toLowerCase().includes('already exists') ||
+          (createError as any).code === 'email_exists'
+        ) {
+          const { data: existingAuthUsers, error: listError } = await admin.auth.admin.listUsers({ perPage: 1000 })
+          if (listError) throw listError
+          const existingUser = existingAuthUsers.users.find((u) => u.email === values.email)
+          if (!existingUser) throw createError
 
-      if (existingUser) {
-        const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(existingUser.id, {
-          password: values.password,
-          email_confirm: true,
-          user_metadata: metadata,
-        })
-
-        if (updateError) {
-          throw updateError
-        }
-
-        user = updated.user
-      } else {
-        const { data: created, error: createError } = await admin.auth.admin.createUser({
-          email: values.email,
-          password: values.password,
-          email_confirm: true,
-          user_metadata: metadata,
-        })
-
-        if (createError) {
+          const { data: updated, error: updateError } = await admin.auth.admin.updateUserById(existingUser.id, {
+            password: values.password,
+            email_confirm: true,
+            user_metadata: metadata,
+          })
+          if (updateError) throw updateError
+          user = updated.user
+        } else {
           throw createError
         }
-
+      } else {
         user = created.user
       }
     } else {

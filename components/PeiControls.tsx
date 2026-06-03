@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from '@/lib/m-link'
-import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
+import { supabase } from '@/lib/supabase-client'
 
 export type PlanKind = 'plano' | 'pei'
 

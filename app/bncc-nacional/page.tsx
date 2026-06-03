@@ -1,16 +1,12 @@
-'use client'
+﻿'use client'
 
+import { supabase } from '@/lib/supabase-client'
 import { useEffect, useMemo, useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
-import { createClient } from '@supabase/supabase-js'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-)
 
 type Skill = {
   id: string
@@ -988,3 +984,4 @@ export default function BnccNacionalPage() {
     </main>
   )
 }
+
