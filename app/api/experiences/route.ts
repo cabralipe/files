@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     console.error('Error in POST /api/experiences:', error)
-    return NextResponse.json({ error: 'N?o foi possivel cadastrar a experi?ncia' }, { status: 500 })
+    return NextResponse.json({ error: 'Não foi possível cadastrar a experiência' }, { status: 500 })
   }
 }
 

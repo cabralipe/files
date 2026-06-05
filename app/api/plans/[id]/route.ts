@@ -13,7 +13,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (!plan) {
       return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
-}
+    }
 
     return NextResponse.json({ success: true, data: plan, plan })
   } catch (error) {
