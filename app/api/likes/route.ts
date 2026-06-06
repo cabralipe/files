@@ -113,7 +113,11 @@ export async function POST(request: Request) {
       .eq('id', values.experience_id)
 
     if (experience?.user_id) {
-      await addPoints(experience.user_id, 5, 'like_recebido', values.experience_id)
+      try {
+        await addPoints(experience.user_id, 5, 'like_recebido', values.experience_id)
+      } catch (pointsError) {
+        console.error('[POST /api/likes] addPoints failed:', pointsError)
+      }
     }
 
     return NextResponse.json({ success: true, liked: true, like }, { status: 201 })

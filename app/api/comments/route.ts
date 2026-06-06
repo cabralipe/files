@@ -82,7 +82,11 @@ export async function POST(request: Request) {
       throw error
     }
 
-    await addPoints(user.id, 2, 'comentario_criado', data.id)
+    try {
+      await addPoints(user.id, 2, 'comentario_criado', data.id)
+    } catch (pointsError) {
+      console.error('[POST /api/comments] addPoints failed:', pointsError)
+    }
 
     return NextResponse.json({ success: true, comment: data, pointsEarned: 2 }, { status: 201 })
   } catch (error) {
@@ -104,21 +108,29 @@ export async function DELETE(request: Request) {
         comment_id: z.string().uuid().optional(),
         commentId: z.string().uuid().optional(),
       })
-      .transform((value) => ({ comment_id: value.comment_id || value.commentId || '' }))
+      .refine(
+        (data) => data.comment_id || data.commentId,
+        { message: 'comment_id ou commentId é obrigatório' }
+      )
+      .transform((value) => ({ comment_id: (value.comment_id || value.commentId)! }))
       .parse(await request.json())
     const supabase = getSupabaseAdmin()
     const { data: comment, error: fetchError } = await supabase
       .from('comments')
       .select('user_id')
       .eq('id', commentId)
-      .single()
+      .maybeSingle()
 
     if (fetchError) {
       throw fetchError
     }
 
+    if (!comment) {
+      return NextResponse.json({ error: 'Comentário não encontrado' }, { status: 404 })
+    }
+
     if (comment.user_id !== user.id) {
-      return NextResponse.json({ error: 'N?o autorizado' }, { status: 403 })
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
     }
 
     const { error } = await supabase.from('comments').delete().eq('id', commentId)
