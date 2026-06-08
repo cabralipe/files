@@ -82,7 +82,12 @@ export type StudentAeeProfile = z.infer<typeof studentAeeProfileSchema>
 
 export function getUserRole(user: User): UserRole {
   const role = String(user.user_metadata?.role || 'teacher')
-  return userRoleSchema.safeParse(role).success ? (role as UserRole) : 'teacher'
+  if (userRoleSchema.safeParse(role).success) return role as UserRole
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (user.email === 'admin@bncc.local' || (adminEmail && user.email === adminEmail)) {
+    return 'admin'
+  }
+  return 'teacher'
 }
 
 export function canManageAeeStudents(role: UserRole) {

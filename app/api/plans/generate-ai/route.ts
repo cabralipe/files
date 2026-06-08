@@ -27,7 +27,7 @@ function envNumber(key: string, fallback: number) {
 
 async function callOpenAi(prompt: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY || ''
-  const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
   const timeoutMs = envNumber('OPENAI_TIMEOUT_MS', 30000)
   const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 4200)
 
@@ -47,6 +47,10 @@ async function callOpenAi(prompt: string): Promise<string> {
         max_output_tokens: maxTokens,
       }),
     })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      throw new Error(`OpenAI error ${res.status}: ${errText.slice(0, 200)}`)
+    }
     const data = await res.json() as { output?: Array<{ content?: Array<{ text?: string }> }> }
     const text = data?.output?.[0]?.content?.[0]?.text || ''
     if (!text.trim()) throw new Error('Resposta vazia da OpenAI')

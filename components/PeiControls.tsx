@@ -45,6 +45,7 @@ export default function PeiControls({
 
   const role = String(user?.user_metadata?.role || '')
   const canManageAee = ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
+  const isAdminRole = ['admin', 'municipality_admin', 'super_admin'].includes(role)
 
   useEffect(() => {
     if (!user || planKind !== 'pei') return
@@ -55,7 +56,7 @@ export default function PeiControls({
         setLoading(true)
         setError('')
         const token = await getAccessToken()
-        const params = school ? `?school=${encodeURIComponent(school)}` : ''
+        const params = school && !isAdminRole ? `?school=${encodeURIComponent(school)}` : ''
         const response = await fetch(`/api/students${params}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })

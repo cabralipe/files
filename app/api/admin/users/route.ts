@@ -11,11 +11,13 @@ export async function GET(request: Request) {
     const supabase = getSupabaseAdmin()
     const municipality = await resolveMunicipality(request)
 
-    const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers()
+    const { data: listData, error: authError } = await supabase.auth.admin.listUsers()
 
     if (authError) {
       throw authError
     }
+
+    const authUsers = listData?.users ?? []
 
     let dbQuery = supabase.from('users').select('*')
     if (!isSuper && municipality) {
@@ -103,7 +105,8 @@ export async function PUT(request: Request) {
 
     const validDbRoles = ['teacher', 'aee_teacher', 'coordinator', 'family', 'admin', 'super_admin']
     if (role && validDbRoles.includes(role)) {
-      await supabase.from('users').update({ role }).eq('id', userId)
+      const { error: dbUpdateError } = await supabase.from('users').update({ role }).eq('id', userId)
+      if (dbUpdateError) throw dbUpdateError
     }
 
     return NextResponse.json({ success: true, data: updatedUser })
