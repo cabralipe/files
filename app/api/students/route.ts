@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       .eq('active', true)
       .order('full_name', { ascending: true })
 
-    if (schoolName && role !== 'super_admin') {
+    if (schoolName && !['admin', 'municipality_admin', 'super_admin'].includes(role)) {
       query = query.eq('school_name', schoolName)
     }
 
@@ -106,12 +106,10 @@ export async function POST(request: Request) {
     if (values.profile) {
       const { data, error } = await supabase
         .from('student_aee_profiles')
-        .upsert({
-          ...values.profile,
-          student_id: student.id,
-          updated_by: user.id,
-          updated_at: now,
-        })
+        .upsert(
+          { ...values.profile, student_id: student.id, updated_by: user.id, updated_at: now },
+          { onConflict: 'student_id' },
+        )
         .select()
         .single()
       if (error) throw error

@@ -105,7 +105,8 @@ export default function AeePage() {
   const [error, setError] = useState('')
 
   const role = String(user?.user_metadata?.role || '')
-  const canManage = ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
+  const isAdminByEmail = user?.email === 'admin@bncc.local'
+  const canManage = isAdminByEmail || ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
 
   function updateStudent<K extends keyof StudentForm>(field: K, value: StudentForm[K]) {
     setStudent((current) => ({ ...current, [field]: value }))
