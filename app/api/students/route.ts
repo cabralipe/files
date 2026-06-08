@@ -83,7 +83,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
     }
 
-    await ensureUserProfile(user, municipality.id)
+    // Ensure the user has a row in the platform users table so that FK
+    // columns created_by / updated_by resolve. Non-blocking: if it fails we
+    // still proceed and omit the FK fields rather than aborting the save.
+    let userExistsInDb = false
+    try {
+      await ensureUserProfile(user, municipality.id)
+      userExistsInDb = true
+    } catch (profileErr) {
+      console.warn('[POST /api/students] ensureUserProfile failed (non-blocking):', profileErr)
+    }
 
     const values = createStudentWithProfileSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
@@ -94,7 +103,7 @@ export async function POST(request: Request) {
       ...studentFields,
       ...(school_id ? { school_id } : {}),
       municipality_id: municipality.id,
-      created_by: user.id,
+      ...(userExistsInDb ? { created_by: user.id } : {}),
       updated_at: now,
     }
     // Coerce empty strings to null for non-TEXT typed columns (DATE, UUID)
@@ -102,7 +111,7 @@ export async function POST(request: Request) {
 
     const { data: student, error: studentError } = await supabase
       .from('students')
-      .upsert(studentRow)
+      .upsert(studentRow, { onConflict: 'id' })
       .select()
       .single()
 
@@ -110,12 +119,15 @@ export async function POST(request: Request) {
 
     let profile = null
     if (values.profile) {
+      const profilePayload: Record<string, unknown> = {
+        ...values.profile,
+        student_id: student.id,
+        updated_at: now,
+        ...(userExistsInDb ? { updated_by: user.id } : {}),
+      }
       const { data, error } = await supabase
         .from('student_aee_profiles')
-        .upsert(
-          { ...values.profile, student_id: student.id, updated_by: user.id, updated_at: now },
-          { onConflict: 'student_id' },
-        )
+        .upsert(profilePayload, { onConflict: 'student_id' })
         .select()
         .single()
       if (error) throw error

@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS comments (
 -- users
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role         TEXT NOT NULL DEFAULT 'teacher';
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('teacher', 'aee_teacher', 'coordinator', 'family', 'admin', 'super_admin'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('teacher', 'aee_teacher', 'coordinator', 'family', 'admin', 'municipality_admin', 'super_admin'));
 ALTER TABLE users ADD COLUMN IF NOT EXISTS subject      TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name    TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url   TEXT;
