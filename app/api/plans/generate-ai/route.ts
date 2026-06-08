@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -56,17 +58,24 @@ async function callOpenAi(prompt: string): Promise<string> {
   }
 }
 
-function buildPrompt(input: z.infer<typeof schema>): string {
+type MunicipalityInfo = { name: string; state: string }
+
+function muniLabel(muni: MunicipalityInfo): string {
+  return muni.state ? `${muni.name}-${muni.state}` : muni.name
+}
+
+function buildPrompt(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
   const date = input.date || new Date().toLocaleDateString('pt-BR')
   const obj = input.objectives?.trim() || '[Inferir objetivos a partir do tema e das habilidades selecionadas.]'
   const met = input.methodology?.trim() || '[Propor metodologia ativa viável para a turma.]'
+  const local = muniLabel(muni)
 
-  return `Você é especialista em educação básica e no Referencial Curricular de Atalaia-AL (Anos Iniciais). \
-Gere um plano de aula pronto para uso por professores da rede municipal de Atalaia-AL.
+  return `Você é especialista em educação básica e no Referencial Curricular de ${local} (Anos Iniciais). \
+Gere um plano de aula pronto para uso por professores da rede municipal de ${local}.
 
 DADOS DO PLANO:
 - Professor(a): ${input.teacher}
-- Escola: ${input.school} | Município: Atalaia-AL
+- Escola: ${input.school} | Município: ${local}
 - Ano/Turma: ${input.grade_level}
 - Componente Curricular: ${input.subject}
 - Data: ${date}
@@ -81,11 +90,11 @@ ${obj}
 METODOLOGIA INFORMADA:
 ${met}
 
-HABILIDADES DO REFERENCIAL CURRICULAR DE ATALAIA — ANOS INICIAIS (${input.skills_context.split('\n\n').length} selecionadas):
+HABILIDADES DO REFERENCIAL CURRICULAR DE ${muni.name.toUpperCase()} — ANOS INICIAIS (${input.skills_context.split('\n\n').length} selecionadas):
 ${input.skills_context}
 
 Escreva em português do Brasil, com linguagem clara, direta e prática. O plano deve ser completo: entre 750 e 1100 palavras. \
-Contextualize as atividades na realidade local de Atalaia-AL (cultura, paisagens, festas, comunidade). \
+Contextualize as atividades na realidade local de ${local} (cultura, paisagens, festas, comunidade). \
 Evite introduções longas, decoração visual e repetições.
 
 Use exatamente esta estrutura:
@@ -122,23 +131,24 @@ Liste os materiais.
 Critérios formativos objetivos.
 
 9. REFERÊNCIAS
-- Referencial Curricular de Atalaia-AL — Anos Iniciais (Secretaria Municipal de Educação, 2024).
+- Referencial Curricular de ${local} — Anos Iniciais (Secretaria Municipal de Educação, 2024).
 - BRASIL. BNCC. Brasília: MEC, 2017.`
 }
 
-function buildFallback(input: z.infer<typeof schema>): string {
+function buildFallback(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
   const date = input.date || new Date().toLocaleDateString('pt-BR')
+  const local = muniLabel(muni)
   return `PLANO DE AULA: ${input.title.toUpperCase()}
 
 1. IDENTIFICAÇÃO
 Professor(a): ${input.teacher}
-Escola: ${input.school} | Município: Atalaia-AL
+Escola: ${input.school} | Município: ${local}
 Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
 Data: ${date} | Duração: ${input.duration}
 Tema: ${input.title}
 
 2. OBJETIVOS
-Objetivo geral: Desenvolver aprendizagens significativas sobre ${input.title} alinhadas ao Referencial Curricular de Atalaia-AL.
+Objetivo geral: Desenvolver aprendizagens significativas sobre ${input.title} alinhadas ao Referencial Curricular de ${local}.
 Objetivos específicos:
 - Relacionar o tema aos conhecimentos prévios e à realidade local.
 - Aplicar as habilidades selecionadas em situações práticas e contextualizadas.
@@ -150,7 +160,7 @@ ${input.skills_context}
 4. CONTEÚDOS
 Conceituais:
 - Conceitos centrais do componente ${input.subject} ligados ao tema.
-- Conexões com a realidade cultural e geográfica de Atalaia-AL.
+- Conexões com a realidade cultural e geográfica de ${local}.
 Procedimentais:
 - Observação, investigação, registro e comunicação de informações.
 - Uso de materiais e recursos disponíveis.
@@ -161,7 +171,7 @@ Atitudinais:
 ${input.methodology || 'Metodologia ativa com mediação do professor, trabalho em duplas/grupos e registro das descobertas.'}
 
 6. DESENVOLVIMENTO DA AULA
-Momento inicial: apresente o tema com exemplos da realidade de Atalaia-AL. Levante os conhecimentos prévios da turma e registre no quadro as ideias principais. Retome as habilidades selecionadas em linguagem acessível.
+Momento inicial: apresente o tema com exemplos da realidade de ${local}. Levante os conhecimentos prévios da turma e registre no quadro as ideias principais. Retome as habilidades selecionadas em linguagem acessível.
 
 Desenvolvimento: proponha uma atividade prática com os recursos disponíveis. Os estudantes devem investigar, organizar informações ou criar um produto simples relacionado ao tema. Circule pela sala, faça perguntas, apoie grupos com mais dificuldade e incentive justificativas.
 
@@ -174,30 +184,46 @@ ${input.materials || 'Quadro, caderno, lápis de cor, materiais recicláveis ou 
 Avaliação formativa observando: participação ativa, colaboração, clareza do registro, pertinência ao tema e qualidade da evidência produzida.
 
 9. REFERÊNCIAS
-- Referencial Curricular de Atalaia-AL — Anos Iniciais. Secretaria Municipal de Educação, 2024.
+- Referencial Curricular de ${local} — Anos Iniciais. Secretaria Municipal de Educação, 2024.
 - BRASIL. Base Nacional Comum Curricular (BNCC). Brasília: MEC, 2017.
 
 ${input.objectives ? `OBJETIVOS DO PROFESSOR:\n${input.objectives}` : ''}
 ${input.notes ? `\nOBSERVAÇÕES:\n${input.notes}` : ''}
 
-Plano elaborado com base no Referencial Curricular de Atalaia-AL — Secretaria Municipal de Educação.`
+Plano elaborado com base no Referencial Curricular de ${local} — Secretaria Municipal de Educação.`
 }
 
 export async function POST(request: Request) {
   try {
+    // Exige login: evita que terceiros consumam a cota da OpenAI anonimamente.
+    await requireAuthenticatedUser(request)
+
+    const municipality = await resolveMunicipality(request)
+    if (!municipality) {
+      return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
+    }
+
     const body = await request.json()
     const values = schema.parse(body)
-    const prompt = buildPrompt(values)
+    const muni = { name: municipality.name, state: municipality.state }
+    const prompt = buildPrompt(values, muni)
 
     let content: string
     try {
       content = await callOpenAi(prompt)
-    } catch {
-      content = buildFallback(values)
+    } catch (aiError) {
+      console.error('[POST /api/plans/generate-ai] OpenAI indisponivel, usando fallback:', aiError instanceof Error ? aiError.message : aiError)
+      content = buildFallback(values, muni)
     }
 
     return NextResponse.json({ data: { content } })
   } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Login obrigatorio para gerar plano' }, { status: 401 })
+    }
+    if (error instanceof Error && error.message === 'BLOCKED') {
+      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados inválidos' }, { status: 400 })
     }

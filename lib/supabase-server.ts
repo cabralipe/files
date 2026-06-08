@@ -96,48 +96,43 @@ export async function ensureUserProfile(user: User, municipalityId?: string) {
     return existingProfile
   }
 
-  const baseInsert: Record<string, unknown> = {
-    id: user.id,
-    email: user.email || `${user.id}@local.invalid`,
-    full_name: fullName,
-    avatar_url: (user.user_metadata?.avatar_url as string | undefined) || null,
-  }
-  if (resolvedMuni) baseInsert.municipality_id = resolvedMuni
+  const email = user.email || `${user.id}@local.invalid`
+  const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) || null
 
-  const { data, error } = await supabase
-    .from('users')
-    .insert(baseInsert)
-    .select()
-    .single()
-
-  if (!error) {
-    return data
+  // O schema de producao pode ter as colunas "name" (legada, NOT NULL) e/ou
+  // "full_name". Para nao depender de qual existe, tentamos preencher AMBAS.
+  // Se alguma coluna nao existir neste banco, o PostgREST retorna PGRST204 e
+  // caimos para variacoes mais simples ate uma funcionar.
+  const candidates: Array<Record<string, unknown>> = [
+    { id: user.id, email, full_name: fullName, name: fullName, avatar_url: avatarUrl },
+    { id: user.id, email, full_name: fullName, avatar_url: avatarUrl },
+    { id: user.id, email, name: fullName, avatar_url: avatarUrl, points: 0 },
+  ]
+  if (resolvedMuni) {
+    for (const candidate of candidates) candidate.municipality_id = resolvedMuni
   }
 
-  if (error.code !== 'PGRST204') {
-    throw error
+  let lastError: { code?: string; message?: string } | null = null
+  for (const candidate of candidates) {
+    const { data, error } = await supabase
+      .from('users')
+      .insert(candidate)
+      .select()
+      .single()
+
+    if (!error) {
+      return data
+    }
+
+    // PGRST204 = coluna inexistente neste schema; tenta a proxima variacao.
+    // Qualquer outro erro e real (ex.: permissao, conexao) e deve interromper.
+    if (error.code !== 'PGRST204') {
+      throw error
+    }
+    lastError = error
   }
 
-  const fallbackInsert: Record<string, unknown> = {
-    id: user.id,
-    email: user.email || `${user.id}@local.invalid`,
-    name: fullName,
-    avatar_url: (user.user_metadata?.avatar_url as string | undefined) || null,
-    points: 0,
-  }
-  if (resolvedMuni) fallbackInsert.municipality_id = resolvedMuni
-
-  const { data: fallbackData, error: fallbackError } = await supabase
-    .from('users')
-    .insert(fallbackInsert)
-    .select()
-    .single()
-
-  if (fallbackError) {
-    throw fallbackError
-  }
-
-  return fallbackData
+  throw lastError || new Error('Nao foi possivel criar o perfil do usuario')
 }
 
 export async function requireAdminUser(request: Request) {

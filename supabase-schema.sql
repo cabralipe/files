@@ -216,6 +216,22 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 
 -- ============================================
+-- 11. NOTIFICAÇÕES
+-- ============================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title             TEXT NOT NULL,
+  message           TEXT,
+  type              TEXT NOT NULL DEFAULT 'info',
+  is_read           BOOLEAN NOT NULL DEFAULT false,
+  related_item_id   UUID,
+  related_item_type TEXT,
+  municipality_id   UUID,
+  created_at        TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- MIGRAÇÕES IDEMPOTENTES
 -- Garante colunas em bancos já existentes ANTES
 -- de qualquer VIEW ou INDEX que as referencie.
@@ -333,6 +349,9 @@ CREATE INDEX IF NOT EXISTS idx_users_municipality         ON users(municipality_
 CREATE INDEX IF NOT EXISTS idx_likes_user_id              ON likes(user_id);
 CREATE INDEX IF NOT EXISTS idx_likes_experience_id        ON likes(experience_id);
 CREATE INDEX IF NOT EXISTS idx_comments_municipality      ON comments(municipality_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id      ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_is_read ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created      ON notifications(created_at DESC);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)
@@ -346,6 +365,7 @@ ALTER TABLE comments               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_aee_profiles   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE family_student_links   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications          ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para users
 DROP POLICY IF EXISTS "Users can view own profile" ON users;
@@ -450,3 +470,14 @@ CREATE POLICY "AEE and coordination can manage AEE profiles" ON student_aee_prof
   );
 CREATE POLICY "Family can view own student links" ON family_student_links
   FOR SELECT USING (family_user_id = auth.uid()::uuid);
+
+-- Políticas para notifications
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can delete own notifications" ON notifications;
+CREATE POLICY "Users can view own notifications" ON notifications
+  FOR SELECT USING (auth.uid()::uuid = user_id);
+CREATE POLICY "Users can update own notifications" ON notifications
+  FOR UPDATE USING (auth.uid()::uuid = user_id);
+CREATE POLICY "Users can delete own notifications" ON notifications
+  FOR DELETE USING (auth.uid()::uuid = user_id);
