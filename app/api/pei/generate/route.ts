@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     const profile = Array.isArray(student.student_aee_profiles)
-      ? student.student_aee_profiles[0]
+      ? (student.student_aee_profiles[0] ?? null)
       : null
 
     if (!profile) {
