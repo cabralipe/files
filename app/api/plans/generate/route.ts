@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { createPlanSchema, generatePlanText } from '@/lib/public-backend'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 // Limite total da funcao no Vercel (segundos). Precisa ser MAIOR que a soma
@@ -11,6 +12,15 @@ export const maxDuration = 300
 
 export async function POST(request: Request) {
   try {
+    // Rota pública (sem login): limita por IP para conter abuso e custo de IA.
+    const limit = rateLimit(`plan-public:${getClientIp(request)}`, 5, 60_000)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      )
+    }
+
     const body = await request.json()
     const values = createPlanSchema.parse(body)
     const content = await generatePlanText(values)

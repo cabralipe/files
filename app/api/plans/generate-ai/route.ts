@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuthenticatedUser } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
+import { rateLimit } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -200,7 +201,15 @@ Plano elaborado com base no Referencial Curricular de ${local} — Secretaria Mu
 export async function POST(request: Request) {
   try {
     // Exige login: evita que terceiros consumam a cota da OpenAI anonimamente.
-    await requireAuthenticatedUser(request)
+    const user = await requireAuthenticatedUser(request)
+
+    const limit = rateLimit(`plan-ai:${user.id}`, 10, 60_000)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      )
+    }
 
     const municipality = await resolveMunicipality(request)
     if (!municipality) {

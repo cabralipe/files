@@ -47,7 +47,7 @@ type ProfileForm = {
 const emptyStudent: StudentForm = {
   full_name: '',
   birth_date: '',
-  school_name: 'Escola Municipal',
+  school_name: '',
   grade_level: '',
   class_name: '',
   shift: 'manha',
@@ -327,11 +327,11 @@ export default function AeePage() {
                     <Field label="Data de nascimento" hint="Ajuda a IA a adequar o PEI à faixa etária do aluno." example="Ex.: 14/03/2015">
                       <input type="date" value={student.birth_date} onChange={(event) => updateStudent('birth_date', event.target.value)} />
                     </Field>
-                    <Field label="Escola" hint="Escola onde o aluno está matriculado. Comece a digitar e escolha na lista." example="Ex.: Escola Municipal Padre Cícero">
-                      <input list="aee-schools" value={student.school_name} onChange={(event) => updateStudent('school_name', event.target.value)} placeholder="Selecione ou digite a escola" />
-                      <datalist id="aee-schools">
-                        {municipalSchools.map((school) => <option key={school} value={school} />)}
-                      </datalist>
+                    <Field label="Escola" hint="Escola onde o aluno está matriculado. Selecione na lista.">
+                      <select value={student.school_name} onChange={(event) => updateStudent('school_name', event.target.value)}>
+                        <option value="">Selecione a escola</option>
+                        {municipalSchools.map((school) => <option key={school} value={school}>{school}</option>)}
+                      </select>
                     </Field>
                     <Field label="Ano/Turma" hint="Ano escolar que o aluno cursa atualmente." example="Ex.: 3º Ano">
                       <input value={student.grade_level} onChange={(event) => updateStudent('grade_level', event.target.value)} placeholder="3º Ano" />

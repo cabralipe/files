@@ -4,6 +4,7 @@ import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-serve
 import { buildPeiPrompt, canGeneratePei, generatePeiSchema, getUserRole } from '@/lib/pei'
 import { generatePlanFromPrompt, getLatestPeiForStudent } from '@/lib/public-backend'
 import { resolveMunicipality } from '@/lib/municipality'
+import { rateLimit } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
     const role = getUserRole(user)
     if (!canGeneratePei(role)) {
       return NextResponse.json({ error: 'Acesso restrito a usuarios pedagogicos autenticados' }, { status: 403 })
+    }
+
+    const limit = rateLimit(`pei-generate:${user.id}`, 10, 60_000)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      )
     }
 
     const values = generatePeiSchema.parse(await request.json())

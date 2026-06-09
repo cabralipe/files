@@ -88,7 +88,7 @@ type PlanForm = {
 const emptyForm: PlanForm = {
   title: '',
   teacher: '',
-  school: 'Escola Municipal',
+  school: '',
   grade_level: '5',
   subject: 'Computação',
   date: '',
@@ -1109,17 +1109,16 @@ export default function Home() {
                 <Field label="Professor(a)" hint="Seu nome, como deve aparecer no cabeçalho do plano." example="Ex.: Carlos Henrique Lima">
                   <input value={form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} placeholder="Nome do professor" />
                 </Field>
-                <Field label="Escola" hint="Escola onde a aula será dada. Comece a digitar e escolha na lista." example="Ex.: Escola Municipal Padre Cícero">
-                  <input
-                    list="municipal-schools"
+                <Field label="Escola" hint="Escola onde a aula será dada. Selecione na lista.">
+                  <select
                     value={form.school}
                     onChange={(event) => updateForm('school', event.target.value)}
-                  />
-                  <datalist id="municipal-schools">
+                  >
+                    <option value="">Selecione a escola</option>
                     {municipalSchools.map((school) => (
-                      <option key={school} value={school} />
+                      <option key={school} value={school}>{school}</option>
                     ))}
-                  </datalist>
+                  </select>
                 </Field>
                 <Field label="Ano/Turma" hint="Ano escolar da turma. A IA ajusta a linguagem e as atividades à faixa etária." example="Ex.: 8º Ano">
                   <input value={form.grade_level} onChange={(event) => updateForm('grade_level', event.target.value)} placeholder="8º Ano" />
