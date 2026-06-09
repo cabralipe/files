@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 import { buildPeiPrompt, canGeneratePei, generatePeiSchema, getUserRole } from '@/lib/pei'
-import { generatePlanFromPrompt } from '@/lib/public-backend'
+import { generatePlanFromPrompt, getLatestPeiForStudent } from '@/lib/public-backend'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -54,12 +55,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Ficha AEE obrigatoria para gerar PEI' }, { status: 422 })
     }
 
+    // Quando o professor regente opta por combinar, busca o PEI ja existente
+    // (do AEE) do aluno para a IA consolidar os dois em um documento unico.
+    let basePei: string | undefined
+    if (values.merge_existing) {
+      const municipality = await resolveMunicipality(request)
+      const existing = await getLatestPeiForStudent(values.student_id, municipality?.id)
+      basePei = existing?.content || undefined
+    }
+
     const prompt = buildPeiPrompt({
       student,
       profile,
       plan: values.plan,
       skillsContext: values.skills_context,
       portal: values.portal,
+      basePei,
     })
 
     const content = await generatePlanFromPrompt(prompt)

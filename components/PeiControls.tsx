@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase-client'
 
 export type PlanKind = 'plano' | 'pei'
+export type PeiSource = 'create' | 'use'
 
 export type PeiStudent = {
   id: string
@@ -17,6 +18,12 @@ export type PeiStudent = {
   student_aee_profiles?: Array<Record<string, unknown>>
 }
 
+export type ExistingPei = {
+  id: string
+  content: string
+  plan_status: string
+}
+
 type PeiControlsProps = {
   user: User | null
   school: string
@@ -24,6 +31,10 @@ type PeiControlsProps = {
   selectedStudentId: string
   onPlanKindChange: (value: PlanKind) => void
   onStudentChange: (studentId: string, student?: PeiStudent) => void
+  // Opcionais: usados pelo portal que implementa "usar PEI do AEE x criar o meu".
+  peiSource?: PeiSource
+  onPeiSourceChange?: (value: PeiSource) => void
+  onExistingPeiChange?: (existing: ExistingPei | null) => void
 }
 
 async function getAccessToken() {
@@ -31,17 +42,31 @@ async function getAccessToken() {
   return data.session?.access_token
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  rascunho: 'rascunho',
+  aguardando_aee: 'aguardando validação do AEE',
+  aguardando_familia: 'aguardando a família',
+  vigente: 'vigente',
+  arquivado: 'arquivado',
+  substituido: 'substituído',
+}
+
 export default function PeiControls({
   user,
   school,
   planKind,
   selectedStudentId,
+  peiSource = 'create',
   onPlanKindChange,
   onStudentChange,
+  onPeiSourceChange,
+  onExistingPeiChange,
 }: PeiControlsProps) {
   const [students, setStudents] = useState<PeiStudent[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [existing, setExisting] = useState<ExistingPei | null>(null)
+  const [loadingExisting, setLoadingExisting] = useState(false)
 
   const role = String(user?.user_metadata?.role || '')
   const canManageAee = ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
@@ -74,7 +99,47 @@ export default function PeiControls({
     return () => {
       cancelled = true
     }
-  }, [planKind, school, user])
+  }, [planKind, school, user, isAdminRole])
+
+  // Busca o PEI ja cadastrado (do AEE) para o aluno selecionado.
+  useEffect(() => {
+    if (!user || planKind !== 'pei' || !selectedStudentId) {
+      setExisting(null)
+      onExistingPeiChange?.(null)
+      return
+    }
+    let cancelled = false
+    async function loadExisting() {
+      try {
+        setLoadingExisting(true)
+        const token = await getAccessToken()
+        const res = await fetch(`/api/peis/by-student?student_id=${encodeURIComponent(selectedStudentId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        const payload = await res.json()
+        const data = payload?.data
+        const found: ExistingPei | null = data && data.content
+          ? { id: String(data.id || ''), content: String(data.content || ''), plan_status: String(data.plan_status || 'rascunho') }
+          : null
+        if (!cancelled) {
+          setExisting(found)
+          onExistingPeiChange?.(found)
+          if (!found) onPeiSourceChange?.('create')
+        }
+      } catch {
+        if (!cancelled) {
+          setExisting(null)
+          onExistingPeiChange?.(null)
+        }
+      } finally {
+        if (!cancelled) setLoadingExisting(false)
+      }
+    }
+    void loadExisting()
+    return () => {
+      cancelled = true
+    }
+  }, [planKind, selectedStudentId, user])
 
   function handleStudentChange(value: string) {
     onStudentChange(value, students.find((student) => student.id === value))
@@ -88,7 +153,7 @@ export default function PeiControls({
           type="button"
           onClick={() => onPlanKindChange('plano')}
         >
-          Plano normal
+          Plano
         </button>
         <button
           className={`pei-mode-option${planKind === 'pei' ? ' on' : ''}`}
@@ -135,8 +200,47 @@ export default function PeiControls({
                   {canManageAee && ' Cadastre o aluno no painel AEE para que ele apareca aqui.'}
                 </p>
               )}
+
+              {/* Aluno selecionado: oferece usar o PEI do AEE ou criar o proprio */}
+              {selectedStudentId && (
+                <div className="pei-source" style={{ marginTop: 8, padding: '10px 12px', border: '2px solid var(--ink)', background: 'var(--paper-soft)' }}>
+                  {loadingExisting ? (
+                    <p className="pei-note">Verificando PEI cadastrado...</p>
+                  ) : existing ? (
+                    <>
+                      <p className="pei-note" style={{ marginBottom: 8 }}>
+                        Este aluno já tem um PEI cadastrado pelo professor AEE
+                        {' '}(<strong>{STATUS_LABEL[existing.plan_status] || existing.plan_status}</strong>). O que deseja fazer?
+                      </p>
+                      <label className="pei-check" style={{ display: 'block', marginBottom: 4 }}>
+                        <input
+                          type="radio"
+                          name="pei-source"
+                          checked={peiSource === 'use'}
+                          onChange={() => onPeiSourceChange?.('use')}
+                        />{' '}
+                        Usar o PEI do AEE
+                      </label>
+                      <label className="pei-check" style={{ display: 'block' }}>
+                        <input
+                          type="radio"
+                          name="pei-source"
+                          checked={peiSource === 'create'}
+                          onChange={() => onPeiSourceChange?.('create')}
+                        />{' '}
+                        Criar o meu PEI (a IA combina o do AEE com o meu)
+                      </label>
+                    </>
+                  ) : (
+                    <p className="pei-note">
+                      Nenhum PEI do AEE para este aluno ainda. Será criado um novo PEI a partir da ficha AEE.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {canManageAee && (
-                <Link className="btn btn-out" href="/aee">
+                <Link className="btn btn-out" href="/aee" style={{ marginTop: 8 }}>
                   Cadastrar aluno / ficha AEE
                 </Link>
               )}

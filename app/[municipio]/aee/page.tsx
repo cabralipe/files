@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { municipalSchools } from '@/lib/education-options'
+import PeiReviewQueue from '@/components/PeiReviewQueue'
 
 
 type StudentForm = {
@@ -296,6 +297,18 @@ export default function AeePage() {
           </div>
         )}
       </section>
+
+      {user && canManage && (
+        <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>Validação de PEIs</h1>
+              <p>PEIs enviados pelos professores aguardando sua aprovação. Ao aprovar, seguem para a família.</p>
+            </div>
+          </div>
+          <PeiReviewQueue mode="aee" />
+        </section>
+      )}
     </main>
   )
 }

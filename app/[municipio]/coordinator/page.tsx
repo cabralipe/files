@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
 import { useRouter } from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
+import PeiReviewQueue from '@/components/PeiReviewQueue'
 
 
 type Plan = {
@@ -258,6 +259,18 @@ export default function CoordinatorDashboard() {
           </>
         )}
       </section>
+
+      {isCoordinator && (
+        <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>Pipeline de PEIs</h1>
+              <p>Acompanhe os PEIs da escola: gerado → validação do AEE → família → vigente. (somente leitura)</p>
+            </div>
+          </div>
+          <PeiReviewQueue mode="coordination" />
+        </section>
+      )}
     </main>
   )
 }

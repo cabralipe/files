@@ -7,7 +7,7 @@ import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { municipalSchools } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
-import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
+import PeiControls, { type PeiStudent, type PlanKind, type PeiSource, type ExistingPei } from '@/components/PeiControls'
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -89,6 +89,17 @@ function normalizePdf(v: string) {
     .replace(/Ãª/g, 'ê').replace(/Ã´/g, 'ô').replace(/Â/g, '')
 }
 
+function peiStatusLabel(status?: string) {
+  switch (status) {
+    case 'aguardando_aee': return 'aguardando validação do AEE'
+    case 'aguardando_familia': return 'aguardando a família'
+    case 'vigente': return 'vigente'
+    case 'arquivado': return 'arquivado'
+    case 'substituido': return 'substituído'
+    default: return 'rascunho'
+  }
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function StatCard({ value, label }: { value: number; label: string }) {
@@ -143,6 +154,8 @@ export default function AnosIniciaisPage() {
   const [planKind, setPlanKind] = useState<PlanKind>('plano')
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
+  const [peiSource, setPeiSource] = useState<PeiSource>('create')
+  const [existingPei, setExistingPei] = useState<ExistingPei | null>(null)
   const [generated, setGenerated] = useState('')
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -155,7 +168,7 @@ export default function AnosIniciaisPage() {
 
   // saved plans (localStorage for normal plans, server for PEI)
   const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string }>>([])
-  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean }>>([])
+  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string }>>([])
   const [loadingServerPlans, setLoadingServerPlans] = useState(false)
 
   // Set today's date after mount to avoid SSR/client timezone mismatch
@@ -282,10 +295,20 @@ export default function AnosIniciaisPage() {
   ]
 
   async function generatePlan() {
+    if (!user) { showToast('Faça login para gerar.'); return }
+
+    // Modo "usar o PEI do AEE": carrega o documento existente, sem IA e sem exigir tema/habilidades.
+    if (planKind === 'pei' && peiSource === 'use' && existingPei?.content) {
+      setGenerated(existingPei.content)
+      setEditingPlanId(existingPei.id || null)
+      setView('plan')
+      showToast('PEI do AEE carregado. Edite e salve se quiser.')
+      return
+    }
+
     if (!form.title.trim()) { showToast('Informe o tema do plano.'); return }
     if (!form.grade_level.trim()) { showToast('Informe o ano/turma.'); return }
     if (!selected.length) { showToast('Selecione ao menos uma habilidade.'); return }
-    if (planKind === 'pei' && !user) { showToast('Faça login para gerar PEI.'); return }
     if (planKind === 'pei' && !selectedStudentId) { showToast('Selecione o aluno para gerar o PEI.'); return }
 
     const skills_context = selected
@@ -309,7 +332,7 @@ export default function AnosIniciaisPage() {
     }, 2200)
 
     try {
-      const token = planKind === 'pei' ? await getAccessToken() : ''
+      const token = await getAccessToken()
       const res = await fetch(planKind === 'pei' ? '/api/pei/generate' : '/api/plans/generate-ai', {
         method: 'POST',
         headers: {
@@ -318,7 +341,7 @@ export default function AnosIniciaisPage() {
         },
         body: JSON.stringify(
           planKind === 'pei'
-            ? { student_id: selectedStudentId, portal: 'anos_iniciais', plan: form, skills_context }
+            ? { student_id: selectedStudentId, portal: 'anos_iniciais', plan: form, skills_context, merge_existing: peiSource === 'create' && !!existingPei }
             : { ...form, skills_context },
         ),
       })
@@ -494,6 +517,27 @@ export default function AnosIniciaisPage() {
       showToast(err instanceof Error ? err.message : 'Erro ao salvar PEI')
     } finally {
       setSavingPei(false)
+    }
+  }
+
+  // Envia o PEI (ja salvo como rascunho) para a fila de validacao do professor AEE.
+  async function submitForAee() {
+    if (!editingPlanId) { showToast('Salve o rascunho antes de enviar para o AEE.'); return }
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const res = await fetch(`/api/plans/${editingPlanId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'submit_aee' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao enviar')
+      showToast('PEI enviado para validação do professor AEE.')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao enviar para o AEE')
     }
   }
 
@@ -753,11 +797,14 @@ export default function AnosIniciaisPage() {
                 school={form.school}
                 planKind={planKind}
                 selectedStudentId={selectedStudentId}
+                peiSource={peiSource}
                 onPlanKindChange={setPlanKind}
                 onStudentChange={(studentId, student) => {
                   setSelectedStudentId(studentId)
                   setSelectedStudent(student || null)
                 }}
+                onPeiSourceChange={setPeiSource}
+                onExistingPeiChange={setExistingPei}
               />
               <div className="fg">
                 <Field label="Professor(a)">
@@ -807,7 +854,13 @@ export default function AnosIniciaisPage() {
                   {selected.length ? `${selected.length} habilidade${selected.length > 1 ? 's' : ''} selecionada${selected.length > 1 ? 's' : ''}` : '+ Selecionar habilidades'}
                 </button>
                 <button className="btn btn-pri" disabled={generating} onClick={generatePlan}>
-                  {generating ? 'Gerando...' : '✦ Gerar plano com IA'}
+                  {generating
+                    ? 'Gerando...'
+                    : planKind === 'pei' && peiSource === 'use'
+                      ? 'Usar PEI do AEE'
+                      : planKind === 'pei' && existingPei
+                        ? '✦ Gerar PEI combinando com o do AEE'
+                        : '✦ Gerar plano com IA'}
                 </button>
               </div>
             </div>
@@ -850,13 +903,20 @@ export default function AnosIniciaisPage() {
                 <div className="pei-next" style={{ marginTop: 12, padding: '14px 16px', border: '2px solid var(--blue)', background: 'var(--blue-wash)' }}>
                   <div className="bnac-form-section" style={{ marginBottom: 6 }}>Proximos passos do PEI</div>
                   <p className="pei-note">
-                    Salve o rascunho acima. A revisao colaborativa do professor AEE, a consulta a familia e a
-                    publicacao como vigente acontecem em seus fluxos proprios:
+                    Salve o rascunho e envie para validação do professor AEE. Depois ele segue para a família
+                    e, ao final, fica vigente. A coordenação acompanha todo o fluxo.
                   </p>
                   <div className="brow" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
-                    <Link className="btn btn-out" href="/aee">Revisao AEE</Link>
-                    <Link className="btn btn-out" href="/family">Consulta a familia</Link>
-                    <Link className="btn btn-out" href="/coordinator">Coordenacao / publicar</Link>
+                    <button
+                      className="btn btn-pri"
+                      disabled={!editingPlanId}
+                      title={editingPlanId ? '' : 'Salve o rascunho primeiro'}
+                      onClick={() => void submitForAee()}
+                    >
+                      Enviar para validação do AEE
+                    </button>
+                    <Link className="btn btn-out" href="/aee">Painel AEE</Link>
+                    <Link className="btn btn-out" href="/coordinator">Coordenação</Link>
                   </div>
                 </div>
               )}
@@ -895,14 +955,14 @@ export default function AnosIniciaisPage() {
           <div className="saved-head">
             <div>
               <h1>Planos salvos</h1>
-              <p>Planos de Anos Iniciais salvos localmente neste dispositivo.</p>
+              <p>Organizados por categoria e por data de criação.</p>
             </div>
             <button className="btn btn-pri" onClick={() => { setEditingPlanId(null); setGenerated(''); setView('plan') }}>+ Criar novo plano</button>
           </div>
 
           {user && (
             <>
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '.08em' }}>PEIs salvos na conta</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '.08em' }}>PEI</h2>
               {loadingServerPlans ? (
                 <div className="est">Carregando...</div>
               ) : serverPlans.filter(p => p.is_pei).length === 0 ? (
@@ -915,11 +975,17 @@ export default function AnosIniciaisPage() {
                         <h2 className="pi-title">{plan.title || 'PEI sem título'}</h2>
                         <div className="pi-date">{new Date(plan.created_at).toLocaleString('pt-BR')}</div>
                       </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', padding: '3px 8px', border: '1.5px solid var(--ink)', background: 'var(--paper)' }}>
+                          {peiStatusLabel(plan.plan_status)}
+                        </span>
+                      </div>
                       <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
                       <div className="pi-actions">
                         <button className="btn btn-pri" onClick={() => {
                           setEditingPlanId(plan.id)
                           setGenerated(plan.content)
+                          setPlanKind('pei')
                           setView('plan')
                           showToast('PEI carregado para edicao.')
                         }}>Editar</button>
@@ -928,7 +994,7 @@ export default function AnosIniciaisPage() {
                   ))}
                 </div>
               )}
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Planos salvos localmente</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Plano de aula</h2>
             </>
           )}
           {saved.length === 0 ? (

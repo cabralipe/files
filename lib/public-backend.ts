@@ -35,7 +35,7 @@ export type PublicPlan = {
   coordinator_name?: string
   coordinator_note?: string
   is_published?: boolean
-  plan_status?: 'rascunho' | 'vigente' | 'arquivado' | 'substituido'
+  plan_status?: 'rascunho' | 'aguardando_aee' | 'aguardando_familia' | 'vigente' | 'arquivado' | 'substituido'
   is_pei?: boolean
   student_id?: string
   pei_snapshot?: Record<string, unknown>
@@ -102,7 +102,7 @@ const planSchemaBase = {
   skill_ids: z.array(z.string().trim()).min(1, 'Selecione ao menos uma habilidade'),
   content: z.string().trim().optional().default(''),
   is_published: z.boolean().optional().default(false),
-  plan_status: z.enum(['rascunho', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
+  plan_status: z.enum(['rascunho', 'aguardando_aee', 'aguardando_familia', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
   is_pei: z.boolean().optional().default(false),
   student_id: z.string().trim().optional().default(''),
   pei_snapshot: z.record(z.unknown()).optional().default({}),
@@ -521,6 +521,107 @@ export async function listPlansBySchool(school: string): Promise<PublicPlan[]> {
   const plans = await listPlans()
   const normalizedSchool = school.trim().toLowerCase()
   return plans.filter((plan) => plan.school.trim().toLowerCase() === normalizedSchool)
+}
+
+// Lista PEIs (de todos os professores) para os fluxos de validacao AEE/coordenacao.
+export async function listPeisForReview(opts: {
+  municipalityId?: string
+  school?: string
+  status?: PublicPlan['plan_status']
+}): Promise<PublicPlan[]> {
+  let plans = await listPlans(undefined, opts.municipalityId)
+  plans = plans.filter((plan) => plan.is_pei)
+  if (opts.school) {
+    const s = opts.school.trim().toLowerCase()
+    plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
+  }
+  if (opts.status) {
+    plans = plans.filter((plan) => (plan.plan_status || 'rascunho') === opts.status)
+  }
+  return plans
+}
+
+// Retorna o PEI do aluno (preferindo o vigente) para o professor regente reaproveitar.
+export async function getLatestPeiForStudent(
+  studentId: string,
+  municipalityId?: string,
+): Promise<PublicPlan | null> {
+  const plans = await listPlans(undefined, municipalityId)
+  const peis = plans.filter((plan) => plan.is_pei && plan.student_id === studentId)
+  const vigente = peis.find((plan) => plan.plan_status === 'vigente')
+  return vigente || peis[0] || null
+}
+
+export type PlanTransition = 'submit_aee' | 'approve_aee' | 'reject_aee' | 'family_consent'
+
+// Maquina de estados do PEI: rascunho -> aguardando_aee -> aguardando_familia -> vigente.
+export async function transitionPlanStatus(
+  id: string,
+  action: PlanTransition,
+  payload: {
+    actorName?: string
+    colaboracao_aee?: Partial<PlanAeeCollaboration>
+    consulta_familia?: Partial<PlanFamilyConsultation>
+    note?: string
+  } = {},
+): Promise<PublicPlan | null> {
+  const supabase = getSupabaseAdmin()
+  const { data: current, error } = await supabase.from('plans').select('*').eq('id', id).maybeSingle()
+  if (error) throw error
+  if (!current) return null
+
+  const plan = mapPlanRow(current as Record<string, any>)
+  if (!plan.is_pei) throw new Error('TRANSITION_NOT_PEI')
+
+  const status = plan.plan_status || 'rascunho'
+  const now = new Date().toISOString()
+  const next: PublicPlan = { ...plan, updated_at: now }
+
+  if (action === 'submit_aee') {
+    if (status !== 'rascunho') throw new Error('TRANSITION_INVALID')
+    next.plan_status = 'aguardando_aee'
+  } else if (action === 'approve_aee') {
+    if (status !== 'aguardando_aee') throw new Error('TRANSITION_INVALID')
+    next.plan_status = 'aguardando_familia'
+    next.revisao_regente = true
+    next.colaboracao_aee = {
+      professor_id: plan.colaboracao_aee?.professor_id || '',
+      nome: payload.colaboracao_aee?.nome || payload.actorName || plan.colaboracao_aee?.nome || '',
+      data: payload.colaboracao_aee?.data || now.slice(0, 10),
+      funcao: payload.colaboracao_aee?.funcao || plan.colaboracao_aee?.funcao || 'Professor da sala especial/AEE',
+      contribuicoes: payload.colaboracao_aee?.contribuicoes || plan.colaboracao_aee?.contribuicoes || 'Validado pelo professor AEE.',
+      recursos_indicados: payload.colaboracao_aee?.recursos_indicados || plan.colaboracao_aee?.recursos_indicados || [],
+      adaptacoes_sugeridas: payload.colaboracao_aee?.adaptacoes_sugeridas || plan.colaboracao_aee?.adaptacoes_sugeridas || [],
+      parecer: payload.colaboracao_aee?.parecer || plan.colaboracao_aee?.parecer || '',
+    }
+  } else if (action === 'reject_aee') {
+    if (status !== 'aguardando_aee') throw new Error('TRANSITION_INVALID')
+    next.plan_status = 'rascunho'
+    next.coordinator_note = payload.note || plan.coordinator_note || ''
+  } else if (action === 'family_consent') {
+    if (status !== 'aguardando_familia') throw new Error('TRANSITION_INVALID')
+    next.plan_status = 'vigente'
+    next.is_published = true
+    next.consulta_familia = {
+      responsavel_nome: payload.consulta_familia?.responsavel_nome || plan.consulta_familia?.responsavel_nome || payload.actorName || '',
+      parentesco: payload.consulta_familia?.parentesco || plan.consulta_familia?.parentesco || '',
+      data_consulta: payload.consulta_familia?.data_consulta || now.slice(0, 10),
+      formato: payload.consulta_familia?.formato || plan.consulta_familia?.formato || 'presencial',
+      informacoes_relevantes: payload.consulta_familia?.informacoes_relevantes || plan.consulta_familia?.informacoes_relevantes || '',
+      expectativas: payload.consulta_familia?.expectativas || plan.consulta_familia?.expectativas || '',
+      concordancia: payload.consulta_familia?.concordancia || 'aprovado',
+      observacoes: payload.consulta_familia?.observacoes || plan.consulta_familia?.observacoes || '',
+    }
+  } else {
+    throw new Error('TRANSITION_UNKNOWN')
+  }
+
+  const { error: upErr } = await supabase
+    .from('plans')
+    .update(toPlanRow(next, current.user_id))
+    .eq('id', id)
+  if (upErr) throw upErr
+  return next
 }
 
 export async function reviewPlan(

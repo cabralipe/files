@@ -68,6 +68,9 @@ export const generatePeiSchema = z.object({
   portal: z.enum(['computacao', 'anos_iniciais', 'bncc_nacional']).default('computacao'),
   plan: z.record(z.unknown()),
   skills_context: z.string().trim().optional().default(''),
+  // Quando true, a IA combina o PEI ja cadastrado pelo professor AEE com o
+  // novo PEI do professor regente em um documento consolidado.
+  merge_existing: z.boolean().optional().default(false),
 })
 
 export type Student = z.infer<typeof studentSchema> & {
@@ -102,6 +105,21 @@ export function canValidatePei(role: UserRole) {
   return ['coordinator', 'admin', 'municipality_admin'].includes(role)
 }
 
+// Professor AEE aprova/devolve os PEIs aguardando validacao.
+export function canApprovePeiAee(role: UserRole) {
+  return ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
+}
+
+// Quem pode registrar a concordancia da familia (familia ou equipe em nome dela).
+export function canConsentFamily(role: UserRole) {
+  return ['family', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
+}
+
+// Quem enxerga o pipeline de PEIs (coordenacao em modo leitura, AEE e gestao).
+export function canViewPeiPipeline(role: UserRole) {
+  return ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
+}
+
 export function canFamilyAccessPei(role: UserRole) {
   return role === 'family'
 }
@@ -120,12 +138,27 @@ export function buildPeiPrompt(input: {
   plan: Record<string, unknown>
   skillsContext: string
   portal: string
+  basePei?: string
 }) {
-  const { student, profile, plan, skillsContext, portal } = input
+  const { student, profile, plan, skillsContext, portal, basePei } = input
   const p = profile || {}
+  const baseBlock = basePei && basePei.trim()
+    ? `\nPEI JA CADASTRADO PELO PROFESSOR AEE (use como BASE: preserve o que estiver adequado, complemente e atualize com os novos dados do professor regente e das habilidades; nao contradiga o que foi definido pelo AEE sem justificar pedagogicamente):
+"""
+${basePei.trim()}
+"""
+`
+    : ''
 
   return `Voce e especialista em educacao inclusiva, AEE, BNCC e planejamento educacional individualizado.
-Gere um PEI pedagogico, acessivel e individualizado em portugues do Brasil.
+Gere um PEI pedagogico, acessivel e individualizado em portugues do Brasil, pronto para uso pela escola.
+
+DIRETRIZES DE QUALIDADE:
+- Personalize tudo ao estudante: nada generico. Cada estrategia responde a uma barreira ou potencialidade concreta da ficha.
+- Objetivos no formato SMART (especificos, mensuraveis, alcancaveis, relevantes, com prazo bimestral).
+- Conecte explicitamente cada habilidade BNCC/Referencial a uma adaptacao e a uma forma de avaliacao.
+- Use linguagem pedagogica clara e respeitosa; evite jargao clinico e rotulos.
+- Seja conciso e aplicavel: priorize acoes que o professor consegue executar em sala.
 
 LIMITES OBRIGATORIOS:
 - Nao diagnosticar, nao sugerir laudo, nao inferir condicao clinica e nao substituir avaliacao profissional.
@@ -191,7 +224,7 @@ ${listBlock(p.evaluation_adaptations as string[] | undefined)}
 - Observacoes da familia: ${field(p.family_notes)}
 - Acompanhamentos externos informados: ${field(p.external_supports)}
 - Medicacao informada espontaneamente: ${field(p.medication_notes)}
-
+${baseBlock}
 Gere o PEI com esta estrutura:
 
 PEI - PLANO EDUCACIONAL INDIVIDUALIZADO
@@ -217,5 +250,7 @@ PEI - PLANO EDUCACIONAL INDIVIDUALIZADO
 19. REVISOES BIMESTRAIS
 20. ASSINATURAS E CIENCIA
 
-Escreva de forma objetiva, aplicavel pela escola e sem linguagem clinica indevida.`
+Escreva de forma objetiva, aplicavel pela escola e sem linguagem clinica indevida.
+${baseBlock ? 'Como ha um PEI do AEE, entregue um documento CONSOLIDADO unico (nao dois PEIs separados), deixando claro o que foi mantido e o que foi acrescentado pelo professor regente.' : ''}
+Use titulos numerados exatamente como acima e preencha todas as secoes.`
 }
