@@ -1207,7 +1207,7 @@ export default function Home() {
                     </p>
                   </section>
                   <section className="pei-block">
-                    <div className="bnac-form-section">Passo 5 - Revisao colaborativa (AEE)</div>
+                    <div className="bnac-form-section">Passo 4 - Revisao colaborativa (AEE)</div>
                     <label className="pei-check">
                       <input type="checkbox" checked={revisaoRegente} onChange={(event) => setRevisaoRegente(event.target.checked)} />
                       Professor regente revisou as secoes do PEI
@@ -1240,7 +1240,7 @@ export default function Home() {
                     </div>
                   </section>
                   <section className="pei-block">
-                    <div className="bnac-form-section">Passo 6 - Consulta e aprovacao da familia</div>
+                    <div className="bnac-form-section">Passo 5 - Consulta e aprovacao da familia</div>
                     <p className="pei-note" style={{ marginBottom: 12 }}>
                       A participacao da familia e prevista na Lei Brasileira de Inclusao. Registre a consulta mesmo que seja informal (telefone, WhatsApp).
                     </p>
@@ -1282,7 +1282,7 @@ export default function Home() {
                     </div>
                   </section>
                   <section className="pei-block">
-                    <div className="bnac-form-section">Passo 7 - Salvar/Publicar</div>
+                    <div className="bnac-form-section">Passo 6 - Salvar/Publicar</div>
                     <p className="pei-note">
                       Publicar como vigente exige revisao do professor regente, colaboracao do AEE registrada,
                       consulta familiar e aprovacao ou ciencia formal da familia. O PEI publicado fica visivel
