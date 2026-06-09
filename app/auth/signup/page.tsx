@@ -68,8 +68,12 @@ export default function SignUp() {
       )
       setSuccess('Cadastro realizado com sucesso.')
       setTimeout(() => {
-        const role = data.user?.user_metadata?.role
-        router.push(role === 'coordinator' ? '/coordinator' : role === 'aee_teacher' ? '/aee' : role === 'family' ? '/family' : '/')
+        const meta = data.user?.user_metadata
+        const role = meta?.role
+        const slug = meta?.municipality_slug
+        const dest = role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
+        // Rotas por papel vivem sob /[municipio]; sem o slug elas dao 404.
+        router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/')
       }, 800)
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar')

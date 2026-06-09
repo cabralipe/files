@@ -35,8 +35,12 @@ export default function Login() {
 
     try {
       const data = await signIn(formData.email, formData.password)
-      const role = data.user?.user_metadata?.role
-      router.push(role === 'coordinator' ? '/coordinator' : role === 'aee_teacher' ? '/aee' : role === 'family' ? '/family' : '/')
+      const meta = data.user?.user_metadata
+      const role = meta?.role
+      const slug = meta?.municipality_slug
+      const dest = role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
+      // Rotas por papel vivem sob /[municipio]; sem o slug elas dao 404.
+      router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/')
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login')
     }
