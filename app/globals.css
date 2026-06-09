@@ -1273,6 +1273,9 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--stamp);
   padding: 16px 18px 20px;
   border-radius: 0px;
+  display: flex;
+  flex-direction: column;
+  min-height: clamp(560px, 72vh, 900px);
 }
 
 .oa-toolbar {
@@ -1297,6 +1300,18 @@ input:focus, select:focus, textarea:focus {
   background: var(--mustard);
   padding: 5px 10px;
   border: 2px solid var(--ink);
+}
+
+#ai-plan-ta {
+  width: 100%;
+  flex: 1;
+  min-height: clamp(420px, 56vh, 720px);
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 #po {
