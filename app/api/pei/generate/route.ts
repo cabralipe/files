@@ -18,34 +18,13 @@ export async function POST(request: Request) {
     const values = generatePeiSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
 
-    // Tenta carregar o aluno com a ficha AEE embutida (join via FK).
-    let student: Record<string, unknown> | null = null
-    const joined = await supabase
+    const { data: student, error: studentError } = await supabase
       .from('students')
       .select('*, student_aee_profiles(*)')
       .eq('id', values.student_id)
       .maybeSingle()
 
-    if (joined.error) {
-      // Se a FK student_aee_profiles nao estiver registrada no PostgREST
-      // (PGRST200), carrega o aluno sem o join e busca a ficha em separado.
-      const isFkMissing =
-        joined.error.code === 'PGRST200' ||
-        joined.error.message?.includes('student_aee_profiles')
-      if (!isFkMissing) throw joined.error
-
-      console.warn('[POST /api/pei/generate] FK student_aee_profiles nao resolvida, buscando sem join:', joined.error.message)
-      const plain = await supabase
-        .from('students')
-        .select('*')
-        .eq('id', values.student_id)
-        .maybeSingle()
-      if (plain.error) throw plain.error
-      student = plain.data
-    } else {
-      student = joined.data
-    }
-
+    if (studentError) throw studentError
     if (!student) {
       return NextResponse.json({ error: 'Aluno nao encontrado' }, { status: 404 })
     }
@@ -58,7 +37,7 @@ export async function POST(request: Request) {
     // A ficha pode vir embutida no join; se nao vier (join falhou ou retornou
     // vazio), busca diretamente por student_id antes de desistir.
     let profile: Record<string, unknown> | null = Array.isArray(student.student_aee_profiles)
-      ? (student.student_aee_profiles[0] as Record<string, unknown> | undefined) ?? null
+      ? ((student.student_aee_profiles[0] as Record<string, unknown> | undefined) ?? null)
       : null
 
     if (!profile) {

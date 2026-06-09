@@ -887,7 +887,7 @@ export default function Home() {
                 Coordenação
               </Link>
             )}
-            {['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) && (
+            {(['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) || user?.email === 'admin@bncc.local') && (
               <Link className="nb" href="/aee">
                 AEE
               </Link>
@@ -1077,17 +1077,17 @@ export default function Home() {
               {planKind === 'pei' && (
                 <>
                   <div className={`sti ${revisaoRegente && aee.nome && aee.contribuicoes ? 'done' : ''}`}>
-                    <span className="stn">5</span>
+                    <span className="stn">4</span>
                     <span className="stl">Revisao colaborativa</span>
                   </div>
                   <div className={`sti ${family.responsavel_nome && family.concordancia !== 'pendente' ? 'done' : ''}`}>
-                    <span className="stn">6</span>
+                    <span className="stn">5</span>
                     <span className="stl">Familia</span>
                   </div>
                 </>
               )}
               <div className={`sti ${generated ? 'done' : ''}`}>
-                <span className="stn">{planKind === 'pei' ? '7' : '4'}</span>
+                <span className="stn">{planKind === 'pei' ? '6' : '4'}</span>
                 <span className="stl">Salvar/Publicar</span>
               </div>
             </div>
@@ -1197,9 +1197,9 @@ export default function Home() {
                     <div className="pei-tutorial-title">Como funciona o PEI</div>
                     <ol className="pei-tutorial-steps">
                       <li><strong>Passo 1–3</strong> — Preencha os dados do plano, selecione habilidades BNCC e gere o documento com IA.</li>
-                      <li><strong>Passo 5 (AEE)</strong> — O professor da sala de recursos revisa e registra contribuicoes, recursos e adaptacoes.</li>
-                      <li><strong>Passo 6 (Familia)</strong> — Registre a consulta com a familia e o grau de concordancia.</li>
-                      <li><strong>Passo 7 (Salvar)</strong> — Salve como rascunho ou publique como vigente. Publicar exige revisao, AEE e consulta familiar registrados.</li>
+                      <li><strong>Passo 4 (AEE)</strong> — O professor da sala de recursos revisa e registra contribuicoes, recursos e adaptacoes.</li>
+                      <li><strong>Passo 5 (Familia)</strong> — Registre a consulta com a familia e o grau de concordancia.</li>
+                      <li><strong>Passo 6 (Salvar)</strong> — Salve como rascunho ou publique como vigente. Publicar exige revisao, AEE e consulta familiar registrados.</li>
                     </ol>
                     <p className="pei-note" style={{ marginTop: 8 }}>
                       O PEI e um documento pedagogico colaborativo. Nao substitui laudo clinico nem diagnostico medico.

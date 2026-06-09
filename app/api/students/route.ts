@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       .eq('active', true)
       .order('full_name', { ascending: true })
 
-    if (schoolName && role !== 'super_admin') {
+    if (schoolName && !['admin', 'municipality_admin', 'super_admin'].includes(role)) {
       query = query.eq('school_name', schoolName)
     }
 
@@ -84,16 +84,21 @@ export async function POST(request: Request) {
     }
 
     await ensureUserProfile(user, municipality.id)
+
     const values = createStudentWithProfileSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
     const now = new Date().toISOString()
 
-    const studentRow = {
-      ...values.student,
+    const { school_id, ...studentFields } = values.student
+    const studentRow: Record<string, unknown> = {
+      ...studentFields,
+      ...(school_id ? { school_id } : {}),
       municipality_id: municipality.id,
       created_by: user.id,
       updated_at: now,
     }
+    // Coerce empty strings to null for non-TEXT typed columns (DATE, UUID)
+    if (!studentRow.birth_date) studentRow.birth_date = null
 
     const { data: student, error: studentError } = await supabase
       .from('students')
@@ -107,12 +112,10 @@ export async function POST(request: Request) {
     if (values.profile) {
       const { data, error } = await supabase
         .from('student_aee_profiles')
-        .upsert({
-          ...values.profile,
-          student_id: student.id,
-          updated_by: user.id,
-          updated_at: now,
-        })
+        .upsert(
+          { ...values.profile, student_id: student.id, updated_by: user.id, updated_at: now },
+          { onConflict: 'student_id' },
+        )
         .select()
         .single()
       if (error) throw error

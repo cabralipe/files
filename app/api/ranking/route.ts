@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     if (!error) {
       const ranking = (data || []).map((entry) => ({
         ...entry,
-        full_name: entry.full_name || entry.name,
+        full_name: entry.full_name || entry.name || '',
         total_points: Number(entry.total_points || entry.points || 0),
         rank: entry.ranking_position,
       }))

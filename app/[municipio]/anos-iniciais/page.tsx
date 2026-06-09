@@ -149,11 +149,14 @@ export default function AnosIniciaisPage() {
   const [phrase, setPhrase] = useState('')
   const [toast, setToast] = useState('')
 
-  // PEI save state
+  // PEI collaboration state
   const [savingPei, setSavingPei] = useState(false)
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
 
-  // saved plans (localStorage)
+  // saved plans (localStorage for normal plans, server for PEI)
   const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string }>>([])
+  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean }>>([])
+  const [loadingServerPlans, setLoadingServerPlans] = useState(false)
 
   // Set today's date after mount to avoid SSR/client timezone mismatch
   useEffect(() => {
@@ -185,6 +188,26 @@ export default function AnosIniciaisPage() {
         teacher: f.teacher || String(user.user_metadata?.name || user.user_metadata?.full_name || ''),
       }))
     }
+  }, [user])
+
+  // Load server-side plans (PEI) when user is logged in
+  useEffect(() => {
+    if (!user) { setServerPlans([]); return }
+    async function loadServerPlans() {
+      setLoadingServerPlans(true)
+      try {
+        const token = (await supabase.auth.getSession()).data.session?.access_token
+        const res = await fetch('/api/plans', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        setServerPlans(data.data || [])
+      } catch { /* silently ignore */ } finally {
+        setLoadingServerPlans(false)
+      }
+    }
+    void loadServerPlans()
   }, [user])
 
   // ── Skill lists ────────────────────────────────────────────────────────────
@@ -262,7 +285,7 @@ export default function AnosIniciaisPage() {
     if (!form.title.trim()) { showToast('Informe o tema do plano.'); return }
     if (!form.grade_level.trim()) { showToast('Informe o ano/turma.'); return }
     if (!selected.length) { showToast('Selecione ao menos uma habilidade.'); return }
-    if (!user) { showToast('Faça login para gerar o plano.'); return }
+    if (planKind === 'pei' && !user) { showToast('Faça login para gerar PEI.'); return }
     if (planKind === 'pei' && !selectedStudentId) { showToast('Selecione o aluno para gerar o PEI.'); return }
 
     const skills_context = selected
@@ -286,7 +309,7 @@ export default function AnosIniciaisPage() {
     }, 2200)
 
     try {
-      const token = await getAccessToken()
+      const token = planKind === 'pei' ? await getAccessToken() : ''
       const res = await fetch(planKind === 'pei' ? '/api/pei/generate' : '/api/plans/generate-ai', {
         method: 'POST',
         headers: {
@@ -438,8 +461,10 @@ export default function AnosIniciaisPage() {
     setSavingPei(true)
     try {
       const token = (await supabase.auth.getSession()).data.session?.access_token
-      const res = await fetch('/api/plans', {
-        method: 'POST',
+      const url = editingPlanId ? `/api/plans/${editingPlanId}` : '/api/plans'
+      const method = editingPlanId ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -457,6 +482,13 @@ export default function AnosIniciaisPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar PEI')
+      const savedId = data.data?.id || editingPlanId
+      setEditingPlanId(savedId)
+      setServerPlans(prev => {
+        const updated = { id: savedId, title: form.title, content: generated, created_at: new Date().toISOString(), is_pei: true }
+        const idx = prev.findIndex(p => p.id === savedId)
+        return idx >= 0 ? prev.map((p, i) => i === idx ? updated : p) : [updated, ...prev]
+      })
       showToast('PEI salvo como rascunho.')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erro ao salvar PEI')
@@ -513,7 +545,7 @@ export default function AnosIniciaisPage() {
               Salvos <span className="nbadge">{saved.length}</span>
             </button>
             <Link className="nb" href="/computacao">BNCC Comp.</Link>
-            {['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) && (
+            {(['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) || user?.email === 'admin@bncc.local') && (
               <Link className="nb" href="/aee">AEE</Link>
             )}
             <Link className="nb" href={slug ? `/${slug}` : '/'} style={{ opacity: .65, fontSize: 12 }}>Portais</Link>
@@ -865,9 +897,40 @@ export default function AnosIniciaisPage() {
               <h1>Planos salvos</h1>
               <p>Planos de Anos Iniciais salvos localmente neste dispositivo.</p>
             </div>
-            <button className="btn btn-pri" onClick={() => setView('plan')}>+ Criar novo plano</button>
+            <button className="btn btn-pri" onClick={() => { setEditingPlanId(null); setGenerated(''); setView('plan') }}>+ Criar novo plano</button>
           </div>
 
+          {user && (
+            <>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '.08em' }}>PEIs salvos na conta</h2>
+              {loadingServerPlans ? (
+                <div className="est">Carregando...</div>
+              ) : serverPlans.filter(p => p.is_pei).length === 0 ? (
+                <div className="est" style={{ marginBottom: 24 }}>Nenhum PEI salvo ainda.</div>
+              ) : (
+                <div className="plans-grid" style={{ marginBottom: 24 }}>
+                  {serverPlans.filter(p => p.is_pei).map(plan => (
+                    <article className="plan-item" key={plan.id}>
+                      <div className="pi-header">
+                        <h2 className="pi-title">{plan.title || 'PEI sem título'}</h2>
+                        <div className="pi-date">{new Date(plan.created_at).toLocaleString('pt-BR')}</div>
+                      </div>
+                      <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
+                      <div className="pi-actions">
+                        <button className="btn btn-pri" onClick={() => {
+                          setEditingPlanId(plan.id)
+                          setGenerated(plan.content)
+                          setView('plan')
+                          showToast('PEI carregado para edicao.')
+                        }}>Editar</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Planos salvos localmente</h2>
+            </>
+          )}
           {saved.length === 0 ? (
             <div className="est">Nenhum plano salvo ainda. Crie e salve o seu primeiro plano.</div>
           ) : (

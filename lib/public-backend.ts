@@ -863,7 +863,7 @@ async function callOpenAiResponse(opts: OpenAiCallOptions): Promise<string> {
 
 export async function generatePlanFromPrompt(prompt: string): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY || ''
-  const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
   const timeoutMs = envNumber('OPENAI_TIMEOUT_MS', 30000)
   const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 4200)
   const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'
@@ -877,7 +877,7 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
   const prompt = await buildPlanPrompt(input)
   const totalStartTime = Date.now()
   const apiKey = process.env.OPENAI_API_KEY || ''
-  const model = process.env.OPENAI_MODEL || 'gpt-5-nano'
+  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
   const timeoutMs = envNumber('OPENAI_TIMEOUT_MS', 30000)
   const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 4200)
   const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'

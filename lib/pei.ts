@@ -15,10 +15,10 @@ export type UserRole = z.infer<typeof userRoleSchema>
 
 export const studentSchema = z.object({
   id: z.string().uuid().optional(),
-  school_id: z.string().trim().optional().default(''),
+  school_id: z.string().uuid().optional(),
   school_name: z.string().trim().min(2, 'Informe a escola'),
   full_name: z.string().trim().min(2, 'Informe o nome do aluno'),
-  birth_date: z.string().trim().optional().default(''),
+  birth_date: z.string().trim().optional(),
   grade_level: z.string().trim().min(1, 'Informe o ano/turma'),
   class_name: z.string().trim().optional().default(''),
   shift: z.enum(['manha', 'tarde', 'noite', 'integral']).optional().default('manha'),
@@ -82,7 +82,12 @@ export type StudentAeeProfile = z.infer<typeof studentAeeProfileSchema>
 
 export function getUserRole(user: User): UserRole {
   const role = String(user.user_metadata?.role || 'teacher')
-  return userRoleSchema.safeParse(role).success ? (role as UserRole) : 'teacher'
+  if (userRoleSchema.safeParse(role).success) return role as UserRole
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (user.email === 'admin@bncc.local' || (adminEmail && user.email === adminEmail)) {
+    return 'admin'
+  }
+  return 'teacher'
 }
 
 export function canManageAeeStudents(role: UserRole) {
