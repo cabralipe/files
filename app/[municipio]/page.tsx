@@ -25,6 +25,25 @@ export default function MunicipioHome() {
         </div>
 
         <div className="portal-sel-grid">
+          {/* Anos Finais */}
+          <Link href="/anos-finais" className="portal-card portal-card-af">
+            <div className="portal-card-stamp">AF</div>
+            <div className="portal-card-body">
+              <div className="portal-card-tag">Referencial Curricular · Atalaia</div>
+              <h2 className="portal-card-title">Anos<br />Finais</h2>
+              <p className="portal-card-desc">
+                Referencial Curricular territorializado de Atalaia para o Ensino Fundamental — Anos Finais,
+                com desdobramentos contextualizados para a realidade do município.
+              </p>
+              <div className="portal-card-pills">
+                <span>6º ao 9º Ano</span>
+                <span>9 disciplinas</span>
+                <span>722 habilidades</span>
+              </div>
+            </div>
+            <div className="portal-card-arrow">→</div>
+          </Link>
+
           {/* BNCC Computação */}
           <Link href="/computacao" className="portal-card portal-card-comp">
             <div className="portal-card-stamp">BN</div>
@@ -104,7 +123,7 @@ export default function MunicipioHome() {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 24px;
-          max-width: 900px;
+          max-width: 1200px;
           margin: 0 auto;
         }
         .portal-card {
@@ -138,6 +157,8 @@ export default function MunicipioHome() {
         .portal-card-comp:hover { box-shadow: 8px 8px 0 var(--red-deep); }
         .portal-card-ai { background: var(--teal-wash); }
         .portal-card-ai:hover { box-shadow: 8px 8px 0 var(--teal-deep); }
+        .portal-card-af { background: var(--blue-wash); }
+        .portal-card-af:hover { box-shadow: 8px 8px 0 var(--blue-deep); }
         .portal-card-stamp {
           width: 52px;
           height: 52px;
@@ -154,6 +175,7 @@ export default function MunicipioHome() {
         }
         .portal-card-comp .portal-card-stamp { background: var(--red); color: var(--paper-soft); }
         .portal-card-ai .portal-card-stamp { background: var(--teal); color: var(--paper-soft); }
+        .portal-card-af .portal-card-stamp { background: var(--blue); color: var(--paper-soft); }
         .portal-card-body { flex: 1; }
         .portal-card-tag {
           font-family: var(--font-mono);
