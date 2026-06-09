@@ -201,7 +201,7 @@ export default function PeiControls({
                 </p>
               )}
 
-              {/* Aluno selecionado: oferece usar o PEI do AEE ou criar o proprio */}
+              {/* Aluno selecionado: oferece reutilizar um PEI salvo ou gerar a partir da ficha AEE. */}
               {selectedStudentId && (
                 <div className="pei-source" style={{ marginTop: 8, padding: '10px 12px', border: '2px solid var(--ink)', background: 'var(--paper-soft)' }}>
                   {loadingExisting ? (
@@ -233,7 +233,7 @@ export default function PeiControls({
                     </>
                   ) : (
                     <p className="pei-note">
-                      Nenhum PEI do AEE para este aluno ainda. Será criado um novo PEI a partir da ficha AEE.
+                      Ficha AEE encontrada para este aluno. O PEI será criado a partir dos dados já cadastrados.
                     </p>
                   )}
                 </div>
