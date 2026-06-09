@@ -138,8 +138,10 @@ export default function SignUp() {
                 <option value="teacher">Professor(a)</option>
                 <option value="aee_teacher">Professor(a) AEE / sala especial</option>
                 <option value="coordinator">Coordenador(a)</option>
-                <option value="family">Família/responsável</option>
               </select>
+              <span className="fex">
+                O acesso de família/responsável é criado pela coordenação da escola — não é necessário se cadastrar aqui.
+              </span>
             </label>
 
             <label className="fgr">

@@ -114,11 +114,19 @@ function StatCard({ value, label }: { value: number; label: string }) {
   )
 }
 
-function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
+function Field({ label, children, wide, hint, example }: { label: string; children: React.ReactNode; wide?: boolean; hint?: string; example?: React.ReactNode }) {
   return (
     <label className={`fgr${wide ? ' s2' : ''}`}>
-      <span className="fl">{label}</span>
+      <span className="fl fl-row">
+        {label}
+        {hint && (
+          <span className="fhint" tabIndex={0} role="note" aria-label={hint}>
+            ?<span className="fbubble">{hint}</span>
+          </span>
+        )}
+      </span>
       {children}
+      {example && <span className="fex">{example}</span>}
     </label>
   )
 }
@@ -807,16 +815,16 @@ export default function AnosIniciaisPage() {
                 onExistingPeiChange={setExistingPei}
               />
               <div className="fg">
-                <Field label="Professor(a)">
+                <Field label="Professor(a)" hint="Seu nome, como deve aparecer no cabeçalho do plano." example="Ex.: Ana Paula Ferreira">
                   <input value={form.teacher} onChange={e => updateForm('teacher', e.target.value)} placeholder="Nome completo" />
                 </Field>
-                <Field label="Escola">
+                <Field label="Escola" hint="Escola onde a aula será dada. Comece a digitar e escolha na lista." example="Ex.: Escola Municipal Padre Cícero">
                   <input list="ai-schools" value={form.school} onChange={e => updateForm('school', e.target.value)} />
                   <datalist id="ai-schools">
                     {municipalSchools.map(s => <option key={s} value={s} />)}
                   </datalist>
                 </Field>
-                <Field label="Ano/Turma">
+                <Field label="Ano/Turma" hint="Ano escolar da turma. A IA ajusta a linguagem e as atividades à faixa etária.">
                   <select value={form.grade_level} onChange={e => updateForm('grade_level', e.target.value)}>
                     <option value="">Selecione…</option>
                     {['1º Ano','2º Ano','3º Ano','4º Ano','5º Ano'].map(y => (
@@ -824,28 +832,28 @@ export default function AnosIniciaisPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Componente">
-                  <input value={form.subject} onChange={e => updateForm('subject', e.target.value)} />
+                <Field label="Componente" hint="Disciplina/área da aula." example="Ex.: Ciências · Língua Portuguesa · Matemática">
+                  <input value={form.subject} onChange={e => updateForm('subject', e.target.value)} placeholder="Ciências" />
                 </Field>
-                <Field label="Data">
+                <Field label="Data" hint="Data prevista para a aula.">
                   <input type="date" value={form.date} onChange={e => updateForm('date', e.target.value)} />
                 </Field>
-                <Field label="Duração">
-                  <input value={form.duration} onChange={e => updateForm('duration', e.target.value)} />
+                <Field label="Duração" hint="Tempo total da aula ou número de aulas." example="Ex.: 50 min · 2 aulas de 50 min">
+                  <input value={form.duration} onChange={e => updateForm('duration', e.target.value)} placeholder="50 min" />
                 </Field>
-                <Field label="Tema da aula" wide>
+                <Field label="Tema da aula" wide hint="O assunto central da aula. Seja específico — quanto mais claro o tema, melhor o plano gerado." example={<>Ex.: <strong>A fauna e flora do Rio Paraíba do Meio</strong></>}>
                   <input value={form.title} onChange={e => updateForm('title', e.target.value)}
                     placeholder="Ex.: A fauna e flora do Rio Paraíba do Meio" />
                 </Field>
-                <Field label="Objetivos do professor" wide>
+                <Field label="Objetivos do professor" wide hint="O que você quer que os alunos aprendam ou consigam fazer ao fim da aula. Comece com verbos de ação." example={<>Ex.: <strong>Identificar animais e plantas da região; relacionar o rio à vida da comunidade.</strong></>}>
                   <textarea value={form.objectives} onChange={e => updateForm('objectives', e.target.value)}
                     placeholder="Descreva seus objetivos específicos para esta aula..." rows={3} />
                 </Field>
-                <Field label="Metodologia" wide>
-                  <textarea value={form.methodology} onChange={e => updateForm('methodology', e.target.value)} rows={2} />
+                <Field label="Metodologia" wide hint="Como a aula será conduzida: estratégias, dinâmicas e organização da turma. Opcional — a IA sugere se ficar em branco." example={<>Ex.: <strong>Roda de conversa, observação de imagens e atividade em grupos.</strong></>}>
+                  <textarea value={form.methodology} onChange={e => updateForm('methodology', e.target.value)} rows={2} placeholder="Como a aula será conduzida (opcional)" />
                 </Field>
-                <Field label="Recursos disponíveis" wide>
-                  <textarea value={form.materials} onChange={e => updateForm('materials', e.target.value)} rows={2} />
+                <Field label="Recursos disponíveis" wide hint="Materiais e equipamentos que você tem para usar na aula." example={<>Ex.: <strong>Quadro, lápis de cor, imagens impressas, projetor.</strong></>}>
+                  <textarea value={form.materials} onChange={e => updateForm('materials', e.target.value)} rows={2} placeholder="Materiais e equipamentos disponíveis" />
                 </Field>
               </div>
 

@@ -1106,10 +1106,10 @@ export default function Home() {
                 }}
               />
               <div className="fg">
-                <Field label="Professor(a)">
+                <Field label="Professor(a)" hint="Seu nome, como deve aparecer no cabeçalho do plano." example="Ex.: Carlos Henrique Lima">
                   <input value={form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} placeholder="Nome do professor" />
                 </Field>
-                <Field label="Escola">
+                <Field label="Escola" hint="Escola onde a aula será dada. Comece a digitar e escolha na lista." example="Ex.: Escola Municipal Padre Cícero">
                   <input
                     list="municipal-schools"
                     value={form.school}
@@ -1121,29 +1121,29 @@ export default function Home() {
                     ))}
                   </datalist>
                 </Field>
-                <Field label="Ano/Turma">
-                  <input value={form.grade_level} onChange={(event) => updateForm('grade_level', event.target.value)} />
+                <Field label="Ano/Turma" hint="Ano escolar da turma. A IA ajusta a linguagem e as atividades à faixa etária." example="Ex.: 8º Ano">
+                  <input value={form.grade_level} onChange={(event) => updateForm('grade_level', event.target.value)} placeholder="8º Ano" />
                 </Field>
-                <Field label="Componente">
-                  <input value={form.subject} onChange={(event) => updateForm('subject', event.target.value)} />
+                <Field label="Componente" hint="Componente/área da aula." example="Ex.: Computação · Tecnologia e Sociedade">
+                  <input value={form.subject} onChange={(event) => updateForm('subject', event.target.value)} placeholder="Computação" />
                 </Field>
-                <Field label="Data">
+                <Field label="Data" hint="Data prevista para a aula.">
                   <input type="date" value={form.date} onChange={(event) => updateForm('date', event.target.value)} />
                 </Field>
-                <Field label="Duração">
-                  <input value={form.duration} onChange={(event) => updateForm('duration', event.target.value)} />
+                <Field label="Duração" hint="Tempo total da aula ou número de aulas." example="Ex.: 50 min · 2 aulas de 50 min">
+                  <input value={form.duration} onChange={(event) => updateForm('duration', event.target.value)} placeholder="50 min" />
                 </Field>
-                <Field label="Tema da aula" wide required>
+                <Field label="Tema da aula" wide required hint="O assunto central da aula. Seja específico — quanto mais claro o tema, melhor o plano gerado." example={<>Ex.: <strong>Fake news e cidadania digital</strong></>}>
                   <input value={form.title} onChange={(event) => updateForm('title', event.target.value)} placeholder="Ex.: Fake news e cidadania digital" />
                 </Field>
-                <Field label="Objetivos do professor" wide>
-                  <textarea value={form.objectives} onChange={(event) => updateForm('objectives', event.target.value)} />
+                <Field label="Objetivos do professor" wide hint="O que você quer que os alunos aprendam ou consigam fazer ao fim da aula. Comece com verbos de ação." example={<>Ex.: <strong>Reconhecer notícias falsas e checar fontes antes de compartilhar.</strong></>}>
+                  <textarea value={form.objectives} onChange={(event) => updateForm('objectives', event.target.value)} placeholder="O que os alunos vão aprender nesta aula" />
                 </Field>
-                <Field label="Metodologia" wide>
-                  <textarea value={form.methodology} onChange={(event) => updateForm('methodology', event.target.value)} />
+                <Field label="Metodologia" wide hint="Como a aula será conduzida: estratégias, dinâmicas e organização da turma. Opcional — a IA sugere se ficar em branco." example={<>Ex.: <strong>Análise de casos reais, debate em grupos e produção de um cartaz.</strong></>}>
+                  <textarea value={form.methodology} onChange={(event) => updateForm('methodology', event.target.value)} placeholder="Como a aula será conduzida (opcional)" />
                 </Field>
-                <Field label="Recursos disponíveis" wide>
-                  <textarea value={form.materials} onChange={(event) => updateForm('materials', event.target.value)} />
+                <Field label="Recursos disponíveis" wide hint="Materiais e equipamentos que você tem para usar na aula." example={<>Ex.: <strong>Computadores, projetor, celulares dos alunos, internet.</strong></>}>
+                  <textarea value={form.materials} onChange={(event) => updateForm('materials', event.target.value)} placeholder="Materiais e equipamentos disponíveis" />
                 </Field>
               </div>
 
@@ -1472,16 +1472,28 @@ function Field({
   children,
   wide,
   required,
+  hint,
+  example,
 }: {
   label: string
   children: React.ReactNode
   wide?: boolean
   required?: boolean
+  hint?: string
+  example?: React.ReactNode
 }) {
   return (
     <label className={`fgr ${wide ? 's2' : ''}`}>
-      <span className="fl">{label}{required && <span className="req">*</span>}</span>
+      <span className="fl fl-row">
+        {label}{required && <span className="req">*</span>}
+        {hint && (
+          <span className="fhint" tabIndex={0} role="note" aria-label={hint}>
+            ?<span className="fbubble">{hint}</span>
+          </span>
+        )}
+      </span>
       {children}
+      {example && <span className="fex">{example}</span>}
     </label>
   )
 }
