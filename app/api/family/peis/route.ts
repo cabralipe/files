@@ -26,13 +26,38 @@ export async function GET(request: Request) {
     const { data: plans, error: plansError } = await supabase
       .from('plans')
       .select('*')
-      .eq('is_pei', true)
       .in('student_id', studentIds)
       .order('created_at', { ascending: false })
 
     if (plansError) throw plansError
 
-    return NextResponse.json({ success: true, data: plans || [], links: links || [] })
+    // Inclui PEIs e PAEEs; o PAEE e identificado dentro do JSON de conteudo.
+    const documents = (plans || [])
+      .map((row) => {
+        let inner: Record<string, any> | null = null
+        try {
+          const parsed = typeof row.content === 'string' ? JSON.parse(row.content) : null
+          if (parsed?.__publicPlan && parsed.plan) inner = parsed.plan
+        } catch {
+          inner = null
+        }
+        const isPaee = Boolean(inner?.is_paee)
+        if (!row.is_pei && !isPaee) return null
+        return {
+          id: row.id,
+          title: inner?.title || row.title,
+          content: inner?.content || row.content || '',
+          is_published: Boolean(row.is_published),
+          plan_status: inner?.plan_status || (row.is_published ? 'vigente' : 'rascunho'),
+          is_paee: isPaee,
+          student_id: row.student_id,
+          consulta_familia: inner?.consulta_familia || row.consulta_familia || {},
+          created_at: row.created_at,
+        }
+      })
+      .filter(Boolean)
+
+    return NextResponse.json({ success: true, data: documents, links: links || [] })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })

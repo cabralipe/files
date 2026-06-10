@@ -66,6 +66,7 @@ export default function PeiControls({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [existing, setExisting] = useState<ExistingPei | null>(null)
+  const [existingPaee, setExistingPaee] = useState<ExistingPei | null>(null)
   const [loadingExisting, setLoadingExisting] = useState(false)
 
   const role = String(user?.user_metadata?.role || '')
@@ -101,10 +102,11 @@ export default function PeiControls({
     }
   }, [planKind, school, user, isAdminRole])
 
-  // Busca o PEI ja cadastrado (do AEE) para o aluno selecionado.
+  // Busca o PEI ja cadastrado (do AEE) e o PAEE para o aluno selecionado.
   useEffect(() => {
     if (!user || planKind !== 'pei' || !selectedStudentId) {
       setExisting(null)
+      setExistingPaee(null)
       onExistingPeiChange?.(null)
       return
     }
@@ -113,22 +115,31 @@ export default function PeiControls({
       try {
         setLoadingExisting(true)
         const token = await getAccessToken()
-        const res = await fetch(`/api/peis/by-student?student_id=${encodeURIComponent(selectedStudentId)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
+        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const [res, paeeRes] = await Promise.all([
+          fetch(`/api/peis/by-student?student_id=${encodeURIComponent(selectedStudentId)}`, { headers }),
+          fetch(`/api/paees/by-student?student_id=${encodeURIComponent(selectedStudentId)}`, { headers }),
+        ])
         const payload = await res.json()
         const data = payload?.data
         const found: ExistingPei | null = data && data.content
           ? { id: String(data.id || ''), content: String(data.content || ''), plan_status: String(data.plan_status || 'rascunho') }
           : null
+        const paeePayload = await paeeRes.json().catch(() => null)
+        const paeeData = paeePayload?.data
+        const foundPaee: ExistingPei | null = paeeData && paeeData.content
+          ? { id: String(paeeData.id || ''), content: String(paeeData.content || ''), plan_status: String(paeeData.plan_status || 'rascunho') }
+          : null
         if (!cancelled) {
           setExisting(found)
+          setExistingPaee(foundPaee)
           onExistingPeiChange?.(found)
           if (!found) onPeiSourceChange?.('create')
         }
       } catch {
         if (!cancelled) {
           setExisting(null)
+          setExistingPaee(null)
           onExistingPeiChange?.(null)
         }
       } finally {
@@ -234,6 +245,13 @@ export default function PeiControls({
                   ) : (
                     <p className="pei-note">
                       Ficha AEE encontrada para este aluno. O PEI será criado a partir dos dados já cadastrados.
+                    </p>
+                  )}
+                  {!loadingExisting && existingPaee && (
+                    <p className="pei-note" style={{ marginTop: 8 }}>
+                      Este aluno tem um PAEE elaborado pelo AEE
+                      {' '}(<strong>{STATUS_LABEL[existingPaee.plan_status] || existingPaee.plan_status}</strong>).
+                      O PEI gerado será articulado automaticamente com o atendimento especializado.
                     </p>
                   )}
                 </div>

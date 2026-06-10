@@ -12,7 +12,7 @@ import {
 export const dynamic = 'force-dynamic'
 
 const schema = z.object({
-  action: z.enum(['submit_aee', 'approve_aee', 'reject_aee', 'family_consent']),
+  action: z.enum(['submit_aee', 'submit_familia', 'approve_aee', 'reject_aee', 'family_consent']),
   note: z.string().trim().optional(),
   colaboracao_aee: z.record(z.unknown()).optional(),
   consulta_familia: z.record(z.unknown()).optional(),
@@ -26,6 +26,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const allowed =
       (body.action === 'submit_aee' && canGeneratePei(role)) ||
+      // PAEE: o proprio professor AEE (ou coordenacao/gestao) envia para a familia.
+      (body.action === 'submit_familia' && canApprovePeiAee(role)) ||
       ((body.action === 'approve_aee' || body.action === 'reject_aee') && canApprovePeiAee(role)) ||
       (body.action === 'family_consent' && canConsentFamily(role))
     if (!allowed) {
@@ -54,7 +56,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
     if (error instanceof Error && error.message.startsWith('TRANSITION_')) {
-      return NextResponse.json({ error: 'Transicao de status invalida para este PEI' }, { status: 409 })
+      return NextResponse.json({ error: 'Transicao de status invalida para este documento' }, { status: 409 })
     }
     console.error('[PATCH /api/plans/[id]/status]', error)
     return NextResponse.json(
