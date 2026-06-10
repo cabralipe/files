@@ -918,7 +918,6 @@ export default function Home() {
 
       {view === 'skills' && (
         <section className="pg">
-<<<<<<< HEAD
           <SkillsHowTo
             storageKey="bncc_howto_seen"
             accentVar="var(--red)"
@@ -926,17 +925,6 @@ export default function Home() {
             referencialLabel="complemento da BNCC Computação (1º ao 9º Ano)"
             onOpenTutorial={openTutorial}
           />
-=======
-          <div className="saved-head">
-            <div>
-              <h1>Habilidades BNCC Computação</h1>
-              <p>
-                Explore o referencial por ano, componente ou eixo, e adicione habilidades ao seu plano.
-                As selecionadas ficam marcadas e aparecem na aba &quot;Plano&quot;.
-              </p>
-            </div>
-          </div>
->>>>>>> 131e833cbf096d99e54db1bd10864c6691428e58
 
           <div className="stats">
             <Stat value={skills.length} label="habilidades" />

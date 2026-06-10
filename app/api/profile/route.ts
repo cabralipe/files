@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { ensureUserProfile, getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 
+export const dynamic = 'force-dynamic'
+
 const updateProfileSchema = z.object({
   full_name: z.string().trim().min(2).optional(),
   name: z.string().trim().min(2).optional(),
