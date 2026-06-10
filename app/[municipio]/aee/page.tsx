@@ -7,6 +7,7 @@ import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { municipalSchools } from '@/lib/education-options'
 import PeiReviewQueue from '@/components/PeiReviewQueue'
+import PaeeBuilder from '@/components/PaeeBuilder'
 
 
 type StudentForm = {
@@ -149,6 +150,12 @@ const AEE_TUTORIAL = [
     title: 'Salvar e gerar o PEI',
     body: 'Ao concluir, o aluno aparece no seletor de PEI dos portais. Lá você escolhe o aluno e clica em "Gerar plano" para a IA montar o PEI a partir desta ficha.',
   },
+  {
+    icon: '✦',
+    iconStyle: { background: 'var(--blue-wash)', color: 'var(--ink)' },
+    title: 'Elaborar o PAEE',
+    body: 'Nesta mesma página, a seção PAEE gera o Plano de Atendimento Educacional Especializado: organização do atendimento na Sala de Recursos, recursos de acessibilidade e articulação com o PEI da sala regular.',
+  },
 ]
 
 export default function AeePage() {
@@ -259,7 +266,7 @@ export default function AeePage() {
             <div className="logo-ic logo-ic--aee" />
             <div>
               <div className="logo-t">Sala especial / AEE</div>
-              <div className="logo-s">Cadastro de alunos e ficha para PEI</div>
+              <div className="logo-s">Cadastro de alunos, ficha AEE, PEI e PAEE</div>
             </div>
           </Link>
           <nav className="hdr-nav" aria-label="Acessos">
@@ -284,6 +291,7 @@ export default function AeePage() {
             <li><strong>Preencha a ficha AEE</strong> — Descreva necessidades educacionais, barreiras, potencialidades e recursos. Quanto mais completa, melhor sera o PEI gerado pela IA.</li>
             <li><strong>Salve</strong> — Apos salvar, o aluno aparece no seletor PEI dos portais BNCC Computacao e Anos Iniciais.</li>
             <li><strong>Gere o PEI</strong> — Nos portais, selecione &quot;PEI&quot;, escolha o aluno e clique em &quot;Gerar plano&quot;. A IA usara a ficha AEE para criar um plano individualizado.</li>
+            <li><strong>Elabore o PAEE</strong> — Na secao PAEE desta pagina, defina a organizacao do atendimento e gere o plano do AEE articulado com o PEI da sala regular.</li>
           </ol>
           <p className="pei-note" style={{ marginTop: 8 }}>
             A ficha AEE e de acesso restrito (professor AEE, coordenacao, administracao). Dados de saude informados
@@ -485,6 +493,48 @@ export default function AeePage() {
           </>
         )}
       </section>
+
+      {user && canManage && (
+        <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>PAEE — Plano de Atendimento Educacional Especializado</h1>
+              <p>
+                Plano do AEE: organiza atendimentos, recursos de acessibilidade e estratégias para eliminar
+                barreiras. Articulado com o PEI da sala regular — o PEI organiza o ensino na sala comum; o PAEE
+                organiza o atendimento especializado. Os dois conversam entre si.
+              </p>
+            </div>
+          </div>
+          <div className="pei-block pei-tutorial" style={{ marginBottom: 20 }}>
+            <div className="pei-tutorial-title">Como elaborar o PAEE</div>
+            <ol className="pei-tutorial-steps">
+              <li><strong>Selecione o aluno</strong> — A IA parte da ficha AEE (avaliação funcional/pedagógica), não apenas do laudo.</li>
+              <li><strong>Defina a organização do atendimento</strong> — Frequência, duração, tipo (individual/grupo), local, horário e metas por período.</li>
+              <li><strong>Gere e revise</strong> — A IA propõe caracterização, barreiras, objetivos funcionais do AEE, recursos e articulação com a sala regular. Revise e ajuste antes de salvar.</li>
+              <li><strong>Envie para a família</strong> — Após salvar, encaminhe para ciência da família. Com a concordância registrada, o PAEE passa a vigente.</li>
+              <li><strong>Reavalie periodicamente</strong> — Registre avanços mensalmente e revise com o professor regente a cada bimestre/trimestre.</li>
+            </ol>
+            <p className="pei-note" style={{ marginTop: 8 }}>
+              Se o aluno já tiver PEI, o PAEE é gerado articulado a ele; se ainda não tiver, o PEI gerado depois nos
+              portais também considerará este PAEE automaticamente.
+            </p>
+          </div>
+          <PaeeBuilder user={user} />
+        </section>
+      )}
+
+      {user && canManage && (
+        <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>Acompanhamento de PAEEs</h1>
+              <p>PAEEs elaborados pelo AEE: em elaboração, com a família ou vigentes.</p>
+            </div>
+          </div>
+          <PeiReviewQueue mode="aee" kind="paee" />
+        </section>
+      )}
 
       {user && canManage && (
         <section className="pg">

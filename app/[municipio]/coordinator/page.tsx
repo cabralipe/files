@@ -271,6 +271,18 @@ export default function CoordinatorDashboard() {
           <PeiReviewQueue mode="coordination" />
         </section>
       )}
+
+      {isCoordinator && (
+        <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>Pipeline de PAEEs</h1>
+              <p>Acompanhe os planos do AEE da escola: elaborado → família → vigente. (somente leitura)</p>
+            </div>
+          </div>
+          <PeiReviewQueue mode="coordination" kind="paee" />
+        </section>
+      )}
     </main>
   )
 }

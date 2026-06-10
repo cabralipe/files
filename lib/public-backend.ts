@@ -42,8 +42,23 @@ export type PublicPlan = {
   revisao_regente?: boolean
   colaboracao_aee?: PlanAeeCollaboration
   consulta_familia?: PlanFamilyConsultation
+  // PAEE — plano do AEE, articulado com o PEI da sala regular.
+  is_paee?: boolean
+  paee_organizacao?: PlanPaeeOrganizacao
+  linked_pei_id?: string
   created_at: string
   updated_at: string
+}
+
+export type PlanPaeeOrganizacao = {
+  frequencia_semanal: string
+  duracao_atendimento: string
+  tipo_atendimento: 'individual' | 'grupo' | 'misto'
+  local: string
+  horario: string
+  turno_aee: 'manha' | 'tarde' | 'noite' | 'contraturno'
+  periodo_validade: string
+  metas_periodo: string
 }
 
 export type PlanAeeCollaboration = {
@@ -99,11 +114,25 @@ const planSchemaBase = {
   objectives: z.string().trim().optional().default(''),
   materials: z.string().trim().optional().default('Quadro, caderno, celular ou computador compartilhado'),
   notes: z.string().trim().optional().default(''),
-  skill_ids: z.array(z.string().trim()).min(1, 'Selecione ao menos uma habilidade'),
+  // PAEE nao usa habilidades BNCC; a exigencia de ao menos uma habilidade e
+  // aplicada no createPlanSchema apenas para planos/PEIs.
+  skill_ids: z.array(z.string().trim()).optional().default([]),
   content: z.string().trim().optional().default(''),
   is_published: z.boolean().optional().default(false),
   plan_status: z.enum(['rascunho', 'aguardando_aee', 'aguardando_familia', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
   is_pei: z.boolean().optional().default(false),
+  is_paee: z.boolean().optional().default(false),
+  paee_organizacao: z.object({
+    frequencia_semanal: z.string().trim().optional().default('2 vezes por semana'),
+    duracao_atendimento: z.string().trim().optional().default('50 minutos'),
+    tipo_atendimento: z.enum(['individual', 'grupo', 'misto']).optional().default('individual'),
+    local: z.string().trim().optional().default('Sala de Recursos Multifuncionais'),
+    horario: z.string().trim().optional().default(''),
+    turno_aee: z.enum(['manha', 'tarde', 'noite', 'contraturno']).optional().default('contraturno'),
+    periodo_validade: z.string().trim().optional().default(''),
+    metas_periodo: z.string().trim().optional().default(''),
+  }).optional(),
+  linked_pei_id: z.string().trim().optional().default(''),
   student_id: z.string().trim().optional().default(''),
   pei_snapshot: z.record(z.unknown()).optional().default({}),
   revisao_regente: z.boolean().optional().default(false),
@@ -129,7 +158,15 @@ const planSchemaBase = {
   }).optional(),
 }
 
-export const createPlanSchema = z.object(planSchemaBase)
+export const createPlanSchema = z.object(planSchemaBase).superRefine((values, ctx) => {
+  if (!values.is_paee && values.skill_ids.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['skill_ids'],
+      message: 'Selecione ao menos uma habilidade',
+    })
+  }
+})
 export const updatePlanSchema = z.object(planSchemaBase).partial().extend({
   skill_ids: z.array(z.string().trim()).optional(),
 })
@@ -257,6 +294,24 @@ function hasText(value: unknown) {
 
 function validatePublicationReadiness(plan: PublicPlan) {
   if (!plan.is_published && plan.plan_status !== 'vigente') return
+
+  // PAEE: elaborado pelo proprio AEE, exige aluno vinculado e ciencia da familia.
+  if (plan.is_paee) {
+    const familia = plan.consulta_familia
+    const missing: string[] = []
+    if (!hasText(plan.student_id)) missing.push('aluno vinculado ao PAEE')
+    if (!familia || !hasText(familia.responsavel_nome) || !hasText(familia.data_consulta)) {
+      missing.push('consulta familiar registrada')
+    }
+    if (!familia || familia.concordancia === 'pendente') {
+      missing.push('aprovacao ou ciencia formal da familia/responsavel')
+    }
+    if (missing.length) {
+      throw new Error(`PUBLICATION_BLOCKED:${missing.join(', ')}`)
+    }
+    return
+  }
+
   if (!plan.is_pei) return
 
   const aee = plan.colaboracao_aee
@@ -293,6 +348,7 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
       is_published: Boolean(row.is_published || parsed.plan.is_published),
       plan_status: parsed.plan.plan_status || (row.is_published ? 'vigente' : 'rascunho'),
       is_pei: Boolean(row.is_pei || parsed.plan.is_pei),
+      is_paee: Boolean(parsed.plan.is_paee),
       student_id: parsed.plan.student_id || row.student_id || '',
       pei_snapshot: parsed.plan.pei_snapshot || row.pei_snapshot || {},
       revisao_regente: Boolean(parsed.plan.revisao_regente),
@@ -324,6 +380,7 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
     is_published: Boolean(row.is_published),
     plan_status: row.is_published ? 'vigente' : 'rascunho',
     is_pei: Boolean(row.is_pei),
+    is_paee: false,
     student_id: String(row.student_id || ''),
     pei_snapshot: row.pei_snapshot || {},
     revisao_regente: false,
@@ -552,9 +609,40 @@ export async function getLatestPeiForStudent(
   return vigente || peis[0] || null
 }
 
-export type PlanTransition = 'submit_aee' | 'approve_aee' | 'reject_aee' | 'family_consent'
+// Lista PAEEs (planos do AEE) para acompanhamento do AEE/coordenacao.
+export async function listPaeesForReview(opts: {
+  municipalityId?: string
+  school?: string
+  status?: PublicPlan['plan_status']
+}): Promise<PublicPlan[]> {
+  let plans = await listPlans(undefined, opts.municipalityId)
+  plans = plans.filter((plan) => plan.is_paee)
+  if (opts.school) {
+    const s = opts.school.trim().toLowerCase()
+    plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
+  }
+  if (opts.status) {
+    plans = plans.filter((plan) => (plan.plan_status || 'rascunho') === opts.status)
+  }
+  return plans
+}
+
+// Retorna o PAEE do aluno (preferindo o vigente) para articulacao com o PEI.
+export async function getLatestPaeeForStudent(
+  studentId: string,
+  municipalityId?: string,
+): Promise<PublicPlan | null> {
+  const plans = await listPlans(undefined, municipalityId)
+  const paees = plans.filter((plan) => plan.is_paee && plan.student_id === studentId)
+  const vigente = paees.find((plan) => plan.plan_status === 'vigente')
+  return vigente || paees[0] || null
+}
+
+export type PlanTransition = 'submit_aee' | 'submit_familia' | 'approve_aee' | 'reject_aee' | 'family_consent'
 
 // Maquina de estados do PEI: rascunho -> aguardando_aee -> aguardando_familia -> vigente.
+// Maquina de estados do PAEE (autor ja e o AEE, nao passa pela validacao AEE):
+// rascunho -> aguardando_familia -> vigente.
 export async function transitionPlanStatus(
   id: string,
   action: PlanTransition,
@@ -571,17 +659,21 @@ export async function transitionPlanStatus(
   if (!current) return null
 
   const plan = mapPlanRow(current as Record<string, any>)
-  if (!plan.is_pei) throw new Error('TRANSITION_NOT_PEI')
+  if (!plan.is_pei && !plan.is_paee) throw new Error('TRANSITION_NOT_PEI')
 
   const status = plan.plan_status || 'rascunho'
   const now = new Date().toISOString()
   const next: PublicPlan = { ...plan, updated_at: now }
 
   if (action === 'submit_aee') {
-    if (status !== 'rascunho') throw new Error('TRANSITION_INVALID')
+    if (plan.is_paee || status !== 'rascunho') throw new Error('TRANSITION_INVALID')
     next.plan_status = 'aguardando_aee'
+  } else if (action === 'submit_familia') {
+    // PAEE vai direto do rascunho para a ciencia da familia.
+    if (!plan.is_paee || status !== 'rascunho') throw new Error('TRANSITION_INVALID')
+    next.plan_status = 'aguardando_familia'
   } else if (action === 'approve_aee') {
-    if (status !== 'aguardando_aee') throw new Error('TRANSITION_INVALID')
+    if (plan.is_paee || status !== 'aguardando_aee') throw new Error('TRANSITION_INVALID')
     next.plan_status = 'aguardando_familia'
     next.revisao_regente = true
     next.colaboracao_aee = {

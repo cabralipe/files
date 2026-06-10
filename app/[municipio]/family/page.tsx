@@ -13,6 +13,7 @@ type FamilyPei = {
   content: string
   is_published: boolean
   plan_status?: string
+  is_paee?: boolean
   student_id?: string
   consulta_familia?: Record<string, string>
   created_at: string
@@ -96,16 +97,17 @@ export default function FamilyPage() {
       <section className="pg">
         <div className="saved-head">
           <div>
-            <h1>PEIs vinculados</h1>
+            <h1>PEIs e PAEEs vinculados</h1>
             <p>Area restrita para responsaveis legais.</p>
           </div>
         </div>
 
         <div className="pei-block pei-tutorial" style={{ marginBottom: 20 }}>
-          <div className="pei-tutorial-title">Sobre o PEI — Plano Educacional Individualizado</div>
+          <div className="pei-tutorial-title">Sobre o PEI e o PAEE</div>
           <ol className="pei-tutorial-steps">
-            <li><strong>O que e o PEI?</strong> — E um plano criado pela escola para apoiar o aprendizado do seu filho(a), respeitando as necessidades e potencialidades individuais.</li>
-            <li><strong>O que aparece aqui?</strong> — Os PEIs vinculados ao(s) aluno(s) que a escola associou a sua conta de responsavel.</li>
+            <li><strong>O que e o PEI?</strong> — E um plano criado pela escola para apoiar o aprendizado do seu filho(a) na sala regular, respeitando as necessidades e potencialidades individuais.</li>
+            <li><strong>O que e o PAEE?</strong> — E o plano do Atendimento Educacional Especializado (AEE), feito pelo professor da Sala de Recursos: organiza os atendimentos, recursos de acessibilidade e estrategias para eliminar barreiras. Os dois planos trabalham juntos.</li>
+            <li><strong>O que aparece aqui?</strong> — Os PEIs e PAEEs vinculados ao(s) aluno(s) que a escola associou a sua conta de responsavel.</li>
             <li><strong>Status &quot;Vigente&quot;</strong> — O PEI esta ativo e sendo utilizado pela escola neste periodo.</li>
             <li><strong>Status &quot;Rascunho&quot;</strong> — O PEI ainda esta em elaboracao pela equipe pedagogica.</li>
           </ol>
@@ -141,6 +143,7 @@ export default function FamilyPage() {
                     </p>
                   )}
                   <div className="pi-meta">
+                    <span className="tag">{pei.is_paee ? 'PAEE' : 'PEI'}</span>
                     <span className="tag tcd">{pei.is_published ? 'Vigente' : 'Rascunho'}</span>
                     <span className="tag ta">{concordanciaLabel(pei.consulta_familia?.concordancia)}</span>
                   </div>
@@ -148,7 +151,7 @@ export default function FamilyPage() {
                 </article>
               )
             }) : (
-              <div className="est">Nenhum PEI vinculado a esta conta ainda.</div>
+              <div className="est">Nenhum PEI ou PAEE vinculado a esta conta ainda.</div>
             )}
           </div>
         )}

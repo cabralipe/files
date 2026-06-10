@@ -1,23 +1,26 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
-import { buildPeiPrompt, canGeneratePei, generatePeiSchema, getUserRole } from '@/lib/pei'
-import { generatePlanFromPrompt, getLatestPaeeForStudent, getLatestPeiForStudent } from '@/lib/public-backend'
+import { getUserRole } from '@/lib/pei'
+import { buildPaeePrompt, canGeneratePaee, generatePaeeSchema, paeeOrganizacaoSchema } from '@/lib/paee'
+import { generatePlanFromPrompt, getLatestPeiForStudent } from '@/lib/public-backend'
 import { resolveMunicipality } from '@/lib/municipality'
 import { rateLimit } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
+// Gera o PAEE (plano do AEE) a partir da ficha AEE do aluno, articulado com o
+// PEI da sala regular quando houver.
 export async function POST(request: Request) {
   try {
     const user = await requireAuthenticatedUser(request)
     const role = getUserRole(user)
-    if (!canGeneratePei(role)) {
-      return NextResponse.json({ error: 'Acesso restrito a usuarios pedagogicos autenticados' }, { status: 403 })
+    if (!canGeneratePaee(role)) {
+      return NextResponse.json({ error: 'Acesso restrito ao professor AEE, coordenacao ou administracao' }, { status: 403 })
     }
 
-    const limit = rateLimit(`pei-generate:${user.id}`, 10, 60_000)
+    const limit = rateLimit(`paee-generate:${user.id}`, 10, 60_000)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const values = generatePeiSchema.parse(await request.json())
+    const values = generatePaeeSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
 
     const { data: student, error: studentError } = await supabase
@@ -44,8 +47,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Aluno nao pertence a escola do usuario' }, { status: 403 })
     }
 
-    // A ficha pode vir embutida no join; se nao vier (join falhou ou retornou
-    // vazio), busca diretamente por student_id antes de desistir.
     let profile: Record<string, unknown> | null = Array.isArray(student.student_aee_profiles)
       ? ((student.student_aee_profiles[0] as Record<string, unknown> | undefined) ?? null)
       : null
@@ -61,36 +62,33 @@ export async function POST(request: Request) {
     }
 
     if (!profile) {
-      return NextResponse.json({ error: 'Ficha AEE obrigatoria para gerar PEI' }, { status: 422 })
+      return NextResponse.json({ error: 'Ficha AEE obrigatoria para gerar o PAEE' }, { status: 422 })
     }
 
-    // Quando o professor regente opta por combinar, busca o PEI ja existente
-    // (do AEE) do aluno para a IA consolidar os dois em um documento unico.
-    const municipality = await resolveMunicipality(request)
-    let basePei: string | undefined
-    if (values.merge_existing) {
+    // Articulacao PAEE <-> PEI: envia o PEI mais recente (preferindo o vigente)
+    // para a IA alinhar o atendimento do AEE ao trabalho da sala regular.
+    let peiVigente: string | undefined
+    let linkedPeiId = ''
+    if (values.articular_pei) {
+      const municipality = await resolveMunicipality(request)
       const existing = await getLatestPeiForStudent(values.student_id, municipality?.id)
-      basePei = existing?.content || undefined
+      peiVigente = existing?.content || undefined
+      linkedPeiId = existing?.id || ''
     }
 
-    // Articulacao PEI <-> PAEE: se o AEE ja elaborou o PAEE do aluno, o PEI
-    // nasce alinhado aos recursos e estrategias do atendimento especializado.
-    const existingPaee = await getLatestPaeeForStudent(values.student_id, municipality?.id)
-    const paeeContext = existingPaee?.content || undefined
-
-    const prompt = buildPeiPrompt({
+    const aeeTeacherName = String(user.user_metadata?.name || user.user_metadata?.full_name || '')
+    const prompt = buildPaeePrompt({
       student,
       profile,
-      plan: values.plan,
-      skillsContext: values.skills_context,
-      portal: values.portal,
-      basePei,
-      paeeContext,
+      organizacao: paeeOrganizacaoSchema.parse(values.organizacao || {}),
+      observacoes: values.observacoes,
+      aeeTeacherName,
+      peiVigente,
     })
 
     const content = await generatePlanFromPrompt(prompt)
     if (!content.trim()) {
-      return NextResponse.json({ error: 'PEI gerado vazio. Tente novamente.' }, { status: 500 })
+      return NextResponse.json({ error: 'PAEE gerado vazio. Tente novamente.' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -99,11 +97,12 @@ export async function POST(request: Request) {
         content,
         student,
         profile,
+        linked_pei_id: linkedPeiId,
       },
     })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Login obrigatorio para gerar PEI' }, { status: 401 })
+      return NextResponse.json({ error: 'Login obrigatorio para gerar PAEE' }, { status: 401 })
     }
     if (error instanceof Error && error.message === 'BLOCKED') {
       return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
@@ -111,7 +110,7 @@ export async function POST(request: Request) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
     }
-    console.error('[POST /api/pei/generate]', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao gerar PEI' }, { status: 500 })
+    console.error('[POST /api/paee/generate]', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao gerar PAEE' }, { status: 500 })
   }
 }
