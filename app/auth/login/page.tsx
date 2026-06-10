@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 
 export default function Login() {
   const router = useRouter()
-  const { signIn, loading, error: authError } = useAuth()
+  const { signIn, resetPassword, loading, error: authError } = useAuth()
 
   const [formData, setFormData] = useState({
     email: '',
@@ -15,6 +15,9 @@ export default function Login() {
   })
   const [error, setError] = useState('')
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotMessage, setForgotMessage] = useState('')
+  const [forgotSending, setForgotSending] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -46,122 +49,158 @@ export default function Login() {
     }
   }
 
+  const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError('')
+    setForgotMessage('')
+
+    if (!forgotEmail.trim()) {
+      setError('Informe o email cadastrado para receber o link.')
+      return
+    }
+
+    try {
+      setForgotSending(true)
+      await resetPassword(forgotEmail.trim())
+      setForgotMessage('Pronto! Se o email estiver cadastrado, você receberá um link para redefinir a senha.')
+    } catch (err: any) {
+      setError(err.message || 'Não foi possível enviar o link. Tente novamente.')
+    } finally {
+      setForgotSending(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="mb-8 text-center flex flex-col items-center">
-          <Link href="/" className="logo mb-4 inline-flex">
+    <div className="auth-shell">
+      <div className="auth-box">
+        <div className="auth-head">
+          <Link href="/" className="logo">
             <div className="logo-ic">BN</div>
-            <div className="text-left">
+            <div style={{ textAlign: 'left' }}>
               <div className="logo-t">Portal BNCC Computação</div>
               <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
             </div>
           </Link>
-          <h1 className="font-display font-black text-2xl text-gray-900 mt-2">
-            Acesso à Plataforma
+          <span className="auth-eyebrow">Área do professor</span>
+          <h1 className="auth-title">
+            {showForgotPassword ? <>Redefinir <em>senha</em></> : <>Acesso à <em>plataforma</em></>}
           </h1>
-          <p className="text-sm text-gray-600 mt-1">Faça login para salvar e gerenciar seus planos de aula</p>
+          <p className="auth-sub">
+            {showForgotPassword
+              ? 'Digite o email cadastrado e enviaremos um link para você criar uma nova senha.'
+              : 'Faça login para criar planos, PEIs e PAEEs, e acompanhar suas turmas.'}
+          </p>
         </div>
 
-        {/* Card */}
-        <div className="pc w-full">
-          {/* Error Messages */}
+        <div className="auth-card">
           {(error || authError) && (
-            <div className="al-error mb-4">
+            <div className="al-error" style={{ marginBottom: 14 }}>
               {error || authError}
+            </div>
+          )}
+          {forgotMessage && (
+            <div className="al-ok" style={{ marginBottom: 14 }}>
+              {forgotMessage}
             </div>
           )}
 
           {!showForgotPassword ? (
             <>
-              {/* Login Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Email */}
+              <form onSubmit={handleSubmit}>
                 <label className="fgr">
                   <span className="fl">Email</span>
                   <input
                     type="email"
                     name="email"
+                    autoComplete="email"
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="seu@email.com"
                   />
                 </label>
 
-                {/* Password */}
                 <label className="fgr">
                   <span className="fl">Senha</span>
                   <input
                     type="password"
                     name="password"
+                    autoComplete="current-password"
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="••••••••"
                   />
                 </label>
 
-                {/* Forgot Password Link */}
-                <div className="text-right">
+                <div className="auth-row">
                   <button
                     type="button"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-xs font-semibold text-gray-600 hover:text-indigo-700 underline"
+                    className="auth-ghost"
+                    onClick={() => {
+                      setShowForgotPassword(true)
+                      setError('')
+                      setForgotMessage('')
+                      setForgotEmail(formData.email)
+                    }}
                   >
                     Esqueceu a senha?
                   </button>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full btn btn-pri mt-6"
+                  className="btn btn-pri btn-lg"
+                  style={{ width: '100%', marginTop: 8 }}
                 >
-                  {loading ? 'Carregando...' : 'Fazer Login'}
+                  {loading ? 'Entrando...' : 'Fazer login →'}
                 </button>
               </form>
 
-              {/* Footer */}
-              <p className="text-center text-sm text-gray-600 mt-6">
+              <p className="auth-alt">
                 Não tem conta?{' '}
-                <Link
-                  href="/auth/signup"
-                  className="text-indigo-600 hover:underline font-semibold"
-                >
+                <Link href="/auth/signup" className="auth-link">
                   Cadastre-se como professor
                 </Link>
               </p>
             </>
           ) : (
-            <>
-              {/* Forgot Password Form */}
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600 mb-4">
-                  Digite seu email para receber um link de redefinição de senha.
-                </p>
-                <label className="fgr">
-                  <span className="fl">Email</span>
-                  <input
-                    type="email"
-                    placeholder="seu@email.com"
-                  />
-                </label>
-                <button
-                  onClick={() => setShowForgotPassword(false)}
-                  className="w-full btn btn-pri mt-4"
-                >
-                  Enviar Link
-                </button>
-                <button
-                  onClick={() => setShowForgotPassword(false)}
-                  className="w-full btn btn-out mt-2"
-                >
-                  Voltar
-                </button>
-              </div>
-            </>
+            <form onSubmit={handleForgotPassword}>
+              <label className="fgr">
+                <span className="fl">Email cadastrado</span>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={forgotSending}
+                className="btn btn-pri btn-lg"
+                style={{ width: '100%', marginTop: 8 }}
+              >
+                {forgotSending ? 'Enviando...' : 'Enviar link de redefinição'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-out"
+                style={{ width: '100%', marginTop: 8 }}
+                onClick={() => {
+                  setShowForgotPassword(false)
+                  setError('')
+                  setForgotMessage('')
+                }}
+              >
+                ← Voltar para o login
+              </button>
+            </form>
           )}
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <Link href="/" className="auth-back">← Voltar aos portais</Link>
         </div>
       </div>
     </div>
