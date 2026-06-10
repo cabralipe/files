@@ -2948,3 +2948,479 @@ input:focus, select:focus, textarea:focus {
 .bnac-rendered .katex-display {
   margin: 8px 0;
 }
+
+/* ═════════════════════════════════════════════════
+   PAINEL AEE · CABEÇALHOS DE SEÇÃO, ABAS E PAEE
+   ═════════════════════════════════════════════════ */
+
+/* Cabeçalho de seção (usado em todas as páginas internas) */
+.saved-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 6px 0 18px;
+}
+
+.saved-head h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(22px, 3.4vw, 30px);
+  line-height: 1.08;
+  letter-spacing: -.025em;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 6px;
+}
+
+.saved-head p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  max-width: 720px;
+  margin: 0;
+}
+
+/* Hero compacto do painel */
+.hero--panel {
+  padding: 34px 26px 38px;
+  margin-bottom: 22px;
+}
+
+.hero--panel .hero-title {
+  font-size: clamp(30px, 5vw, 50px);
+  margin-bottom: 12px;
+}
+
+.hero--panel .hero-sub {
+  font-size: 15px;
+  margin-bottom: 0;
+}
+
+.hero-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.hero-meta .tag {
+  transform: rotate(-.6deg);
+}
+
+.hero-meta .tag:nth-child(2n) {
+  transform: rotate(.8deg);
+}
+
+/* Abas do painel AEE */
+.aee-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.aee-tab {
+  text-align: left;
+  border: 2.5px solid var(--ink);
+  background: var(--paper-soft);
+  padding: 14px 16px 13px;
+  cursor: pointer;
+  box-shadow: var(--stamp);
+  transition: transform .12s, box-shadow .12s, background .12s;
+  position: relative;
+  font-family: var(--font-body);
+}
+
+.aee-tab:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.aee-tab:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.aee-tab.on {
+  background: var(--ink);
+}
+
+.aee-tab-k {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  color: var(--ink-muted);
+  margin-bottom: 5px;
+}
+
+.aee-tab.on .aee-tab-k {
+  color: var(--mustard);
+}
+
+.aee-tab-t {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -.015em;
+  line-height: 1.15;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144;
+}
+
+.aee-tab.on .aee-tab-t {
+  color: var(--paper-soft);
+}
+
+.aee-tab-d {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  margin-top: 5px;
+}
+
+.aee-tab.on .aee-tab-d {
+  color: var(--paper-deep);
+}
+
+/* Chip numerado das etapas do PAEE */
+.step-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--ink);
+  background: var(--mustard);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--ink);
+  flex: none;
+}
+
+/* Trilha de status (PEI/PAEE) */
+.pipe {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0 10px;
+}
+
+.pipe-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 3px 8px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink-muted);
+}
+
+.pipe-pill.on {
+  background: var(--teal);
+  color: #fff;
+}
+
+/* Chip de status do documento */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 5px 10px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.status-chip::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  border: 1.5px solid var(--ink);
+}
+
+.status-chip.is-rascunho::before { background: var(--mustard); }
+.status-chip.is-aguardando_familia::before { background: var(--blue-soft); }
+.status-chip.is-aguardando_aee::before { background: var(--plum-soft); }
+.status-chip.is-vigente::before { background: var(--teal); }
+
+/* Editor do documento gerado */
+.doc-editor {
+  width: 100%;
+  min-height: 440px;
+  padding: 20px 22px;
+  background:
+    linear-gradient(var(--paper-soft), var(--paper-soft)) padding-box,
+    var(--paper-soft);
+  border: 2.5px solid var(--ink);
+  box-shadow: var(--stamp);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink);
+  resize: vertical;
+  border-radius: 0;
+}
+
+.doc-editor:focus {
+  outline: 3px solid var(--mustard);
+  outline-offset: 2px;
+}
+
+/* Barra de ações do documento */
+.doc-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 14px;
+  padding: 14px;
+  border: 2px dashed var(--ink-faint);
+  background: var(--paper);
+}
+
+.doc-actions .pei-note {
+  flex: 1 1 220px;
+}
+
+/* Cartão de articulação PEI ↔ PAEE */
+.link-card {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  background: var(--blue-wash);
+  box-shadow: var(--stamp);
+}
+
+.link-card--warn {
+  background: var(--mustard-wash);
+}
+
+.link-card--ok {
+  background: var(--teal-wash);
+}
+
+.link-card-t {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+@media (max-width: 640px) {
+  .aee-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ═════════════════════════════════════════════════
+   TELAS DE AUTENTICAÇÃO (LOGIN / CADASTRO)
+   ═════════════════════════════════════════════════ */
+
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 16px 48px;
+}
+
+.auth-box {
+  width: 100%;
+  max-width: 480px;
+}
+
+.auth-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.auth-head .logo {
+  margin-bottom: 18px;
+}
+
+.auth-eyebrow {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  color: var(--ink);
+  background: var(--mustard);
+  padding: 5px 10px;
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  margin-bottom: 14px;
+  transform: rotate(-1.2deg);
+}
+
+.auth-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(26px, 5vw, 34px);
+  line-height: 1.05;
+  letter-spacing: -.03em;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144;
+  margin-bottom: 8px;
+}
+
+.auth-title em {
+  font-style: italic;
+  font-weight: 800;
+  color: var(--red-deep);
+}
+
+.auth-sub {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 360px;
+}
+
+.auth-card {
+  position: relative;
+  background: var(--paper-soft);
+  border: 2.5px solid var(--ink);
+  box-shadow: var(--stamp-lg);
+  padding: 26px 24px 24px;
+}
+
+.auth-card::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, transparent 50%, var(--ink) 50%) no-repeat, var(--paper-deep);
+  border-left: 2.5px solid var(--ink);
+  border-bottom: 2.5px solid var(--ink);
+}
+
+.auth-card .fgr {
+  margin-bottom: 14px;
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 2px 0 6px;
+}
+
+.auth-ghost {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-ghost:hover {
+  color: var(--red-deep);
+}
+
+.auth-link {
+  color: var(--red-deep);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.auth-link:hover {
+  color: var(--red);
+}
+
+.auth-alt {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1.5px dashed var(--ink-faint);
+}
+
+.auth-back {
+  display: inline-block;
+  margin-top: 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.auth-back:hover {
+  color: var(--ink);
+}
+
+/* ═════════ BARRA DE SELEÇÃO DE HABILIDADES ═════════ */
+.selbar {
+  position: sticky;
+  bottom: 14px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  padding: 12px 16px;
+  background: var(--ink);
+  border: 2.5px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--red);
+}
+
+.selbar-txt {
+  flex: 1 1 200px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--paper-soft);
+}
+
+.selbar-txt strong {
+  color: var(--mustard);
+}
+
+.selbar .btn {
+  box-shadow: 3px 3px 0 var(--red);
+}

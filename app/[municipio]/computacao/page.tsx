@@ -923,6 +923,16 @@ export default function Home() {
 
       {view === 'skills' && (
         <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>Habilidades BNCC Computação</h1>
+              <p>
+                Explore o referencial por ano, componente ou eixo, e adicione habilidades ao seu plano.
+                As selecionadas ficam marcadas e aparecem na aba &quot;Plano&quot;.
+              </p>
+            </div>
+          </div>
+
           <div className="stats">
             <Stat value={skills.length} label="habilidades" />
             <Stat value={grades.length} label="anos/etapas" />
@@ -964,12 +974,36 @@ export default function Home() {
                 </option>
               ))}
             </select>
+            {(query || grade || subject || axis) && (
+              <button
+                className="btn btn-out"
+                style={{ padding: '8px 14px', fontSize: 12 }}
+                onClick={() => { setQuery(''); setGrade(''); setSubject(''); setAxis('') }}
+              >
+                ✕ Limpar
+              </button>
+            )}
             <span className="fcount">
               {filteredSkills.length === 0
                 ? '0 resultados'
                 : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filteredSkills.length)} de ${filteredSkills.length}`}
             </span>
           </div>
+
+          {filteredSkills.length === 0 && (
+            <div className="est">
+              <div className="est-icon">∅</div>
+              Nenhuma habilidade encontrada com os filtros aplicados.
+              <div style={{ marginTop: 14 }}>
+                <button
+                  className="btn btn-out"
+                  onClick={() => { setQuery(''); setGrade(''); setSubject(''); setAxis('') }}
+                >
+                  ✕ Limpar filtros
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="grid">
             {pagedSkills.map((skill) => {
@@ -980,6 +1014,7 @@ export default function Home() {
                     <span className="tag ta">{skill.grade_level}</span>
                     <span className={`tag ${tagClass[skill.subject] || 'tm'}`}>{skill.subject}</span>
                     <span className="tag tcd">{skill.axis}</span>
+                    {isSelected && <span className="tag tc">No plano</span>}
                   </div>
                   <div className="ceixo">{skill.code}</div>
                   <h2 className="cobj">{skill.name}</h2>
@@ -1054,6 +1089,17 @@ export default function Home() {
                 ›
               </button>
             </nav>
+          )}
+
+          {selected.length > 0 && (
+            <div className="selbar" role="status">
+              <span className="selbar-txt">
+                <strong>{selected.length}</strong> habilidade{selected.length > 1 ? 's' : ''} selecionada{selected.length > 1 ? 's' : ''} para o plano
+              </span>
+              <button className="btn btn-pri" onClick={() => setView('plan')}>
+                Montar plano →
+              </button>
+            </div>
           )}
         </section>
       )}
