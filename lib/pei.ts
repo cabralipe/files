@@ -139,13 +139,22 @@ export function buildPeiPrompt(input: {
   skillsContext: string
   portal: string
   basePei?: string
+  // PAEE do aluno (plano do AEE) para o PEI nascer articulado com o atendimento especializado.
+  paeeContext?: string
 }) {
-  const { student, profile, plan, skillsContext, portal, basePei } = input
+  const { student, profile, plan, skillsContext, portal, basePei, paeeContext } = input
   const p = profile || {}
   const baseBlock = basePei && basePei.trim()
     ? `\nPEI JA CADASTRADO PELO PROFESSOR AEE (use como BASE: preserve o que estiver adequado, complemente e atualize com os novos dados do professor regente e das habilidades; nao contradiga o que foi definido pelo AEE sem justificar pedagogicamente):
 """
 ${basePei.trim()}
+"""
+`
+    : ''
+  const paeeBlock = paeeContext && paeeContext.trim()
+    ? `\nPAEE DO ESTUDANTE (plano do Atendimento Educacional Especializado; use para ARTICULAR o PEI: aproveite os recursos de acessibilidade e estrategias ja definidos pelo AEE, nao os contradiga e indique nos itens de responsabilidades e rotina como sala regular e AEE se complementam):
+"""
+${paeeContext.trim()}
 """
 `
     : ''
@@ -224,7 +233,7 @@ ${listBlock(p.evaluation_adaptations as string[] | undefined)}
 - Observacoes da familia: ${field(p.family_notes)}
 - Acompanhamentos externos informados: ${field(p.external_supports)}
 - Medicacao informada espontaneamente: ${field(p.medication_notes)}
-${baseBlock}
+${baseBlock}${paeeBlock}
 Gere o PEI com esta estrutura:
 
 PEI - PLANO EDUCACIONAL INDIVIDUALIZADO
@@ -252,5 +261,6 @@ PEI - PLANO EDUCACIONAL INDIVIDUALIZADO
 
 Escreva de forma objetiva, aplicavel pela escola e sem linguagem clinica indevida.
 ${baseBlock ? 'Como ha um PEI do AEE, entregue um documento CONSOLIDADO unico (nao dois PEIs separados), deixando claro o que foi mantido e o que foi acrescentado pelo professor regente.' : ''}
+${paeeBlock ? 'Como ha um PAEE, deixe explicita nas secoes 9, 10, 14, 15 e 16 a articulacao entre a sala regular e o atendimento do AEE definido no PAEE.' : ''}
 Use titulos numerados exatamente como acima e preencha todas as secoes.`
 }

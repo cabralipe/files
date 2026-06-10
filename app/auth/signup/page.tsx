@@ -81,41 +81,35 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="mb-8 text-center flex flex-col items-center">
-          <Link href="/" className="logo mb-4 inline-flex">
+    <div className="auth-shell">
+      <div className="auth-box">
+        <div className="auth-head">
+          <Link href="/" className="logo">
             <div className="logo-ic">BN</div>
-            <div className="text-left">
+            <div style={{ textAlign: 'left' }}>
               <div className="logo-t">Portal BNCC Computação</div>
               <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
             </div>
           </Link>
-          <h1 className="font-display font-black text-2xl text-gray-900 mt-2">
-            Cadastro de Professor
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">Crie sua conta para começar a criar experiências e planos</p>
+          <span className="auth-eyebrow">Primeira vez por aqui?</span>
+          <h1 className="auth-title">Cadastro de <em>professor</em></h1>
+          <p className="auth-sub">Crie sua conta para gerar planos, PEIs e PAEEs, e compartilhar experiências.</p>
         </div>
 
-        {/* Card */}
-        <div className="pc w-full">
-          {/* Success Message */}
+        <div className="auth-card">
           {success && (
-            <div className="al-ok mb-4">
+            <div className="al-ok" style={{ marginBottom: 14 }}>
               {success}
             </div>
           )}
 
-          {/* Error Messages */}
           {(error || authError) && (
-            <div className="al-error mb-4">
+            <div className="al-error" style={{ marginBottom: 14 }}>
               {error || authError}
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit}>
             {/* Name */}
             <label className="fgr">
               <span className="fl">Nome Completo</span>
@@ -214,26 +208,26 @@ export default function SignUp() {
               />
             </label>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn btn-pri mt-6"
+              className="btn btn-pri btn-lg"
+              style={{ width: '100%', marginTop: 8 }}
             >
-              {loading ? 'Carregando...' : 'Criar Conta'}
+              {loading ? 'Criando conta...' : 'Criar conta →'}
             </button>
           </form>
 
-          {/* Footer */}
-          <p className="text-center text-sm text-gray-600 mt-6">
+          <p className="auth-alt">
             Já tem conta?{' '}
-            <Link
-              href="/auth/login"
-              className="text-indigo-600 hover:underline font-semibold"
-            >
+            <Link href="/auth/login" className="auth-link">
               Faça login
             </Link>
           </p>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <Link href="/" className="auth-back">← Voltar aos portais</Link>
         </div>
       </div>
     </div>
