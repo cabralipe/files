@@ -363,60 +363,84 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
     return <p className="pei-note">Faça login com uma conta autorizada (professor AEE, coordenação ou administração) para elaborar o PAEE.</p>
   }
 
+  const currentStage = savedStatus || (savedPlanId ? 'rascunho' : '')
+  const pipeline = [
+    { key: 'rascunho', label: 'Elaborado' },
+    { key: 'aguardando_familia', label: 'Família' },
+    { key: 'vigente', label: 'Vigente' },
+  ]
+  const stageIdx = pipeline.findIndex((item) => item.key === currentStage)
+
   return (
-    <div className="pc">
+    <div>
       {message && <div className="al-ok">{message}</div>}
       {error && <div className="al-error">{error}</div>}
 
-      <div className="bnac-form-section">1 · Estudante</div>
-      <div className="fg">
-        <Field label="Aluno vinculado ao PAEE" wide hint="O PAEE é elaborado a partir da ficha AEE do aluno. Cadastre o aluno na seção acima se ele não aparecer aqui.">
-          <select value={studentId} onChange={(event) => setStudentId(event.target.value)}>
-            <option value="">{loadingStudents ? 'Carregando alunos...' : 'Selecione o aluno da escola'}</option>
-            {students.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.full_name} - {item.grade_level}{item.class_name ? ` / ${item.class_name}` : ''}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+      <div className="pc">
+        <div className="pct"><span className="step-chip">1</span> Estudante</div>
+        <div className="fg">
+          <Field label="Aluno vinculado ao PAEE" wide hint="O PAEE é elaborado a partir da ficha AEE do aluno. Cadastre o aluno na aba de cadastro se ele não aparecer aqui.">
+            <select value={studentId} onChange={(event) => setStudentId(event.target.value)}>
+              <option value="">{loadingStudents ? 'Carregando alunos...' : 'Selecione o aluno da escola'}</option>
+              {students.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.full_name} - {item.grade_level}{item.class_name ? ` / ${item.class_name}` : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        {!loadingStudents && !students.length && (
+          <p className="pei-note" style={{ marginTop: 8 }}>
+            Nenhum aluno com ficha AEE encontrado. Cadastre o aluno na aba &quot;Cadastro do aluno&quot; para que ele apareça aqui.
+          </p>
+        )}
 
-      {studentId && (
-        <div className="pei-source" style={{ margin: '8px 0 4px', padding: '10px 12px', border: '2px solid var(--ink)', background: 'var(--paper-soft)' }}>
-          {checkingDocs ? (
-            <p className="pei-note">Verificando PEI e PAEE do aluno...</p>
+        {studentId && (
+          checkingDocs ? (
+            <div className="link-card">
+              <div className="link-card-t">Articulação PEI ↔ PAEE</div>
+              <p className="pei-note">Verificando PEI e PAEE do aluno...</p>
+            </div>
           ) : (
             <>
               {existingPaee && (
-                <p className="pei-note" style={{ marginBottom: 6 }}>
-                  Este aluno já possui um PAEE <strong>({STATUS_LABEL[existingPaee.plan_status] || existingPaee.plan_status})</strong>.
-                  Gerar e salvar um novo cria um documento adicional — use isso nas revisões bimestrais/trimestrais.
-                </p>
+                <div className="link-card link-card--warn">
+                  <div className="link-card-t">PAEE existente</div>
+                  <p className="pei-note">
+                    Este aluno já possui um PAEE <strong>({STATUS_LABEL[existingPaee.plan_status] || existingPaee.plan_status})</strong>.
+                    Gerar e salvar um novo cria um documento adicional — use isso nas revisões bimestrais/trimestrais.
+                  </p>
+                </div>
               )}
               {existingPei ? (
-                <>
+                <div className="link-card link-card--ok">
+                  <div className="link-card-t">Articulação PEI ↔ PAEE</div>
                   <p className="pei-note">
                     PEI encontrado para este aluno <strong>({STATUS_LABEL[existingPei.plan_status] || existingPei.plan_status})</strong>.
                   </p>
-                  <label className="pei-check" style={{ display: 'block', marginTop: 6 }}>
-                    <input type="checkbox" checked={articularPei} onChange={(event) => setArticularPei(event.target.checked)} />{' '}
+                  <label className="pei-check" style={{ display: 'flex', marginTop: 8, marginBottom: 0 }}>
+                    <input type="checkbox" checked={articularPei} onChange={(event) => setArticularPei(event.target.checked)} />
                     Articular o PAEE com o PEI da sala regular (recomendado)
                   </label>
-                </>
+                </div>
               ) : (
-                <p className="pei-note">
-                  Este aluno ainda não tem PEI. O PAEE pode ser elaborado mesmo assim; a articulação com a sala
-                  regular será registrada como recomendação para a equipe elaborar o PEI.
-                </p>
+                <div className="link-card">
+                  <div className="link-card-t">Articulação PEI ↔ PAEE</div>
+                  <p className="pei-note">
+                    Este aluno ainda não tem PEI. O PAEE pode ser elaborado mesmo assim; a articulação com a sala
+                    regular será registrada como recomendação para a equipe elaborar o PEI.
+                  </p>
+                </div>
               )}
             </>
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
 
-      <div className="bnac-form-section" style={{ marginTop: 16 }}>2 · Organização do atendimento</div>
-      <div className="fg">
+      <div className="pc">
+        <div className="pct"><span className="step-chip">2</span> Organização do atendimento</div>
+        <div className="fg">
         <Field label="Frequência semanal" hint="Quantas vezes por semana o aluno será atendido no AEE.">
           <input value={organizacao.frequencia_semanal} onChange={(event) => updateOrganizacao('frequencia_semanal', event.target.value)} placeholder="2 vezes por semana" />
         </Field>
@@ -450,29 +474,46 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
         <Field label="Metas por bimestre/trimestre" wide hint="Metas de acompanhamento que o AEE pretende alcançar em cada período.">
           <textarea value={organizacao.metas_periodo} onChange={(event) => updateOrganizacao('metas_periodo', event.target.value)} placeholder="Ex.: 1º bimestre: consolidar rotina visual; 2º bimestre: ampliar comunicação alternativa" />
         </Field>
-        <Field label="Observações do professor AEE" wide hint="Avaliação funcional/pedagógica, prioridades do atendimento e o que mais a IA deve considerar.">
-          <textarea value={observacoes} onChange={(event) => setObservacoes(event.target.value)} placeholder="Avaliação funcional, prioridades, combinados com a família e com o professor regente" />
-        </Field>
-      </div>
+          <Field label="Observações do professor AEE" wide hint="Avaliação funcional/pedagógica, prioridades do atendimento e o que mais a IA deve considerar.">
+            <textarea value={observacoes} onChange={(event) => setObservacoes(event.target.value)} placeholder="Avaliação funcional, prioridades, combinados com a família e com o professor regente" />
+          </Field>
+        </div>
 
-      <div className="brow" style={{ marginTop: 12 }}>
-        <button className="btn btn-pri" type="button" disabled={generating || !studentId} onClick={() => void generatePaee()}>
-          {generating ? 'Gerando PAEE...' : 'Gerar PAEE com IA'}
-        </button>
+        <div className="brow" style={{ marginTop: 14 }}>
+          <button className="btn btn-pri btn-lg" type="button" disabled={generating || !studentId} onClick={() => void generatePaee()}>
+            {generating ? 'Gerando PAEE...' : '✦ Gerar PAEE com IA'}
+          </button>
+          {!studentId && <span className="pei-note">Selecione o aluno na etapa 1 para liberar a geração.</span>}
+        </div>
       </div>
 
       {generated && (
-        <>
-          <div className="bnac-form-section" style={{ marginTop: 16 }}>3 · Revisão e tramitação</div>
-          <p className="pei-note" style={{ marginBottom: 8 }}>
+        <div className="pc">
+          <div className="pct"><span className="step-chip">3</span> Revisão e tramitação</div>
+
+          <div className="pipe" aria-label="Tramitação do PAEE">
+            {pipeline.map((item, i) => (
+              <span key={item.key} className={`pipe-pill${i <= stageIdx && stageIdx >= 0 ? ' on' : ''}`}>
+                {item.label}
+              </span>
+            ))}
+            {currentStage && (
+              <span className={`status-chip is-${currentStage}`} style={{ marginLeft: 'auto' }}>
+                {STATUS_LABEL[currentStage] || currentStage}
+              </span>
+            )}
+          </div>
+
+          <p className="pei-note" style={{ marginBottom: 10 }}>
             Revise o texto gerado — a revisão humana do professor AEE é obrigatória antes do envio à família.
           </p>
           <textarea
+            className="doc-editor"
             value={generated}
             onChange={(event) => setGenerated(event.target.value)}
-            style={{ width: '100%', minHeight: 360, fontFamily: 'var(--font-mono)', fontSize: 13 }}
+            aria-label="Texto do PAEE para revisão"
           />
-          <div className="brow" style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="doc-actions">
             <button className="btn btn-pri" type="button" disabled={saving || !!savedPlanId} onClick={() => void savePaee()}>
               {saving ? 'Salvando...' : savedPlanId ? 'PAEE salvo ✓' : 'Salvar PAEE'}
             </button>
@@ -482,16 +523,17 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
               </button>
             )}
             <button className="btn btn-out" type="button" onClick={() => void downloadPdf()}>
-              Baixar PDF
+              ↓ Baixar PDF
             </button>
-          </div>
-          {savedStatus === 'aguardando_familia' && (
-            <p className="pei-note" style={{ marginTop: 8 }}>
-              Status atual: <strong>aguardando ciência da família</strong>. A família visualiza o PAEE no portal da
-              família; a concordância pode ser registrada pela família ou pela coordenação em nome dela.
+            <p className="pei-note">
+              {savedStatus === 'aguardando_familia'
+                ? 'A família visualiza o PAEE no portal da família; a concordância pode ser registrada pela família ou pela coordenação em nome dela.'
+                : savedPlanId
+                ? 'Rascunho salvo. Envie para ciência da família quando o texto estiver pronto.'
+                : 'Salve para vincular o PAEE ao aluno e iniciar a tramitação.'}
             </p>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   )

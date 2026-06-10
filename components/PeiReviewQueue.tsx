@@ -168,22 +168,9 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
                   <div className="pi-date">{new Date(plan.created_at).toLocaleString('pt-BR')}</div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 10px' }}>
+                <div className="pipe">
                   {pipeline.map((s, i) => (
-                    <span
-                      key={s.key}
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '.06em',
-                        padding: '3px 7px',
-                        border: '1.5px solid var(--ink)',
-                        background: i <= stageIdx && stageIdx >= 0 ? 'var(--teal)' : 'var(--paper)',
-                        color: i <= stageIdx && stageIdx >= 0 ? 'white' : 'var(--ink-muted)',
-                      }}
-                    >
+                    <span key={s.key} className={`pipe-pill${i <= stageIdx && stageIdx >= 0 ? ' on' : ''}`}>
                       {s.label}
                     </span>
                   ))}
