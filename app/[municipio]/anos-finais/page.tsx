@@ -7,6 +7,7 @@ import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { municipalSchools } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
+import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,51 @@ const YEAR_ORDER = [
 
 const PAGE_SIZE = 24
 
+const TUTORIAL_STEPS: TutorialStep[] = [
+  {
+    icon: 'AF',
+    iconStyle: { background: 'var(--blue)', color: 'var(--paper-soft)' },
+    title: 'Bem-vindo aos Anos Finais!',
+    body: 'Este portal reúne as 722 habilidades do Referencial Curricular de Atalaia/AL para o 6º ao 9º Ano, com desdobramentos contextualizados para a realidade do município. Veja como usar em poucos passos.',
+    tip: null,
+  },
+  {
+    icon: '∑',
+    iconStyle: { background: 'var(--paper)', color: 'var(--ink)' },
+    title: 'Visão geral do referencial',
+    body: 'Estes números mostram o tamanho do referencial: total de habilidades, disciplinas e anos. O contador de "resultados" muda conforme você filtra.',
+    selector: '.stats',
+  },
+  {
+    icon: '⌕',
+    iconStyle: { background: 'var(--blue-wash)', color: 'var(--ink)' },
+    title: 'Busque e filtre',
+    body: 'Pesquise por código (ex.: EF67LP01), palavra-chave ou objeto de conhecimento. Combine com os filtros de disciplina e ano para chegar rápido ao que precisa.',
+    selector: '.fbar',
+  },
+  {
+    icon: '▤',
+    iconStyle: { background: 'var(--paper)', color: 'var(--ink)' },
+    title: 'Conheça o card de habilidade',
+    body: 'Cada card traz o código oficial, a habilidade e o objeto de conhecimento. Clique em "Detalhes" para ver o desdobramento territorializado de Atalaia, e em "+ Plano" para usar a habilidade no seu plano de aula.',
+    selector: '.grid .scard',
+  },
+  {
+    icon: '✎',
+    iconStyle: { background: 'var(--mustard-wash)', color: 'var(--ink)' },
+    title: 'Gere o plano com IA',
+    body: 'Com as habilidades selecionadas, vá para a aba "Plano", preencha tema, turma e objetivos e clique em "Gerar plano com IA". O plano sai completo e você pode editar tudo antes de salvar.',
+    tip: 'Plano',
+  },
+  {
+    icon: '↓',
+    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
+    title: 'Salve e baixe em PDF',
+    body: 'Salve seus planos para reutilizar depois na aba "Salvos", ou baixe em PDF com identidade visual da Secretaria — pronto para imprimir e levar à sala de aula.',
+    tip: 'Salvos',
+  },
+]
+
 function normalizeText(v: string) {
   return v.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
@@ -121,6 +167,7 @@ async function getAccessToken() {
 export default function AnosFinaisPage() {
   const { user, signOut } = useAuth()
   const { slug } = useMunicipality()
+  const { open: tutorialOpen, openTutorial, closeTutorial } = usePortalTutorial('af_tutorial_seen')
 
   // data
   const [skills, setSkills] = useState<Skill[]>([])
@@ -468,9 +515,17 @@ export default function AnosFinaisPage() {
             ) : (
               <Link className="nb nb-cta" href="/auth/login">Login</Link>
             )}
+            <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">?</button>
           </nav>
         </div>
       </header>
+
+      <PortalTutorial
+        open={tutorialOpen}
+        onClose={closeTutorial}
+        steps={TUTORIAL_STEPS}
+        masthead="ANOS FINAIS · TUTORIAL"
+      />
 
       {/* ── View: Habilidades ── */}
       {view === 'skills' && (
@@ -482,6 +537,14 @@ export default function AnosFinaisPage() {
             </div>
           ) : (
             <>
+              <SkillsHowTo
+                storageKey="af_howto_seen"
+                accentVar="var(--blue)"
+                washVar="var(--blue-wash)"
+                referencialLabel="Referencial Curricular de Atalaia — Anos Finais (6º ao 9º Ano)"
+                onOpenTutorial={openTutorial}
+              />
+
               <div className="stats">
                 <StatCard value={skills.length} label="habilidades" />
                 <StatCard value={disciplines.length} label="disciplinas" />
@@ -521,7 +584,16 @@ export default function AnosFinaisPage() {
               </div>
 
               {filtered.length === 0 ? (
-                <div className="est">Nenhuma habilidade encontrada com os filtros aplicados.</div>
+                <div className="est">
+                  Nenhuma habilidade encontrada com os filtros aplicados.<br />
+                  <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+                    Dica: confira a grafia da busca ou experimente remover um dos filtros.
+                  </span><br />
+                  <button className="btn btn-out" style={{ marginTop: 12, fontSize: 12 }}
+                    onClick={() => { setDiscipline(''); setYear(''); setQuery('') }}>
+                    ✕ Limpar todos os filtros
+                  </button>
+                </div>
               ) : (
                 <>
                 <div className="grid">

@@ -22,6 +22,11 @@ export default function MunicipioHome() {
           <p className="portal-sel-eyebrow">Secretaria Municipal de Educação · Atalaia/AL</p>
           <h1 className="portal-sel-title">Qual portal você quer acessar?</h1>
           <p className="portal-sel-sub">Escolha o referencial curricular para começar.</p>
+          <p className="portal-sel-hint">
+            O <strong>referencial curricular</strong> é o documento que organiza o que os alunos devem aprender
+            em cada ano. Escolha abaixo o referencial da etapa em que você atua — nele você explora as
+            habilidades e cria planos de aula com ajuda de IA.
+          </p>
         </div>
 
         <div className="portal-sel-grid">
@@ -81,6 +86,89 @@ export default function MunicipioHome() {
             </div>
             <div className="portal-card-arrow">→</div>
           </Link>
+        </div>
+
+        {/* ── Como funciona ── */}
+        <div className="portal-how">
+          <div className="portal-how-title">Como funciona, em 3 passos</div>
+          <div className="portal-how-grid">
+            <div className="portal-how-step">
+              <span className="portal-how-n">1</span>
+              <div>
+                <strong>Escolha o referencial</strong>
+                <p>Clique no card da etapa em que você atua: Anos Iniciais (1º–5º), Anos Finais (6º–9º) ou BNCC Computação.</p>
+              </div>
+            </div>
+            <div className="portal-how-step">
+              <span className="portal-how-n">2</span>
+              <div>
+                <strong>Explore as habilidades</strong>
+                <p>Busque por código ou palavra-chave, filtre por disciplina e ano, e veja o desdobramento de cada habilidade para a realidade de Atalaia.</p>
+              </div>
+            </div>
+            <div className="portal-how-step">
+              <span className="portal-how-n">3</span>
+              <div>
+                <strong>Gere planos de aula com IA</strong>
+                <p>Selecione habilidades, preencha os dados da aula e a IA escreve um plano completo — editável, salvável e exportável em PDF.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Dúvidas frequentes ── */}
+        <div className="portal-faq">
+          <div className="portal-faq-title">Dúvidas frequentes</div>
+
+          <details className="portal-faq-item">
+            <summary>Qual portal devo escolher?</summary>
+            <p>
+              Depende da etapa em que você leciona: professores do <strong>1º ao 5º ano</strong> usam o portal
+              <strong> Anos Iniciais</strong>; do <strong>6º ao 9º ano</strong>, o portal <strong>Anos Finais</strong>.
+              O portal <strong>BNCC Computação</strong> atende todo o Ensino Fundamental e traz as habilidades de
+              pensamento computacional, mundo digital e cultura digital — útil para qualquer professor que queira
+              integrar tecnologia às suas aulas.
+            </p>
+          </details>
+
+          <details className="portal-faq-item">
+            <summary>O que é um referencial curricular?</summary>
+            <p>
+              É o documento oficial que organiza <strong>o que os alunos devem aprender</strong> em cada ano e
+              disciplina. Os referenciais de Atalaia são <strong>territorializados</strong>: partem da BNCC
+              (Base Nacional Comum Curricular) e contextualizam cada habilidade para a história, a cultura e a
+              realidade do município.
+            </p>
+          </details>
+
+          <details className="portal-faq-item">
+            <summary>O que significa cada código (ex.: EF67LP01)?</summary>
+            <p>
+              É o código oficial da habilidade na BNCC. <strong>EF</strong> indica Ensino Fundamental,
+              os números seguintes indicam o(s) ano(s) (<strong>67</strong> = 6º e 7º ano), as letras indicam o
+              componente (<strong>LP</strong> = Língua Portuguesa, <strong>MA</strong> = Matemática...) e o número
+              final é a posição da habilidade na sequência.
+            </p>
+          </details>
+
+          <details className="portal-faq-item">
+            <summary>O que é o "desdobramento territorializado"?</summary>
+            <p>
+              É a versão da habilidade adaptada para Atalaia: sugestões de como trabalhar o mesmo objetivo de
+              aprendizagem usando exemplos, espaços e saberes locais do município. Você vê o desdobramento ao
+              clicar em <strong>"Detalhes"</strong> em qualquer habilidade.
+            </p>
+          </details>
+
+          <details className="portal-faq-item">
+            <summary>Como a IA gera os planos de aula? Preciso de conta?</summary>
+            <p>
+              Você seleciona as habilidades, informa tema, turma e objetivos, e a IA monta um plano completo
+              (objetivos, metodologia, desenvolvimento da aula, avaliação) alinhado ao referencial. O plano é
+              <strong> totalmente editável</strong> antes de salvar ou baixar em PDF. Para gerar e salvar planos,
+              basta fazer login com sua conta de professor da rede.
+            </p>
+          </details>
         </div>
       </section>
 
@@ -226,9 +314,131 @@ export default function MunicipioHome() {
           transition: color .15s;
         }
         .portal-card:hover .portal-card-arrow { color: var(--ink); }
+        .portal-sel-hint {
+          max-width: 62ch;
+          margin: 14px auto 0;
+          font-size: 13.5px;
+          line-height: 1.65;
+          color: var(--ink-soft);
+        }
+        .portal-sel-hint strong { color: var(--ink); }
+
+        /* ── Como funciona ── */
+        .portal-how {
+          max-width: 1200px;
+          margin: 48px auto 0;
+        }
+        .portal-how-title, .portal-faq-title {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: .2em;
+          color: var(--ink-muted);
+          margin-bottom: 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .portal-how-title::after, .portal-faq-title::after {
+          content: '';
+          flex: 1;
+          height: 2px;
+          background: var(--ink-faint);
+        }
+        .portal-how-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 16px;
+        }
+        .portal-how-step {
+          display: flex;
+          gap: 14px;
+          align-items: flex-start;
+          background: var(--paper-soft);
+          border: 2px solid var(--ink);
+          box-shadow: 4px 4px 0 var(--ink);
+          padding: 16px 18px;
+        }
+        .portal-how-n {
+          width: 32px;
+          height: 32px;
+          flex-shrink: 0;
+          display: grid;
+          place-items: center;
+          border: 2px solid var(--ink);
+          background: var(--mustard-wash);
+          font-family: var(--font-display);
+          font-weight: 900;
+          font-size: 16px;
+          transform: rotate(-3deg);
+        }
+        .portal-how-step strong {
+          display: block;
+          font-size: 14px;
+          font-weight: 800;
+          color: var(--ink);
+          margin-bottom: 4px;
+        }
+        .portal-how-step p {
+          font-size: 12.5px;
+          line-height: 1.6;
+          color: var(--ink-soft);
+          margin: 0;
+        }
+
+        /* ── FAQ ── */
+        .portal-faq {
+          max-width: 1200px;
+          margin: 40px auto 24px;
+        }
+        .portal-faq-item {
+          border: 2px solid var(--ink);
+          background: var(--paper-soft);
+          margin-bottom: 10px;
+          box-shadow: 3px 3px 0 var(--ink);
+        }
+        .portal-faq-item summary {
+          cursor: pointer;
+          list-style: none;
+          padding: 14px 18px;
+          font-weight: 800;
+          font-size: 14px;
+          color: var(--ink);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          user-select: none;
+        }
+        .portal-faq-item summary::before {
+          content: '+';
+          font-family: var(--font-display);
+          font-weight: 900;
+          font-size: 18px;
+          color: var(--red);
+          width: 18px;
+          flex-shrink: 0;
+          transition: transform .15s;
+        }
+        .portal-faq-item[open] summary::before {
+          content: '−';
+        }
+        .portal-faq-item summary::-webkit-details-marker { display: none; }
+        .portal-faq-item summary:hover { background: var(--mustard-wash); }
+        .portal-faq-item p {
+          padding: 0 18px 16px 46px;
+          font-size: 13px;
+          line-height: 1.7;
+          color: var(--ink-soft);
+          margin: 0;
+        }
+        .portal-faq-item p strong { color: var(--ink); }
+
         @media (max-width: 600px) {
           .portal-sel-grid { grid-template-columns: 1fr; }
           .portal-card-title { font-size: 28px; }
+          .portal-how { margin-top: 32px; }
+          .portal-faq-item p { padding-left: 18px; }
         }
       `}</style>
     </main>

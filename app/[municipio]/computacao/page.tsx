@@ -7,6 +7,7 @@ import Link from '@/lib/m-link'
 import { municipalSchools } from '@/lib/education-options'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
+import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
 
 
 type Skill = {
@@ -190,20 +191,27 @@ function normalizePdfText(value: string) {
     .replace(/[🧠📚🔍💡✏️🎨🧩🎭🍲🛠️📊⚙️✨⚡💡🎓🏫📝✏️💻🚀⭐🏷️📅⏰🕒🗒️📌]/g, '')
 }
 
-const TUTORIAL_STEPS = [
+const TUTORIAL_STEPS: TutorialStep[] = [
   {
     icon: 'BN',
     iconStyle: { background: 'var(--red)', color: 'var(--paper-soft)' },
     title: 'Bem-vindo ao Portal BNCC!',
-    body: 'Esta plataforma foi feita para professores de Atalaia/AL criarem planos de aula alinhados à BNCC Computação. Veja como funciona em 4 passos.',
+    body: 'Esta plataforma foi feita para professores de Atalaia/AL criarem planos de aula alinhados à BNCC Computação. Veja como funciona em poucos passos.',
     tip: null,
   },
   {
     icon: '⌕',
     iconStyle: { background: 'var(--blue-wash)', color: 'var(--ink)' },
     title: 'Pesquise as habilidades',
-    body: 'Use a aba "Pesquisar" para explorar as habilidades da BNCC. Filtre por ano, componente ou eixo temático e selecione as habilidades que quer usar.',
-    tip: 'Pesquisar',
+    body: 'Use a busca e os filtros de ano, componente e eixo temático para explorar as habilidades da BNCC Computação e encontrar as que combinam com a sua aula.',
+    selector: '.fbar',
+  },
+  {
+    icon: '▤',
+    iconStyle: { background: 'var(--paper)', color: 'var(--ink)' },
+    title: 'Conheça o card de habilidade',
+    body: 'Cada card traz o código oficial, a habilidade e o eixo da BNCC. Clique em "Detalhes" para ver a descrição completa e em "+ Plano" para adicionar ao seu plano de aula.',
+    selector: '.grid .scard',
   },
   {
     icon: '✎',
@@ -253,8 +261,7 @@ export default function Home() {
   const [activeSkill, setActiveSkill] = useState<Skill | null>(null)
   const [loadingPhrase, setLoadingPhrase] = useState('🧠 Pensando no plano...')
   const [progress, setProgress] = useState(0)
-  const [showTutorial, setShowTutorial] = useState(false)
-  const [tutorialStep, setTutorialStep] = useState(0)
+  const { open: tutorialOpen, openTutorial, closeTutorial } = usePortalTutorial('bncc_tutorial_seen')
   const [page, setPage] = useState(1)
 
   useEffect(() => {
@@ -262,12 +269,6 @@ export default function Home() {
     setForm((f) => f.date ? f : { ...f, date: today })
     setAee((a) => a.data ? a : { ...a, data: today })
     setFamily((fam) => fam.data_consulta ? fam : { ...fam, data_consulta: today })
-  }, [])
-
-  useEffect(() => {
-    if (!localStorage.getItem('bncc_tutorial_seen')) {
-      setShowTutorial(true)
-    }
   }, [])
 
   useEffect(() => {
@@ -849,12 +850,6 @@ export default function Home() {
     doc.save(`plano-${safeTitle || 'aula'}.pdf`)
   }
 
-  function closeTutorial() {
-    localStorage.setItem('bncc_tutorial_seen', '1')
-    setShowTutorial(false)
-    setTutorialStep(0)
-  }
-
   return (
     <main>
       <header id="hdr">
@@ -916,13 +911,21 @@ export default function Home() {
                 </Link>
               </>
             )}
-            <button className="nb tut-open" onClick={() => setShowTutorial(true)} aria-label="Abrir tutorial de uso">?</button>
+            <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">?</button>
           </nav>
         </div>
       </header>
 
       {view === 'skills' && (
         <section className="pg">
+          <SkillsHowTo
+            storageKey="bncc_howto_seen"
+            accentVar="var(--red)"
+            washVar="var(--red-wash)"
+            referencialLabel="complemento da BNCC Computação (1º ao 9º Ano)"
+            onOpenTutorial={openTutorial}
+          />
+
           <div className="stats">
             <Stat value={skills.length} label="habilidades" />
             <Stat value={grades.length} label="anos/etapas" />
@@ -1402,45 +1405,12 @@ export default function Home() {
         </div>
       )}
 
-      {showTutorial && (
-        <div className="mbk tut-bk" onClick={closeTutorial}>
-          <div className="mdl tut-mdl" onClick={(e) => e.stopPropagation()}>
-            <button className="mdl-close" onClick={closeTutorial}>×</button>
-            <div className="tut-dots">
-              {TUTORIAL_STEPS.map((_, i) => (
-                <button
-                  key={i}
-                  className={`tut-dot ${i === tutorialStep ? 'on' : i < tutorialStep ? 'done' : ''}`}
-                  onClick={() => setTutorialStep(i)}
-                  aria-label={`Ir para passo ${i + 1}`}
-                />
-              ))}
-            </div>
-            <div className="tut-icon" style={TUTORIAL_STEPS[tutorialStep].iconStyle}>
-              {TUTORIAL_STEPS[tutorialStep].icon}
-            </div>
-            <div className="tut-step">Passo {tutorialStep + 1} de {TUTORIAL_STEPS.length}</div>
-            <h2 className="tut-title">{TUTORIAL_STEPS[tutorialStep].title}</h2>
-            <p className="tut-body">{TUTORIAL_STEPS[tutorialStep].body}</p>
-            {TUTORIAL_STEPS[tutorialStep].tip && (
-              <p className="tut-tip">
-                Clique em <span className="tut-navmock">{TUTORIAL_STEPS[tutorialStep].tip}</span> no menu do topo
-              </p>
-            )}
-            <div className="tut-actions">
-              {tutorialStep > 0 && (
-                <button className="btn btn-out" onClick={() => setTutorialStep(tutorialStep - 1)}>← Anterior</button>
-              )}
-              {tutorialStep < TUTORIAL_STEPS.length - 1 ? (
-                <button className="btn btn-pri" onClick={() => setTutorialStep(tutorialStep + 1)}>Próximo →</button>
-              ) : (
-                <button className="btn btn-pri" onClick={closeTutorial}>Entendido! ✓</button>
-              )}
-            </div>
-            <button className="tut-skip" onClick={closeTutorial}>Pular tutorial</button>
-          </div>
-        </div>
-      )}
+      <PortalTutorial
+        open={tutorialOpen}
+        onClose={closeTutorial}
+        steps={TUTORIAL_STEPS}
+        masthead="PORTAL BNCC · TUTORIAL"
+      />
 
       {!user && (
         <div className="mob-cta">
