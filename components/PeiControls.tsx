@@ -72,6 +72,14 @@ export default function PeiControls({
   const role = String(user?.user_metadata?.role || '')
   const canManageAee = ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
   const isAdminRole = ['admin', 'municipality_admin', 'super_admin'].includes(role)
+  // PEI é exclusivo de perfis pedagógicos logados (espelha canGeneratePei do backend).
+  const canUsePei = Boolean(user) && role !== 'family'
+  const [lockNotice, setLockNotice] = useState(false)
+
+  // Se a sessão expira (ou o usuário sai) com o modo PEI ativo, volta para Plano.
+  useEffect(() => {
+    if (!canUsePei && planKind === 'pei') onPlanKindChange('plano')
+  }, [canUsePei, planKind, onPlanKindChange])
 
   useEffect(() => {
     if (!user || planKind !== 'pei') return
@@ -167,13 +175,28 @@ export default function PeiControls({
           Plano
         </button>
         <button
-          className={`pei-mode-option${planKind === 'pei' ? ' on' : ''}`}
+          className={`pei-mode-option${planKind === 'pei' ? ' on' : ''}${!canUsePei ? ' locked' : ''}`}
           type="button"
-          onClick={() => onPlanKindChange('pei')}
+          aria-disabled={!canUsePei}
+          title={!canUsePei ? 'Disponível apenas para professores logados' : undefined}
+          onClick={() => {
+            if (!canUsePei) { setLockNotice(true); return }
+            setLockNotice(false)
+            onPlanKindChange('pei')
+          }}
         >
-          PEI
+          PEI{!canUsePei && ' 🔒'}
         </button>
       </div>
+
+      {!canUsePei && lockNotice && (
+        <div className="pei-login-required" role="alert">
+          <strong>O PEI é exclusivo para professores logados na plataforma.</strong>{' '}
+          {user
+            ? 'Sua conta não tem perfil pedagógico autorizado para criar PEI.'
+            : <>Entre com sua conta de professor para criar Planos Educacionais Individualizados. <Link href="/auth/login">Fazer login →</Link></>}
+        </div>
+      )}
 
       {planKind === 'pei' && (
         <div className="pei-student-box">
@@ -237,35 +260,4 @@ export default function PeiControls({
                           type="radio"
                           name="pei-source"
                           checked={peiSource === 'create'}
-                          onChange={() => onPeiSourceChange?.('create')}
-                        />{' '}
-                        Criar o meu PEI (a IA combina o do AEE com o meu)
-                      </label>
-                    </>
-                  ) : (
-                    <p className="pei-note">
-                      Ficha AEE encontrada para este aluno. O PEI será criado a partir dos dados já cadastrados.
-                    </p>
-                  )}
-                  {!loadingExisting && existingPaee && (
-                    <p className="pei-note" style={{ marginTop: 8 }}>
-                      Este aluno tem um PAEE elaborado pelo AEE
-                      {' '}(<strong>{STATUS_LABEL[existingPaee.plan_status] || existingPaee.plan_status}</strong>).
-                      O PEI gerado será articulado automaticamente com o atendimento especializado.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {canManageAee && (
-                <Link className="btn btn-out" href="/aee" style={{ marginTop: 8 }}>
-                  Cadastrar aluno / ficha AEE
-                </Link>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
+                          onChange={() => onPeiSourceChange?.('crea

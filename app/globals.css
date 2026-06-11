@@ -858,17 +858,36 @@ input:focus, select:focus, textarea:focus {
   padding: 18px 16px 14px;
   display: flex;
   flex-direction: column;
-  transition: transform .15s, box-shadow .15s;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
   box-shadow: var(--stamp);
   border-radius: 0px;
   min-height: auto;
   gap: 0px;
+  animation: scard-in .35s ease-out backwards;
+}
+
+/* Entrada em cascata: os primeiros cards surgem em sequência */
+.grid .scard:nth-child(1) { animation-delay: .02s; }
+.grid .scard:nth-child(2) { animation-delay: .06s; }
+.grid .scard:nth-child(3) { animation-delay: .10s; }
+.grid .scard:nth-child(4) { animation-delay: .14s; }
+.grid .scard:nth-child(5) { animation-delay: .18s; }
+.grid .scard:nth-child(6) { animation-delay: .22s; }
+
+@keyframes scard-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .scard:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 5px 5px 0 var(--ink);
+  transform: translate(-3px, -3px);
+  box-shadow: 6px 6px 0 var(--ink);
   border-color: var(--ink);
+}
+
+.scard:focus-within {
+  outline: 3px dashed var(--blue);
+  outline-offset: 3px;
 }
 
 .scard.in-plan {
@@ -878,10 +897,36 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--ink);
 }
 .scard.in-plan:hover {
-  box-shadow: 6px 6px 0 var(--teal);
+  box-shadow: 7px 7px 0 var(--teal);
 }
+
+/* Carimbo "no plano": feedback claro de seleção */
 .scard.in-plan::after {
-  display: none; /* Hide old text badge */
+  content: '✓ NO PLANO';
+  position: absolute;
+  top: -12px;
+  left: 10px;
+  background: var(--teal);
+  color: var(--paper-soft);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  padding: 3px 9px;
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  transform: rotate(-2deg);
+  animation: stamp-in .25s cubic-bezier(.2, 1.4, .4, 1);
+}
+
+@keyframes stamp-in {
+  from { opacity: 0; transform: rotate(-2deg) scale(1.6); }
+  to   { opacity: 1; transform: rotate(-2deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scard, .scard.in-plan::after { animation: none; }
+  .scard, .bsm { transition: none; }
 }
 
 .scard::before {
@@ -988,11 +1033,47 @@ input:focus, select:focus, textarea:focus {
 .bsm:hover {
   transform: translate(-1px, -1px);
   background: var(--paper-deep);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.bsm:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+.bsm:focus-visible {
+  outline: 3px dashed var(--blue);
+  outline-offset: 2px;
 }
 .bsm.bdet:hover { background: var(--blue); color: var(--paper-soft); }
 .bsm.bsug:hover { background: var(--plum); color: var(--paper-soft); }
 .bsm.badd:hover { background: var(--teal); color: var(--paper-soft); }
 .bsm.badd.added { background: var(--teal); color: var(--paper-soft); }
+
+/* Conteúdo expandido (botão "Detalhes") surge com suavidade */
+.bnac-objeto,
+.scard .sdet {
+  animation: scard-in .22s ease-out;
+}
+
+/* Código oficial ganha dica didática ao passar o mouse */
+.ceixo { cursor: help; position: relative; width: fit-content; }
+.ceixo:hover::after {
+  content: 'Código oficial na BNCC';
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  white-space: nowrap;
+  background: var(--ink);
+  color: var(--paper-soft);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: none;
+  padding: 4px 8px;
+  box-shadow: 2px 2px 0 rgba(27, 26, 31, .25);
+  z-index: 5;
+  pointer-events: none;
+}
 
 /* ═════════ PLAY LAYOUT & STEPS ═════════ */
 .play {
@@ -2532,6 +2613,29 @@ input:focus, select:focus, textarea:focus {
   color: var(--paper-soft);
 }
 
+.pei-mode-option.locked {
+  opacity: .55;
+  cursor: not-allowed;
+  background: var(--paper-deep);
+}
+
+.pei-login-required {
+  border: 2px solid var(--red);
+  background: var(--red-wash, #fdeaea);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  animation: scard-in .2s ease-out;
+}
+
+.pei-login-required a {
+  color: var(--red-deep, var(--red));
+  font-weight: 800;
+  text-decoration: underline;
+}
+
 .pei-student-box {
   display: grid;
   gap: 12px;
@@ -3279,148 +3383,4 @@ input:focus, select:focus, textarea:focus {
   border: 2px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
   margin-bottom: 14px;
-  transform: rotate(-1.2deg);
-}
-
-.auth-title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(26px, 5vw, 34px);
-  line-height: 1.05;
-  letter-spacing: -.03em;
-  color: var(--ink);
-  font-variation-settings: "opsz" 144;
-  margin-bottom: 8px;
-}
-
-.auth-title em {
-  font-style: italic;
-  font-weight: 800;
-  color: var(--red-deep);
-}
-
-.auth-sub {
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--ink-muted);
-  max-width: 360px;
-}
-
-.auth-card {
-  position: relative;
-  background: var(--paper-soft);
-  border: 2.5px solid var(--ink);
-  box-shadow: var(--stamp-lg);
-  padding: 26px 24px 24px;
-}
-
-.auth-card::before {
-  content: "";
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 26px;
-  height: 26px;
-  background: linear-gradient(135deg, transparent 50%, var(--ink) 50%) no-repeat, var(--paper-deep);
-  border-left: 2.5px solid var(--ink);
-  border-bottom: 2.5px solid var(--ink);
-}
-
-.auth-card .fgr {
-  margin-bottom: 14px;
-}
-
-.auth-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin: 2px 0 6px;
-}
-
-.auth-ghost {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  color: var(--ink-muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.auth-ghost:hover {
-  color: var(--red-deep);
-}
-
-.auth-link {
-  color: var(--red-deep);
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-}
-
-.auth-link:hover {
-  color: var(--red);
-}
-
-.auth-alt {
-  text-align: center;
-  font-size: 13px;
-  color: var(--ink-muted);
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1.5px dashed var(--ink-faint);
-}
-
-.auth-back {
-  display: inline-block;
-  margin-top: 18px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-  text-decoration: none;
-}
-
-.auth-back:hover {
-  color: var(--ink);
-}
-
-/* ═════════ BARRA DE SELEÇÃO DE HABILIDADES ═════════ */
-.selbar {
-  position: sticky;
-  bottom: 14px;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 22px;
-  padding: 12px 16px;
-  background: var(--ink);
-  border: 2.5px solid var(--ink);
-  box-shadow: 5px 5px 0 var(--red);
-}
-
-.selbar-txt {
-  flex: 1 1 200px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  color: var(--paper-soft);
-}
-
-.selbar-txt strong {
-  color: var(--mustard);
-}
-
-.selbar .btn {
-  box-shadow: 3px 3px 0 var(--red);
-}
+  transform: rotate(-1.

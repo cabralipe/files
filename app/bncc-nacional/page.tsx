@@ -6,6 +6,7 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
+import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
 
 
 type Skill = {
@@ -73,27 +74,34 @@ const NIVEL_CONFIG: Record<Nivel, {
   },
 }
 
-const NAC_TUTORIAL_STEPS = [
+const NAC_TUTORIAL_STEPS: TutorialStep[] = [
   {
-    icon: '📋',
+    icon: 'BN',
     iconStyle: { background: 'var(--blue)', color: 'var(--paper-soft)' },
     title: 'Bem-vindo ao BNCC Nacional!',
     body: 'Aqui você acessa as habilidades da Base Nacional Comum Curricular para todas as etapas: Educação Infantil, Ensino Fundamental e Ensino Médio. Crie planos de aula em segundos com ajuda da IA.',
     tip: null,
   },
   {
-    icon: '🔍',
-    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
-    title: 'Pesquise as habilidades',
-    body: 'Use a aba "Pesquisar" para explorar as habilidades. Filtre por disciplina ou componente curricular, ano/faixa etária e unidade temática. Use a busca livre para encontrar qualquer conteúdo.',
-    tip: 'Pesquisar',
+    icon: '◎',
+    iconStyle: { background: 'var(--mustard-wash)', color: 'var(--ink)' },
+    title: 'Você escolheu uma etapa de ensino',
+    body: 'Este selo mostra a etapa ativa (Infantil, Fundamental ou Médio). Para mudar a qualquer momento, clique em "Trocar etapa" no menu do topo.',
+    selector: '.bnac-hero',
   },
   {
-    icon: '✔',
-    iconStyle: { background: 'var(--mustard-wash)', color: 'var(--ink)' },
-    title: 'Selecione as habilidades',
-    body: 'Clique em qualquer habilidade para ver os detalhes e expandir o conteúdo. Clique em "+ Selecionar" para adicioná-la ao seu plano. O botão flutuante mostra quantas você selecionou.',
-    tip: 'Plano',
+    icon: '⌕',
+    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
+    title: 'Pesquise as habilidades',
+    body: 'Use a busca livre para encontrar qualquer conteúdo, ou combine os filtros de disciplina/componente, ano/faixa etária e unidade temática para chegar rápido ao que precisa.',
+    selector: '.fbar',
+  },
+  {
+    icon: '▤',
+    iconStyle: { background: 'var(--paper)', color: 'var(--ink)' },
+    title: 'Conheça o card de habilidade',
+    body: 'Cada card traz o código oficial, a unidade temática e a habilidade da BNCC. Clique em "Detalhes" para ver o objeto de conhecimento e em "+ Plano" para adicionar ao seu plano de aula.',
+    selector: '.grid .scard',
   },
   {
     icon: '✦',
@@ -264,8 +272,7 @@ export default function BnccNacionalPage() {
   const [message, setMessage] = useState('')
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
-  const [showTutorial, setShowTutorial] = useState(false)
-  const [tutorialStep, setTutorialStep] = useState(0)
+  const { open: tutorialOpen, openTutorial, closeTutorial } = usePortalTutorial('bncc_nac_tutorial_seen')
 
   // Set today's date after mount to avoid SSR/client timezone mismatch
   useEffect(() => {
@@ -291,22 +298,8 @@ export default function BnccNacionalPage() {
     }).catch(() => {})
   }, [nivel])
 
-  // Show tutorial on first visit after nivel is selected
-  useEffect(() => {
-    if (!nivel) return
-    if (!localStorage.getItem('bncc_nac_tutorial_seen')) {
-      setShowTutorial(true)
-    }
-  }, [nivel])
-
   useEffect(() => { setPage(1) }, [query, disciplina, ano, unidade])
   useEffect(() => { setUnidade('') }, [disciplina])
-
-  function closeTutorial() {
-    localStorage.setItem('bncc_nac_tutorial_seen', '1')
-    setShowTutorial(false)
-    setTutorialStep(0)
-  }
 
   function showToast(text: string) {
     setMessage(text)
@@ -649,45 +642,14 @@ export default function BnccNacionalPage() {
     <main>
       {message && <div id="toast" className="show" role="alert">{message}</div>}
 
-      {/* ── Tutorial ── */}
-      {showTutorial && (
-        <div className="mbk tut-bk" onClick={closeTutorial}>
-          <div className="mdl tut-mdl" onClick={(e) => e.stopPropagation()}>
-            <button className="mdl-close" onClick={closeTutorial}>×</button>
-            <div className="tut-dots">
-              {NAC_TUTORIAL_STEPS.map((_, i) => (
-                <button
-                  key={i}
-                  className={`tut-dot ${i === tutorialStep ? 'on' : i < tutorialStep ? 'done' : ''}`}
-                  onClick={() => setTutorialStep(i)}
-                  aria-label={`Ir para passo ${i + 1}`}
-                />
-              ))}
-            </div>
-            <div className="tut-icon" style={NAC_TUTORIAL_STEPS[tutorialStep].iconStyle}>
-              {NAC_TUTORIAL_STEPS[tutorialStep].icon}
-            </div>
-            <div className="tut-step">Passo {tutorialStep + 1} de {NAC_TUTORIAL_STEPS.length}</div>
-            <h2 className="tut-title">{NAC_TUTORIAL_STEPS[tutorialStep].title}</h2>
-            <p className="tut-body">{NAC_TUTORIAL_STEPS[tutorialStep].body}</p>
-            {NAC_TUTORIAL_STEPS[tutorialStep].tip && (
-              <p className="tut-tip">
-                Clique em <span className="tut-navmock">{NAC_TUTORIAL_STEPS[tutorialStep].tip}</span> no menu do topo
-              </p>
-            )}
-            <div className="tut-actions">
-              {tutorialStep > 0 && (
-                <button className="btn btn-out" onClick={() => setTutorialStep(tutorialStep - 1)}>← Anterior</button>
-              )}
-              {tutorialStep < NAC_TUTORIAL_STEPS.length - 1 ? (
-                <button className="btn btn-pri" onClick={() => setTutorialStep(tutorialStep + 1)}>Próximo →</button>
-              ) : (
-                <button className="btn btn-pri" onClick={closeTutorial}>Entendido! ✓</button>
-              )}
-            </div>
-            <button className="tut-skip" onClick={closeTutorial}>Pular tutorial</button>
-          </div>
-        </div>
+      {/* ── Tutorial guiado (compartilhado com os demais portais) ── */}
+      {nivel && (
+        <PortalTutorial
+          open={tutorialOpen}
+          onClose={closeTutorial}
+          steps={NAC_TUTORIAL_STEPS}
+          masthead="BNCC NACIONAL · TUTORIAL"
+        />
       )}
 
       {/* ── Popup seletor de nível ── */}
@@ -766,7 +728,7 @@ export default function BnccNacionalPage() {
                 <button className="nb" onClick={() => setNivel(null)} title="Trocar etapa de ensino">
                   {cfg!.icon} Trocar etapa
                 </button>
-                <button className="nb tut-open" onClick={() => { setTutorialStep(0); setShowTutorial(true) }} aria-label="Abrir tutorial">?</button>
+                <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">?</button>
               </nav>
             </div>
           </header>
@@ -783,6 +745,14 @@ export default function BnccNacionalPage() {
                     : 'Carregando habilidades...'}
                 </p>
               </div>
+
+              <SkillsHowTo
+                storageKey="bncc_nac_howto_seen"
+                accentVar={cfg!.accentVar}
+                washVar="var(--blue-wash)"
+                referencialLabel={`BNCC — ${cfg!.label}`}
+                onOpenTutorial={openTutorial}
+              />
 
               <div className="fbar">
                 <div className="sw">
@@ -991,3 +961,4 @@ export default function BnccNacionalPage() {
   )
 }
 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
