@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase-client'
+import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
 
 // Construtor do PAEE — Plano de Atendimento Educacional Especializado.
 // Elaborado pelo professor AEE a partir da ficha AEE do aluno, articulado com
@@ -58,15 +59,6 @@ const STATUS_LABEL: Record<string, string> = {
 async function getAccessToken() {
   const { data } = await supabase.auth.getSession()
   return data.session?.access_token
-}
-
-function normalizePdfText(value: string) {
-  return value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/[—–]/g, '-')
 }
 
 function Field({ label, children, wide, hint }: { label: string; children: React.ReactNode; wide?: boolean; hint?: string }) {
@@ -296,67 +288,40 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
   }
 
   async function downloadPdf() {
-    const text = normalizePdfText(generated)
+    const text = sanitizePdfText(generated)
     if (!text.trim() || !student) {
       setError('Gere o PAEE antes de baixar em PDF.')
       return
     }
-    const { jsPDF } = await import('jspdf')
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-    const marginX = 18
-    const contentWidth = pageWidth - marginX * 2
-    let y = 18
-
-    function drawPaperBackground() {
-      doc.setFillColor(250, 245, 227)
-      doc.rect(0, 0, pageWidth, pageHeight, 'F')
-    }
-
-    function addPageIfNeeded(height = 10) {
-      if (y + height <= pageHeight - 20) return
-      doc.addPage()
-      drawPaperBackground()
-      y = 18
-    }
-
-    drawPaperBackground()
-    doc.setTextColor(229, 57, 75)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(16)
-    doc.text('PAEE - PLANO DE ATENDIMENTO EDUCACIONAL ESPECIALIZADO', marginX, y, { maxWidth: contentWidth })
-    y += 14
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(10)
-    const meta = [
-      `Aluno: ${normalizePdfText(student.full_name)}`,
-      `Escola: ${normalizePdfText(student.school_name)}`,
-      `Ano/Turma: ${normalizePdfText(student.grade_level)}${student.class_name ? ` / ${normalizePdfText(student.class_name)}` : ''}`,
-      `Local do AEE: ${normalizePdfText(organizacao.local)} · ${normalizePdfText(organizacao.frequencia_semanal)} · ${normalizePdfText(organizacao.duracao_atendimento)}`,
-    ]
-    for (const item of meta) {
-      addPageIfNeeded(6)
-      doc.text(item, marginX, y, { maxWidth: contentWidth })
-      y += 6
-    }
-    y += 2
-    doc.setDrawColor(229, 57, 75)
-    doc.setLineWidth(0.5)
-    doc.line(marginX, y, pageWidth - marginX, y)
-    y += 8
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    const lines = doc.splitTextToSize(text, contentWidth) as string[]
-    for (const line of lines) {
-      addPageIfNeeded(5)
-      doc.text(line, marginX, y)
-      y += 5
-    }
-
-    const safeName = normalizePdfText(student.full_name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-    doc.save(`paee-${safeName}-${Date.now()}.pdf`)
+    await downloadRisoPdf({
+      docType: 'PAEE',
+      docSubtitle: 'Plano de Atendimento Educacional Especializado',
+      masthead: 'Atendimento Educacional Especializado · Sala de Recursos Multifuncionais',
+      title: student.full_name,
+      meta: [
+        { label: 'Aluno(a)', value: student.full_name },
+        { label: 'Escola', value: student.school_name },
+        { label: 'Ano/Turma', value: `${student.grade_level}${student.class_name ? ` / ${student.class_name}` : ''}${student.shift ? ` · ${student.shift}` : ''}` },
+        { label: 'Local do AEE', value: organizacao.local },
+        { label: 'Atendimento', value: `${organizacao.frequencia_semanal} · ${organizacao.duracao_atendimento} · ${organizacao.tipo_atendimento}` },
+        ...(organizacao.horario ? [{ label: 'Horário', value: organizacao.horario }] : []),
+        ...(organizacao.periodo_validade ? [{ label: 'Vigência', value: organizacao.periodo_validade }] : []),
+      ],
+      body: text,
+      skipLines: ['PAEE', 'PLANO DE ATENDIMENTO EDUCACIONAL ESPECIALIZADO', 'PAEE - PLANO DE ATENDIMENTO EDUCACIONAL ESPECIALIZADO'],
+      extraSections: [
+        {
+          title: 'Ciência e assinaturas',
+          lines: [
+            { text: 'Professor(a) do AEE', signature: true },
+            { text: 'Família / responsável', signature: true },
+            { text: 'Coordenação pedagógica', signature: true },
+          ],
+        },
+      ],
+      footerLeft: 'PAEE · ATENDIMENTO EDUCACIONAL ESPECIALIZADO',
+      fileName: `paee-${pdfSlug(student.full_name)}.pdf`,
+    })
   }
 
   if (!user) {
@@ -538,3 +503,4 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
     </div>
   )
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

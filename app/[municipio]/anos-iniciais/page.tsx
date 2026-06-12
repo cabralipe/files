@@ -9,6 +9,7 @@ import { municipalSchools } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
 import PeiControls, { type PeiStudent, type PlanKind, type PeiSource, type ExistingPei } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
+import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -125,15 +126,6 @@ function skillKey(skill: Skill) {
   return `${skill.discipline}|${skill.year}|${skill.code}`
 }
 
-function normalizePdf(v: string) {
-  if (!v) return ''
-  return v
-    .replace(/\*\*/g, '')
-    .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ã­/g, 'í')
-    .replace(/Ã³/g, 'ó').replace(/Ãº/g, 'ú').replace(/Ã§/g, 'ç')
-    .replace(/Ã£/g, 'ã').replace(/Ãµ/g, 'õ').replace(/Ã¢/g, 'â')
-    .replace(/Ãª/g, 'ê').replace(/Ã´/g, 'ô').replace(/Â/g, '')
-}
 
 function peiStatusLabel(status?: string) {
   switch (status) {
@@ -433,99 +425,48 @@ export default function AnosIniciaisPage() {
   // ── PDF download ───────────────────────────────────────────────────────────
 
   async function downloadPdf() {
-    const text = normalizePdf(generated)
-    if (!text.trim()) { showToast('Gere o plano antes de baixar em PDF.'); return }
-    const title = normalizePdf(form.title || 'plano')
-    const safeTitle = normalizeText(title).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const text = sanitizePdfText(generated)
+    if (!text.trim()) { showToast(planKind === 'pei' ? 'Gere o PEI antes de baixar em PDF.' : 'Gere o plano antes de baixar em PDF.'); return }
+    const isPei = planKind === 'pei'
+    const title = sanitizePdfText(form.title || (isPei && selectedStudent ? selectedStudent.full_name : 'plano'))
 
-    const { jsPDF } = await import('jspdf')
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const pw = doc.internal.pageSize.getWidth()
-    const ph = doc.internal.pageSize.getHeight()
-    const mx = 18
-    const cw = pw - mx * 2
-    let y = 18
-
-    function drawBg() {
-      doc.setFillColor(250, 245, 227)
-      doc.rect(0, 0, pw, ph, 'F')
-    }
-    function drawHeader(first: boolean) {
-      doc.setTextColor(229, 57, 75)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(first ? 14 : 9)
-      doc.text(first ? 'PLANO DE AULA' : 'Plano de aula', mx, y)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(0, 0, 0)
-      doc.text('Referencial Curricular Anos Iniciais · Secretaria Municipal de Educação · Atalaia/AL', mx, y + 5)
-      doc.setDrawColor(229, 57, 75); doc.setLineWidth(0.4)
-      doc.line(mx, y + 8, pw - mx, y + 8)
-      y += first ? 16 : 13
-    }
-    function needPage(h = 10) {
-      if (y + h > ph - 20) { doc.addPage(); drawBg(); y = 18; drawHeader(false) }
-    }
-    function addWrapped(t: string, opts?: { bold?: boolean; size?: number; indent?: number }) {
-      const sz = opts?.size || 9
-      const ind = opts?.indent || 0
-      const lh = sz * 0.43
-      const lines = doc.splitTextToSize(t, cw - ind)
-      doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal')
-      doc.setFontSize(sz); doc.setTextColor(0, 0, 0)
-      for (const l of lines) { needPage(lh + 1); doc.text(l, mx + ind, y); y += lh }
-      y += 1.5
-    }
-    function addSection(t: string) {
-      needPage(14); y += 2
-      doc.setDrawColor(229, 57, 75); doc.setLineWidth(0.5)
-      doc.line(mx, y - 2, pw - mx, y - 2)
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(229, 57, 75)
-      doc.text(t.toUpperCase(), mx, y + 2.5)
-      doc.line(mx, y + 5.5, pw - mx, y + 5.5)
-      y += 11
-    }
-
-    drawBg(); drawHeader(true)
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0, 0, 0)
-    doc.text(String(title).toUpperCase(), mx, y, { maxWidth: cw }); y += 10
-
-    addSection('Identificação')
-    addWrapped(`Professor(a): ${normalizePdf(form.teacher || 'Professor(a)')}`)
-    addWrapped(`Escola: ${normalizePdf(form.school)} | Município: Atalaia - AL`)
-    addWrapped(`Ano/Turma: ${normalizePdf(form.grade_level)} | Componente: ${normalizePdf(form.subject)}`)
-    addWrapped(`Data: ${form.date} | Duração: ${normalizePdf(form.duration)}`)
-
-    const SECTIONS = new Set(['IDENTIFICAÇÃO','IDENTIFICACAO','OBJETIVOS','HABILIDADES DO REFERENCIAL CURRICULAR',
-      'CONTEÚDOS','CONTEUDOS','METODOLOGIA','DESENVOLVIMENTO DA AULA','RECURSOS DIDÁTICOS','RECURSOS DIDATICOS',
-      'AVALIAÇÃO','AVALIACAO','REFERÊNCIAS','REFERENCIAS','OBSERVAÇÕES','OBSERVACOES',
-      'OBJETIVOS DO PROFESSOR'])
-    const SKIP = new Set(['PLANO DE AULA', title.toUpperCase()])
-
-    text.split('\n').forEach(raw => {
-      const l = raw.trim()
-      if (!l) { y += 1.8; return }
-      const up = l.toUpperCase()
-      if (SKIP.has(up) || l.includes('Secretaria Municipal de Educação')) return
-      if (SECTIONS.has(up)) { addSection(l); return }
-      if (l.endsWith(':') || /^(Objetivo geral|Objetivos específicos|Momento inicial|Desenvolvimento|Encerramento)/i.test(l)) {
-        addWrapped(l, { bold: true }); return
-      }
-      if (l.startsWith('- ')) { addWrapped(`- ${l.slice(2)}`, { indent: 3 }); return }
-      addWrapped(l)
+    await downloadRisoPdf({
+      docType: isPei ? 'PEI' : 'PLANO DE AULA',
+      docSubtitle: isPei ? 'Plano Educacional Individualizado' : 'Referencial Curricular · Anos Iniciais',
+      masthead: 'Referencial Curricular Anos Iniciais · Secretaria Municipal de Educação · Atalaia/AL',
+      title,
+      meta: [
+        ...(isPei && selectedStudent ? [
+          { label: 'Estudante', value: selectedStudent.full_name },
+          { label: 'Escola', value: selectedStudent.school_name || form.school },
+          { label: 'Ano/Turma', value: `${selectedStudent.grade_level}${selectedStudent.class_name ? ` / ${selectedStudent.class_name}` : ''}` },
+          { label: 'Professor(a)', value: form.teacher || 'Professor(a)' },
+        ] : [
+          { label: 'Professor(a)', value: form.teacher || 'Professor(a)' },
+          { label: 'Escola', value: `${form.school} · Atalaia/AL` },
+          { label: 'Ano/Turma', value: form.grade_level },
+          { label: 'Componente', value: form.subject },
+        ]),
+        { label: 'Data', value: form.date || new Date().toLocaleDateString('pt-BR') },
+        { label: 'Duração', value: form.duration || '—' },
+      ],
+      body: text,
+      sectionNames: ['HABILIDADES DO REFERENCIAL CURRICULAR', 'OBJETIVOS DO PROFESSOR'],
+      skipLines: ['PLANO DE AULA', 'PEI', 'PLANO EDUCACIONAL INDIVIDUALIZADO', title, 'Secretaria Municipal de Educação'],
+      extraSections: isPei ? [
+        {
+          title: 'Ciência e assinaturas',
+          lines: [
+            { text: 'Professor(a) regente', signature: true },
+            { text: 'Professor(a) do AEE', signature: true },
+            { text: 'Família / responsável', signature: true },
+            { text: 'Coordenação pedagógica', signature: true },
+          ],
+        },
+      ] : undefined,
+      footerLeft: isPei ? 'PEI · ANOS INICIAIS · ATALAIA/AL' : 'REFERENCIAL CURRICULAR ANOS INICIAIS · ATALAIA/AL',
+      fileName: `${isPei ? 'pei' : 'plano'}-ai-${pdfSlug(title) || 'documento'}.pdf`,
     })
-
-    const np = doc.getNumberOfPages()
-    for (let p = 1; p <= np; p++) {
-      doc.setPage(p)
-      doc.setDrawColor(229, 57, 75); doc.setLineWidth(0.3)
-      doc.line(mx, ph - 14, pw - mx, ph - 14)
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(0, 0, 0)
-      doc.text(`Referencial Curricular Anos Iniciais · Página ${p} de ${np}`, mx, ph - 8)
-      doc.text(new Date().toLocaleDateString('pt-BR'), pw - mx, ph - 8, { align: 'right' })
-    }
-
-    doc.save(`plano-ai-${safeTitle || 'aula'}.pdf`)
   }
 
   // ── PEI helpers ────────────────────────────────────────────────────────────

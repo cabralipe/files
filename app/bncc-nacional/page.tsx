@@ -7,6 +7,7 @@ import 'katex/dist/katex.min.css'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
+import { downloadRisoPdf } from '@/lib/pdf-riso'
 
 
 type Skill = {
@@ -445,6 +446,31 @@ export default function BnccNacionalPage() {
     setShowPdfModal(false)
     const title = normalizePdfText(form.title || 'plano')
     const safeTitle = normalizeText(title).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+    if (layout === 'risografico') {
+      const nivelLabelRiso = nivel ? NIVEL_CONFIG[nivel].label : 'BNCC'
+      await downloadRisoPdf({
+        docType: 'PLANO DE AULA',
+        docSubtitle: `BNCC — ${nivelLabelRiso}`,
+        masthead: 'Base Nacional Comum Curricular',
+        title,
+        meta: [
+          { label: 'Professor(a)', value: form.teacher || 'Não informado' },
+          { label: 'Escola', value: form.school || 'Não informada' },
+          { label: 'Ano/Turma', value: form.grade_level || '—' },
+          { label: 'Componente', value: form.subject || '—' },
+          { label: 'Data', value: form.date || new Date().toLocaleDateString('pt-BR') },
+          { label: 'Duração', value: form.duration || '—' },
+        ],
+        body: text,
+        sectionNames: ['HABILIDADES DA BNCC'],
+        skipLines: ['PLANO DE AULA', title, 'Base Nacional Comum Curricular'],
+        footerLeft: `BNCC ${nivelLabelRiso.toUpperCase()}`,
+        fileName: `plano-${safeTitle}-risografico.pdf`,
+      })
+      showToast('PDF baixado com sucesso!')
+      return
+    }
     const { jsPDF } = await import('jspdf')
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const pw = doc.internal.pageSize.getWidth()
@@ -961,4 +987,3 @@ export default function BnccNacionalPage() {
   )
 }
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
