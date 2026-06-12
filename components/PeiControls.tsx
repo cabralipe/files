@@ -260,4 +260,35 @@ export default function PeiControls({
                           type="radio"
                           name="pei-source"
                           checked={peiSource === 'create'}
-                          onChange={() => onPeiSourceChange?.('crea
+                          onChange={() => onPeiSourceChange?.('create')}
+                        />{' '}
+                        Criar o meu PEI (a IA combina o do AEE com o meu)
+                      </label>
+                    </>
+                  ) : (
+                    <p className="pei-note">
+                      Ficha AEE encontrada para este aluno. O PEI será criado a partir dos dados já cadastrados.
+                    </p>
+                  )}
+                  {!loadingExisting && existingPaee && (
+                    <p className="pei-note" style={{ marginTop: 8 }}>
+                      Este aluno tem um PAEE elaborado pelo AEE
+                      {' '}(<strong>{STATUS_LABEL[existingPaee.plan_status] || existingPaee.plan_status}</strong>).
+                      O PEI gerado será articulado automaticamente com o atendimento especializado.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {canManageAee && (
+                <Link className="btn btn-out" href="/aee" style={{ marginTop: 8 }}>
+                  Cadastrar aluno / ficha AEE
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
