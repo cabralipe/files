@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase-client'
 import { useState, useMemo, useEffect } from 'react'
 import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
-import { municipalSchools } from '@/lib/education-options'
+import { municipalSchools, schoolsFor } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
 import PeiControls, { type PeiStudent, type PlanKind, type PeiSource, type ExistingPei } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
@@ -78,7 +78,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     icon: 'AI',
     iconStyle: { background: 'var(--teal)', color: 'var(--paper-soft)' },
     title: 'Bem-vindo aos Anos Iniciais!',
-    body: 'Este portal reúne as habilidades do Referencial Curricular de Atalaia/AL para o 1º ao 5º Ano, com desdobramentos contextualizados para a realidade do município. Veja como usar em poucos passos.',
+    body: 'Este portal reúne as habilidades do Referencial Curricular do município para o 1º ao 5º Ano, com desdobramentos contextualizados para a realidade local. Veja como usar em poucos passos.',
     tip: null,
   },
   {
@@ -99,7 +99,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     icon: '▤',
     iconStyle: { background: 'var(--paper)', color: 'var(--ink)' },
     title: 'Conheça o card de habilidade',
-    body: 'Cada card traz o código oficial, a habilidade e o objeto de conhecimento. Clique em "Detalhes" para ver o desdobramento territorializado de Atalaia, e em "+ Plano" para usar a habilidade no seu plano de aula.',
+    body: 'Cada card traz o código oficial, a habilidade e o objeto de conhecimento. Clique em "Detalhes" para ver o desdobramento territorializado do município, e em "+ Plano" para usar a habilidade no seu plano de aula.',
     selector: '.grid .scard',
   },
   {
@@ -178,7 +178,12 @@ async function getAccessToken() {
 
 export default function AnosIniciaisPage() {
   const { user, signOut } = useAuth()
-  const { slug } = useMunicipality()
+  const { slug, municipality } = useMunicipality()
+  const muniName = municipality?.name || 'Município'
+  const muniUf = municipality?.state || ''
+  const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
+  const schools = schoolsFor(municipality)
+  const muniLabelDash = `${muniName}${muniUf ? '-' + muniUf : ''}`
   const { open: tutorialOpen, openTutorial, closeTutorial } = usePortalTutorial('ai_tutorial_seen')
 
   // data
@@ -331,7 +336,7 @@ export default function AnosIniciaisPage() {
 
   const PHRASES = [
     '🧠 Analisando as habilidades selecionadas...',
-    '📚 Consultando o Referencial Curricular de Atalaia-AL...',
+    `📚 Consultando o Referencial Curricular de ${muniLabelDash}...`,
     '🌾 Contextualizando para a realidade do município...',
     '💡 Formulando objetivos alinhados ao ano escolar...',
     '✏️ Estruturando a introdução e o aquecimento da aula...',
@@ -433,7 +438,7 @@ export default function AnosIniciaisPage() {
     await downloadRisoPdf({
       docType: isPei ? 'PEI' : 'PLANO DE AULA',
       docSubtitle: isPei ? 'Plano Educacional Individualizado' : 'Referencial Curricular · Anos Iniciais',
-      masthead: 'Referencial Curricular Anos Iniciais · Secretaria Municipal de Educação · Atalaia/AL',
+      masthead: `Referencial Curricular Anos Iniciais · Secretaria Municipal de Educação · ${muniLabel}`,
       title,
       meta: [
         ...(isPei && selectedStudent ? [
@@ -443,7 +448,7 @@ export default function AnosIniciaisPage() {
           { label: 'Professor(a)', value: form.teacher || 'Professor(a)' },
         ] : [
           { label: 'Professor(a)', value: form.teacher || 'Professor(a)' },
-          { label: 'Escola', value: `${form.school} · Atalaia/AL` },
+          { label: 'Escola', value: `${form.school} · ${muniLabel}` },
           { label: 'Ano/Turma', value: form.grade_level },
           { label: 'Componente', value: form.subject },
         ]),
@@ -464,7 +469,7 @@ export default function AnosIniciaisPage() {
           ],
         },
       ] : undefined,
-      footerLeft: isPei ? 'PEI · ANOS INICIAIS · ATALAIA/AL' : 'REFERENCIAL CURRICULAR ANOS INICIAIS · ATALAIA/AL',
+      footerLeft: isPei ? `PEI · ANOS INICIAIS · ${muniLabel.toUpperCase()}` : `REFERENCIAL CURRICULAR ANOS INICIAIS · ${muniLabel.toUpperCase()}`,
       fileName: `${isPei ? 'pei' : 'plano'}-ai-${pdfSlug(title) || 'documento'}.pdf`,
     })
   }
@@ -571,7 +576,7 @@ export default function AnosIniciaisPage() {
             <div className="logo-ic ai-ic" />
             <div>
               <div className="logo-t">Referencial Curricular · Anos Iniciais</div>
-              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
             </div>
           </div>
           <nav className="hdr-nav" aria-label="Navegação">
@@ -620,7 +625,7 @@ export default function AnosIniciaisPage() {
                 storageKey="ai_howto_seen"
                 accentVar="var(--teal)"
                 washVar="var(--teal-wash)"
-                referencialLabel="Referencial Curricular de Atalaia — Anos Iniciais (1º ao 5º Ano)"
+                referencialLabel={`Referencial Curricular de ${muniName} — Anos Iniciais (1º ao 5º Ano)`}
                 onOpenTutorial={openTutorial}
               />
 
@@ -697,7 +702,7 @@ export default function AnosIniciaisPage() {
                         <h2 className="cobj">{skill.objeto || skill.campo || 'Habilidade curricular'}</h2>
                         <p className="chab">{skill.habilidade}</p>
                         <div className="cmeta">
-                          {skill.campo ? skill.campo : skill.pratica ? skill.pratica : 'Referencial Curricular de Atalaia'}
+                          {skill.campo ? skill.campo : skill.pratica ? skill.pratica : `Referencial Curricular de ${muniName}`}
                         </div>
 
                         {isOpen && (
@@ -834,7 +839,7 @@ export default function AnosIniciaisPage() {
                 <Field label="Escola" hint="Escola onde a aula será dada. Selecione na lista.">
                   <select value={form.school} onChange={e => updateForm('school', e.target.value)}>
                     <option value="">Selecione a escola</option>
-                    {municipalSchools.map(s => <option key={s} value={s}>{s}</option>)}
+                    {schools.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </Field>
                 <Field label="Ano/Turma" hint="Ano escolar da turma. A IA ajusta a linguagem e as atividades à faixa etária.">

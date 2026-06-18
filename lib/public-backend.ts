@@ -895,11 +895,11 @@ export async function buildPlanPrompt(input: z.infer<typeof createPlanSchema>): 
     ? teacherMethodology
     : '[Sugestao da IA - ajuste conforme sua intencao pedagogica] Propor metodologia ativa simples e viavel para a turma.'
 
-  return `Voce e especialista em educacao basica, BNCC Computacao e tecnologia educacional. Gere um plano de aula pronto para uso por professores da rede municipal de Atalaia-AL.
+  return `Voce e especialista em educacao basica, BNCC Computacao e tecnologia educacional. Gere um plano de aula pronto para uso por professores da rede municipal.
 
 DADOS DO PLANO:
 - Professor(a): ${input.teacher || 'Nao informado'}
-- Escola: ${input.school || 'Nao informada'} | Municipio: Atalaia-AL
+- Escola: ${input.school || 'Nao informada'} | Municipio: rede municipal
 - Ano/Turma: ${input.grade_level}
 - Componente Curricular: ${input.subject}
 - Data: ${date}
@@ -939,7 +939,7 @@ Liste as habilidades selecionadas com codigo e aplicacao na aula.
 - Atitudinais: 1 item.
 
 5. METODOLOGIA
-Dois paragrafos explicando como a metodologia sera aplicada, incluindo organizacao da turma, pensamento computacional e conexao com Atalaia-AL.
+Dois paragrafos explicando como a metodologia sera aplicada, incluindo organizacao da turma, pensamento computacional e conexao com o municipio.
 
 6. DESENVOLVIMENTO DA AULA
 - Momento inicial: tempo, acao do professor, pergunta disparadora e como ativar conhecimentos previos.
@@ -955,7 +955,7 @@ Avaliacao formativa, produto/evidencia final, 4 criterios observaveis e uma suge
 9. REFERENCIAS
 BNCC e uma referencia complementar adequada.
 
-Feche com: Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao de Atalaia/AL.`
+Feche com: Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao.`
 }
 
 type OpenAiResponseContent = {
@@ -1123,13 +1123,13 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
 
 1. IDENTIFICACAO
 Professor(a): ${input.teacher || 'Professor(a)'}
-Escola: ${input.school || 'Escola Municipal'} | Municipio: Atalaia-AL
+Escola: ${input.school || 'Escola Municipal'} | Municipio: rede municipal
 Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
 Data: ${date} | Duracao: ${input.duration || '50 minutos'}
 Tema: ${input.title}
 
 2. OBJETIVOS
-Objetivo geral: Desenvolver uma experiencia de aprendizagem alinhada a BNCC Computacao, conectando ${input.title} ao cotidiano dos estudantes de Atalaia-AL.
+Objetivo geral: Desenvolver uma experiencia de aprendizagem alinhada a BNCC Computacao, conectando ${input.title} ao cotidiano dos estudantes do municipio.
 Objetivos especificos:
 - Relacionar o tema aos conhecimentos previos da turma.
 - Aplicar procedimentos de investigacao, registro, colaboracao ou criacao digital.
@@ -1152,7 +1152,7 @@ Atitudinais:
 5. METODOLOGIA
 ${teacherMethodology || 'Metodologia ativa com mediacao do professor.'}
 
-O professor inicia contextualizando o tema com exemplos proximos da realidade de Atalaia-AL. Em seguida, organiza a turma em duplas ou grupos para uma atividade pratica, alternando orientacao coletiva, investigacao guiada e registro das descobertas.
+O professor inicia contextualizando o tema com exemplos proximos da realidade do municipio. Em seguida, organiza a turma em duplas ou grupos para uma atividade pratica, alternando orientacao coletiva, investigacao guiada e registro das descobertas.
 
 6. DESENVOLVIMENTO DA AULA
 Momento inicial: apresente o tema, escute hipoteses dos estudantes e registre no quadro as ideias principais. Retome as habilidades selecionadas em linguagem simples.
@@ -1169,13 +1169,4 @@ A avaliacao sera formativa, observando participacao, colaboracao, clareza do reg
 
 9. REFERENCIAS
 - BRASIL. Base Nacional Comum Curricular (BNCC). Brasilia: MEC, 2017.
-- BNCC Computacao e documentos curriculares complementares.
-
-OBJETIVOS DO PROFESSOR
-${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'}
-
-OBSERVACOES
-${teacherNotes || 'Plano gerado para uso e edicao pelo professor.'}
-
-Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao de Atalaia/AL.`
-}
+- BNCC Computacao e documentos curriculares 

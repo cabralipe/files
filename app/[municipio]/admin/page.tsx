@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import Link from '@/lib/m-link'
 import { useRouter } from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
+import { useMunicipality } from '@/lib/municipality-context'
 
 
 type AdminUser = {
@@ -96,6 +97,10 @@ function AnalyticsSection({
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated, signOut } = useAuth()
+  const { municipality } = useMunicipality()
+  const muniName = municipality?.name || 'Município'
+  const muniUf = municipality?.state || ''
+  const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
 
   const [activeTab, setActiveTab] = useState<'users' | 'experiences' | 'analytics' | 'municipalities'>('users')
   const [users, setUsers] = useState<AdminUser[]>([])
@@ -735,9 +740,9 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
 
             {analytics && (
               <>
-                {/* ── Portal Computação Atalaia ── */}
+                {/* ── Portal Computação do município ── */}
                 <AnalyticsSection
-                  title="🖥️ Portal Computação — Atalaia/AL"
+                  title={`🖥️ Portal Computação — ${muniLabel}`}
                   accent="var(--teal)"
                   accentWash="var(--teal-wash)"
                   visits={analytics.computacao.visits}

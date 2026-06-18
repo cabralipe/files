@@ -1,8 +1,95 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
+import { useMunicipality } from '@/lib/municipality-context'
+
+type Skill = { code: string }
+
+// Classificação de cada habilidade em um segmento, a partir do código.
+function segOf(code: string): 'ei' | 'anos-iniciais' | 'anos-finais' | 'eja' | null {
+  if (!code) return null
+  if (code.startsWith('EJA')) return 'eja'
+  if (code.startsWith('EI')) return 'ei'
+  if (code.startsWith('EF')) {
+    const yr = code.slice(2, 4)
+    if (['06', '07', '08', '09', '67', '69', '89'].includes(yr)) return 'anos-finais'
+    return 'anos-iniciais' // 01..05, 12, 15, 35 e demais
+  }
+  return null
+}
+
+const CARDS: Record<
+  string,
+  { stamp: string; cls: string; tag: string; title: [string, string]; desc: string; pills: string[] }
+> = {
+  ei: {
+    stamp: 'EI',
+    cls: 'portal-card-ai',
+    tag: 'Referencial Curricular',
+    title: ['Educação', 'Infantil'],
+    desc: 'Campos de experiência da Educação Infantil, com desdobramentos territorializados para a realidade do município.',
+    pills: ['Creche e Pré-escola', 'Campos de experiência'],
+  },
+  'anos-iniciais': {
+    stamp: 'AI',
+    cls: 'portal-card-ai',
+    tag: 'Referencial Curricular',
+    title: ['Anos', 'Iniciais'],
+    desc: 'Referencial Curricular territorializado para o Ensino Fundamental — Anos Iniciais, contextualizado para o município.',
+    pills: ['1º ao 5º Ano', 'Todas as disciplinas'],
+  },
+  'anos-finais': {
+    stamp: 'AF',
+    cls: 'portal-card-af',
+    tag: 'Referencial Curricular',
+    title: ['Anos', 'Finais'],
+    desc: 'Referencial Curricular territorializado para o Ensino Fundamental — Anos Finais, contextualizado para o município.',
+    pills: ['6º ao 9º Ano', 'Todas as disciplinas'],
+  },
+  eja: {
+    stamp: 'EJA',
+    cls: 'portal-card-comp',
+    tag: 'Referencial Curricular',
+    title: ['Educação de Jovens', 'e Adultos'],
+    desc: 'Habilidades do 1º e 2º segmentos da EJA, com práticas voltadas ao mundo do trabalho e ao território.',
+    pills: ['1º e 2º Segmentos', 'Práticas e territórios'],
+  },
+}
+
+const ORDER = ['ei', 'anos-iniciais', 'anos-finais', 'eja'] as const
 
 export default function MunicipioHome() {
+  const { municipality } = useMunicipality()
+  const name = municipality?.name || 'Município'
+  const uf = municipality?.state || ''
+  const secretaria = `Secretaria Municipal de Educação · ${name}${uf ? '/' + uf : ''}`
+
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/skills')
+      .then((r) => r.json())
+      .then((payload) => {
+        if (!active) return
+        const c: Record<string, number> = {}
+        for (const s of (payload?.data || []) as Skill[]) {
+          const k = segOf(s.code)
+          if (k) c[k] = (c[k] || 0) + 1
+        }
+        setCounts(c)
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const cards = useMemo(() => ORDER.filter((k) => (counts[k] || 0) > 0), [counts])
+
   return (
     <main>
       <header id="hdr">
@@ -11,7 +98,7 @@ export default function MunicipioHome() {
             <div className="logo-ic" />
             <div>
               <div className="logo-t">Portal Educacional</div>
-              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+              <div className="logo-s">{secretaria}</div>
             </div>
           </div>
         </div>
@@ -19,73 +106,48 @@ export default function MunicipioHome() {
 
       <section className="pg portal-sel-pg">
         <div className="portal-sel-hero">
-          <p className="portal-sel-eyebrow">Secretaria Municipal de Educação · Atalaia/AL</p>
+          <p className="portal-sel-eyebrow">{secretaria}</p>
           <h1 className="portal-sel-title">Qual portal você quer acessar?</h1>
           <p className="portal-sel-sub">Escolha o referencial curricular para começar.</p>
           <p className="portal-sel-hint">
             O <strong>referencial curricular</strong> é o documento que organiza o que os alunos devem aprender
-            em cada ano. Escolha abaixo o referencial da etapa em que você atua — nele você explora as
-            habilidades e cria planos de aula com ajuda de IA.
+            em cada etapa. Escolha abaixo o referencial da etapa em que você atua — nele você explora as
+            habilidades de {name} e cria planos de aula com ajuda de IA.
           </p>
         </div>
 
         <div className="portal-sel-grid">
-          {/* Anos Finais */}
-          <Link href="/anos-finais" className="portal-card portal-card-af">
-            <div className="portal-card-stamp">AF</div>
-            <div className="portal-card-body">
-              <div className="portal-card-tag">Referencial Curricular · Atalaia</div>
-              <h2 className="portal-card-title">Anos<br />Finais</h2>
-              <p className="portal-card-desc">
-                Referencial Curricular territorializado de Atalaia para o Ensino Fundamental — Anos Finais,
-                com desdobramentos contextualizados para a realidade do município.
-              </p>
-              <div className="portal-card-pills">
-                <span>6º ao 9º Ano</span>
-                <span>9 disciplinas</span>
-                <span>722 habilidades</span>
-              </div>
-            </div>
-            <div className="portal-card-arrow">→</div>
-          </Link>
-
-          {/* BNCC Computação */}
-          <Link href="/computacao" className="portal-card portal-card-comp">
-            <div className="portal-card-stamp">BN</div>
-            <div className="portal-card-body">
-              <div className="portal-card-tag">BNCC · Computação</div>
-              <h2 className="portal-card-title">BNCC<br />Computação</h2>
-              <p className="portal-card-desc">
-                Habilidades do Ensino Fundamental de Computação. Crie planos de aula com IA, selecione
-                habilidades e compartilhe experiências com outros professores.
-              </p>
-              <div className="portal-card-pills">
-                <span>1º ao 9º Ano</span>
-                <span>IA para planos</span>
-                <span>Pensamento computacional</span>
-              </div>
-            </div>
-            <div className="portal-card-arrow">→</div>
-          </Link>
-
-          {/* Anos Iniciais */}
-          <Link href="/anos-iniciais" className="portal-card portal-card-ai">
-            <div className="portal-card-stamp">AI</div>
-            <div className="portal-card-body">
-              <div className="portal-card-tag">Referencial Curricular · Atalaia</div>
-              <h2 className="portal-card-title">Anos<br />Iniciais</h2>
-              <p className="portal-card-desc">
-                Referencial Curricular territorializado de Atalaia para o Ensino Fundamental — Anos Iniciais,
-                com desdobramentos contextualizados para a realidade do município.
-              </p>
-              <div className="portal-card-pills">
-                <span>1º ao 5º Ano</span>
-                <span>9 disciplinas</span>
-                <span>681 habilidades</span>
-              </div>
-            </div>
-            <div className="portal-card-arrow">→</div>
-          </Link>
+          {!loaded && <p className="portal-sel-sub">Carregando habilidades de {name}…</p>}
+          {loaded && cards.length === 0 && (
+            <p className="portal-sel-sub">Nenhuma habilidade cadastrada para este município ainda.</p>
+          )}
+          {cards.map((k) => {
+            const c = CARDS[k]
+            const total = counts[k] || 0
+            return (
+              <Link key={k} href={`/computacao?seg=${k}`} className={`portal-card ${c.cls}`}>
+                <div className="portal-card-stamp">{c.stamp}</div>
+                <div className="portal-card-body">
+                  <div className="portal-card-tag">
+                    {c.tag} · {name}
+                  </div>
+                  <h2 className="portal-card-title">
+                    {c.title[0]}
+                    <br />
+                    {c.title[1]}
+                  </h2>
+                  <p className="portal-card-desc">{c.desc}</p>
+                  <div className="portal-card-pills">
+                    {c.pills.map((p) => (
+                      <span key={p}>{p}</span>
+                    ))}
+                    <span>{total} habilidades</span>
+                  </div>
+                </div>
+                <div className="portal-card-arrow">→</div>
+              </Link>
+            )
+          })}
         </div>
 
         {/* ── Como funciona ── */}
@@ -96,14 +158,14 @@ export default function MunicipioHome() {
               <span className="portal-how-n">1</span>
               <div>
                 <strong>Escolha o referencial</strong>
-                <p>Clique no card da etapa em que você atua: Anos Iniciais (1º–5º), Anos Finais (6º–9º) ou BNCC Computação.</p>
+                <p>Clique no card da etapa em que você atua. Só aparecem as etapas com habilidades cadastradas em {name}.</p>
               </div>
             </div>
             <div className="portal-how-step">
               <span className="portal-how-n">2</span>
               <div>
                 <strong>Explore as habilidades</strong>
-                <p>Busque por código ou palavra-chave, filtre por disciplina e ano, e veja o desdobramento de cada habilidade para a realidade de Atalaia.</p>
+                <p>Busque por código ou palavra-chave, filtre por disciplina e ano, e veja o desdobramento de cada habilidade para a realidade de {name}.</p>
               </div>
             </div>
             <div className="portal-how-step">
@@ -123,20 +185,19 @@ export default function MunicipioHome() {
           <details className="portal-faq-item">
             <summary>Qual portal devo escolher?</summary>
             <p>
-              Depende da etapa em que você leciona: professores do <strong>1º ao 5º ano</strong> usam o portal
-              <strong> Anos Iniciais</strong>; do <strong>6º ao 9º ano</strong>, o portal <strong>Anos Finais</strong>.
-              O portal <strong>BNCC Computação</strong> atende todo o Ensino Fundamental e traz as habilidades de
-              pensamento computacional, mundo digital e cultura digital — útil para qualquer professor que queira
-              integrar tecnologia às suas aulas.
+              Depende da etapa em que você leciona: professores da <strong>Educação Infantil</strong>, dos
+              <strong> Anos Iniciais</strong> (1º–5º), dos <strong>Anos Finais</strong> (6º–9º) ou da
+              <strong> EJA</strong> acessam o card correspondente. Cada card abre o explorador de habilidades
+              já filtrado para aquela etapa.
             </p>
           </details>
 
           <details className="portal-faq-item">
             <summary>O que é um referencial curricular?</summary>
             <p>
-              É o documento oficial que organiza <strong>o que os alunos devem aprender</strong> em cada ano e
-              disciplina. Os referenciais de Atalaia são <strong>territorializados</strong>: partem da BNCC
-              (Base Nacional Comum Curricular) e contextualizam cada habilidade para a história, a cultura e a
+              É o documento oficial que organiza <strong>o que os alunos devem aprender</strong> em cada etapa e
+              disciplina. O referencial de {name} é <strong>territorializado</strong>: parte da BNCC
+              (Base Nacional Comum Curricular) e contextualiza cada habilidade para a história, a cultura e a
               realidade do município.
             </p>
           </details>
@@ -154,7 +215,7 @@ export default function MunicipioHome() {
           <details className="portal-faq-item">
             <summary>O que é o "desdobramento territorializado"?</summary>
             <p>
-              É a versão da habilidade adaptada para Atalaia: sugestões de como trabalhar o mesmo objetivo de
+              É a versão da habilidade adaptada para {name}: sugestões de como trabalhar o mesmo objetivo de
               aprendizagem usando exemplos, espaços e saberes locais do município. Você vê o desdobramento ao
               clicar em <strong>"Detalhes"</strong> em qualquer habilidade.
             </p>

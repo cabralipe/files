@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
-import { municipalSchools } from '@/lib/education-options'
+import { useMunicipality } from '@/lib/municipality-context'
+import { municipalSchools, schoolsFor } from '@/lib/education-options'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
@@ -159,7 +160,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     icon: 'BN',
     iconStyle: { background: 'var(--red)', color: 'var(--paper-soft)' },
     title: 'Bem-vindo ao Portal BNCC!',
-    body: 'Esta plataforma foi feita para professores de Atalaia/AL criarem planos de aula alinhados à BNCC Computação. Veja como funciona em poucos passos.',
+    body: 'Esta plataforma foi feita para professores da rede municipal criarem planos de aula alinhados à BNCC Computação. Veja como funciona em poucos passos.',
     tip: null,
   },
   {
@@ -201,6 +202,12 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 
 export default function Home() {
   const { user, signOut } = useAuth()
+  const { municipality } = useMunicipality()
+  const muniName = municipality?.name || 'Município'
+  const muniUf = municipality?.state || ''
+  const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
+  const schools = schoolsFor(municipality)
+  const muniLabelDash = `${muniName}${muniUf ? '-' + muniUf : ''}`
   const isLoggedIn = Boolean(user)
   const [view, setView] = useState<'skills' | 'plan' | 'saved'>('skills')
   const [skills, setSkills] = useState<Skill[]>([])
@@ -210,6 +217,7 @@ export default function Home() {
   const [grade, setGrade] = useState('')
   const [subject, setSubject] = useState('')
   const [axis, setAxis] = useState('')
+  const [seg, setSeg] = useState('')
   const [form, setForm] = useState<PlanForm>(emptyForm)
   const [planKind, setPlanKind] = useState<PlanKind>('plano')
   const [selectedStudentId, setSelectedStudentId] = useState('')
@@ -232,6 +240,14 @@ export default function Home() {
     setForm((f) => f.date ? f : { ...f, date: today })
     setAee((a) => a.data ? a : { ...a, data: today })
     setFamily((fam) => fam.data_consulta ? fam : { ...fam, data_consulta: today })
+  }, [])
+
+  useEffect(() => {
+    // Filtro inicial por segmento, vindo do deep-link da home (?seg=ei|anos-iniciais|anos-finais|eja)
+    try {
+      const s = new URLSearchParams(window.location.search).get('seg')
+      if (s) setSeg(s)
+    } catch {}
   }, [])
 
   useEffect(() => {
@@ -298,6 +314,17 @@ export default function Home() {
     setPlans(payload.data || [])
   }
 
+  const segOfCode = (code: string) => {
+    if (!code) return ''
+    if (code.startsWith('EJA')) return 'eja'
+    if (code.startsWith('EI')) return 'ei'
+    if (code.startsWith('EF')) {
+      const yr = code.slice(2, 4)
+      return ['06', '07', '08', '09', '67', '69', '89'].includes(yr) ? 'anos-finais' : 'anos-iniciais'
+    }
+    return ''
+  }
+
   const filteredSkills = useMemo(() => {
     const text = normalizeText(query)
 
@@ -308,14 +335,15 @@ export default function Home() {
       const matchesGrade = grade ? skill.grade_level === grade : true
       const matchesSubject = subject ? skill.subject === subject : true
       const matchesAxis = axis ? skill.axis === axis : true
+      const matchesSeg = seg ? segOfCode(skill.code) === seg : true
 
-      return matchesText && matchesGrade && matchesSubject && matchesAxis
+      return matchesText && matchesGrade && matchesSubject && matchesAxis && matchesSeg
     })
-  }, [axis, grade, query, skills, subject])
+  }, [axis, grade, query, skills, subject, seg])
 
   useEffect(() => {
     setPage(1)
-  }, [query, grade, subject, axis])
+  }, [query, grade, subject, axis, seg])
 
   const PAGE_SIZE = 24
   const totalPages = Math.ceil(filteredSkills.length / PAGE_SIZE)
@@ -402,7 +430,7 @@ export default function Home() {
       '🕵️‍♂️ Mapeando padrões de aprendizagem para a turma...',
       '🤖 Integrando o Pensamento Computacional de forma lúdica...',
       '🎭 Desenvolvendo atividades criativas e contextualizadas...',
-      '🍲 Temperando com a cultura e a história de Atalaia-AL...',
+      `🍲 Temperando com a cultura e a história de ${muniLabelDash}...`,
       '🛶 Inspirando dinâmicas nas águas do Rio Paraíba local...',
       '🌾 Conectando tecnologia ao cotidiano e à comunidade local...',
       '🛠️ Selecionando recursos e adaptando para a realidade escolar...',
@@ -641,11 +669,11 @@ export default function Home() {
     await downloadRisoPdf({
       docType: isPei ? 'PEI' : 'PLANO DE AULA',
       docSubtitle: isPei ? 'Plano Educacional Individualizado' : 'BNCC Computação',
-      masthead: 'Portal BNCC Computação · Secretaria Municipal de Educação de Atalaia/AL',
+      masthead: `Portal BNCC Computação · Secretaria Municipal de Educação de ${muniLabel}`,
       title,
       meta: [
         { label: 'Professor(a)', value: meta.teacher || 'Professor(a)' },
-        { label: 'Escola', value: `${meta.school || 'Escola Municipal'} · Atalaia/AL` },
+        { label: 'Escola', value: `${meta.school || 'Escola Municipal'} · ${muniLabel}` },
         ...(isPei && selectedStudent ? [{ label: 'Estudante', value: selectedStudent.full_name }] : []),
         { label: 'Ano/Turma', value: meta.grade_level || '—' },
         { label: 'Componente', value: meta.subject || '—' },
@@ -654,7 +682,7 @@ export default function Home() {
       ],
       body: text,
       sectionNames: ['HABILIDADES DA BNCC COMPUTAÇÃO', 'HABILIDADES DA BNCC COMPUTACAO'],
-      skipLines: ['PLANO DE AULA', 'PEI', title, 'Secretaria Municipal de Educação de Atalaia/AL'],
+      skipLines: ['PLANO DE AULA', 'PEI', title, `Secretaria Municipal de Educação de ${muniLabel}`],
       extraSections: [
         {
           title: 'Colaboração do professor da sala especial/AEE',
@@ -683,7 +711,7 @@ export default function Home() {
           ],
         },
       ],
-      footerLeft: 'PORTAL BNCC COMPUTAÇÃO · ATALAIA/AL',
+      footerLeft: `PORTAL BNCC COMPUTAÇÃO · ${muniLabel.toUpperCase()}`,
       fileName: `${isPei ? 'pei' : 'plano'}-${pdfSlug(title) || 'aula'}.pdf`,
     })
   }
@@ -696,7 +724,7 @@ export default function Home() {
             <div className="logo-ic">BN</div>
             <div>
               <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
             </div>
           </div>
           <nav className="hdr-nav" aria-label="Navegação principal">
@@ -805,11 +833,11 @@ export default function Home() {
                 </option>
               ))}
             </select>
-            {(query || grade || subject || axis) && (
+            {(query || grade || subject || axis || seg) && (
               <button
                 className="btn btn-out"
                 style={{ padding: '8px 14px', fontSize: 12 }}
-                onClick={() => { setQuery(''); setGrade(''); setSubject(''); setAxis('') }}
+                onClick={() => { setQuery(''); setGrade(''); setSubject(''); setAxis(''); setSeg('') }}
               >
                 ✕ Limpar
               </button>
@@ -992,7 +1020,7 @@ export default function Home() {
                     onChange={(event) => updateForm('school', event.target.value)}
                   >
                     <option value="">Selecione a escola</option>
-                    {municipalSchools.map((school) => (
+                    {schools.map((school) => (
                       <option key={school} value={school}>{school}</option>
                     ))}
                   </select>
@@ -1289,54 +1317,4 @@ export default function Home() {
       {!user && (
         <div className="mob-cta">
           <Link className="btn btn-out mob-cta-btn" href="/auth/login">Entrar</Link>
-          <Link className="btn btn-pri mob-cta-btn mob-cta-main" href="/auth/signup">Cadastrar professor</Link>
-        </div>
-      )}
-
-      <div id="toast" className={message ? 'show' : ''}>{message}</div>
-    </main>
-  )
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="sc">
-      <div className="sc-ic">•</div>
-      <div>
-        <div className="sc-n">{value}</div>
-        <div className="sc-l">{label}</div>
-      </div>
-    </div>
-  )
-}
-
-function Field({
-  label,
-  children,
-  wide,
-  required,
-  hint,
-  example,
-}: {
-  label: string
-  children: React.ReactNode
-  wide?: boolean
-  required?: boolean
-  hint?: string
-  example?: React.ReactNode
-}) {
-  return (
-    <label className={`fgr ${wide ? 's2' : ''}`}>
-      <span className="fl fl-row">
-        {label}{required && <span className="req">*</span>}
-        {hint && (
-          <span className="fhint" tabIndex={0} role="note" aria-label={hint}>
-            ?<span className="fbubble">{hint}</span>
-          </span>
-        )}
-      </span>
-      {children}
-      {example && <span className="fex">{example}</span>}
-    </label>
-  )
-}
+          <Link className="btn btn-pri mob-cta-btn mob-cta-m

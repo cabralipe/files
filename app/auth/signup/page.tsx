@@ -88,7 +88,7 @@ export default function SignUp() {
             <div className="logo-ic">BN</div>
             <div style={{ textAlign: 'left' }}>
               <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+              <div className="logo-s">Plataforma BNCC · Referencial Curricular Municipal</div>
             </div>
           </Link>
           <span className="auth-eyebrow">Primeira vez por aqui?</span>

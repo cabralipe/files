@@ -5,8 +5,9 @@ import { supabase } from '@/lib/supabase-client'
 import { useEffect, useState } from 'react'
 import Link from '@/lib/m-link'
 import { Search, Plus, BookOpen, FileText, Trash2, Download } from 'lucide-react'
-import { municipalSchools } from '@/lib/education-options'
+import { municipalSchools, schoolsFor } from '@/lib/education-options'
 import { useAuth } from '@/hooks/useAuth'
+import { useMunicipality } from '@/lib/municipality-context'
 
 
 interface Skill {
@@ -30,6 +31,11 @@ interface Plan {
 
 export default function PortalPage() {
   const { user, signOut } = useAuth()
+  const { municipality } = useMunicipality()
+  const muniName = municipality?.name || 'Município'
+  const muniUf = municipality?.state || ''
+  const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
+  const schools = schoolsFor(municipality)
   const [view, setView] = useState<'skills' | 'plan' | 'saved'>('skills')
   const [skills, setSkills] = useState<Skill[]>([])
   const [filteredSkills, setFilteredSkills] = useState<Skill[]>([])
@@ -171,7 +177,7 @@ ${formData.methodology || '(Não preenchido)'}
             <div className="logo-ic">BN</div>
             <div>
               <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
             </div>
           </div>
           <nav className="hdr-nav" aria-label="Navegação principal">
@@ -299,7 +305,7 @@ ${formData.methodology || '(Não preenchido)'}
                     placeholder="Nome da escola"
                   />
                   <datalist id="municipal-schools">
-                    {municipalSchools.map((school) => (
+                    {schools.map((school) => (
                       <option key={school} value={school} />
                     ))}
                   </datalist>

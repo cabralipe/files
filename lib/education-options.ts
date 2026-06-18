@@ -43,3 +43,12 @@ export const teacherSubjects = [
 export const teacherSubjectOptions = teacherSubjects.map(
   ({ area, subject }) => `${area}: ${subject}`,
 )
+
+
+// Escolas por município: usa municipality.config.schools quando definido;
+// caso contrário, cai no fallback acima (lista padrão).
+export function schoolsFor(m?: { config?: Record<string, unknown> } | null): string[] {
+  const cfg = (m?.config || {}) as { schools?: unknown }
+  const list = Array.isArray(cfg.schools) ? (cfg.schools as unknown[]).filter((x) => typeof x === 'string') as string[] : []
+  return list.length ? list : municipalSchools
+}

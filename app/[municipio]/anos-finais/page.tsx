@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase-client'
 import { useState, useMemo, useEffect } from 'react'
 import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
-import { municipalSchools } from '@/lib/education-options'
+import { municipalSchools, schoolsFor } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
 import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
@@ -77,7 +77,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     icon: 'AF',
     iconStyle: { background: 'var(--blue)', color: 'var(--paper-soft)' },
     title: 'Bem-vindo aos Anos Finais!',
-    body: 'Este portal reúne as 722 habilidades do Referencial Curricular de Atalaia/AL para o 6º ao 9º Ano, com desdobramentos contextualizados para a realidade do município. Veja como usar em poucos passos.',
+    body: 'Este portal reúne as habilidades do Referencial Curricular do município para o 6º ao 9º Ano, com desdobramentos contextualizados para a realidade local. Veja como usar em poucos passos.',
     tip: null,
   },
   {
@@ -98,7 +98,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     icon: '▤',
     iconStyle: { background: 'var(--paper)', color: 'var(--ink)' },
     title: 'Conheça o card de habilidade',
-    body: 'Cada card traz o código oficial, a habilidade e o objeto de conhecimento. Clique em "Detalhes" para ver o desdobramento territorializado de Atalaia, e em "+ Plano" para usar a habilidade no seu plano de aula.',
+    body: 'Cada card traz o código oficial, a habilidade e o objeto de conhecimento. Clique em "Detalhes" para ver o desdobramento territorializado do município, e em "+ Plano" para usar a habilidade no seu plano de aula.',
     selector: '.grid .scard',
   },
   {
@@ -158,7 +158,12 @@ async function getAccessToken() {
 
 export default function AnosFinaisPage() {
   const { user, signOut } = useAuth()
-  const { slug } = useMunicipality()
+  const { slug, municipality } = useMunicipality()
+  const muniName = municipality?.name || 'Município'
+  const muniUf = municipality?.state || ''
+  const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
+  const schools = schoolsFor(municipality)
+  const muniLabelDash = `${muniName}${muniUf ? '-' + muniUf : ''}`
   const { open: tutorialOpen, openTutorial, closeTutorial } = usePortalTutorial('af_tutorial_seen')
 
   // data
@@ -278,7 +283,7 @@ export default function AnosFinaisPage() {
 
   const PHRASES = [
     '🧠 Analisando as habilidades selecionadas...',
-    '📚 Consultando o Referencial Curricular de Atalaia-AL...',
+    `📚 Consultando o Referencial Curricular de ${muniLabelDash}...`,
     '🌾 Contextualizando para a realidade do município...',
     '💡 Formulando objetivos alinhados ao ano escolar...',
     '✏️ Estruturando a introdução e o aquecimento da aula...',
@@ -364,12 +369,12 @@ export default function AnosFinaisPage() {
     await downloadRisoPdf({
       docType: 'PLANO DE AULA',
       docSubtitle: 'Referencial Curricular · Anos Finais',
-      masthead: 'Referencial Curricular Anos Finais · Secretaria Municipal de Educação · Atalaia/AL',
+      masthead: `Referencial Curricular Anos Finais · Secretaria Municipal de Educação · ${muniLabel}`,
       title,
       ink: [45, 64, 160],
       meta: [
         { label: 'Professor(a)', value: form.teacher || 'Professor(a)' },
-        { label: 'Escola', value: `${form.school} · Atalaia/AL` },
+        { label: 'Escola', value: `${form.school} · ${muniLabel}` },
         { label: 'Ano/Turma', value: form.grade_level },
         { label: 'Componente', value: form.subject },
         { label: 'Data', value: form.date || new Date().toLocaleDateString('pt-BR') },
@@ -378,7 +383,7 @@ export default function AnosFinaisPage() {
       body: text,
       sectionNames: ['HABILIDADES DO REFERENCIAL CURRICULAR', 'OBJETIVOS DO PROFESSOR'],
       skipLines: ['PLANO DE AULA', title, 'Secretaria Municipal de Educação'],
-      footerLeft: 'REFERENCIAL CURRICULAR ANOS FINAIS · ATALAIA/AL',
+      footerLeft: `REFERENCIAL CURRICULAR ANOS FINAIS · ${muniLabel.toUpperCase()}`,
       fileName: `plano-af-${pdfSlug(title) || 'aula'}.pdf`,
     })
   }
@@ -417,7 +422,7 @@ export default function AnosFinaisPage() {
             <div className="logo-ic af-ic" />
             <div>
               <div className="logo-t">Referencial Curricular · Anos Finais</div>
-              <div className="logo-s">Secretaria Municipal de Educação · Atalaia/AL</div>
+              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
             </div>
           </div>
           <nav className="hdr-nav" aria-label="Navegação">
@@ -464,7 +469,7 @@ export default function AnosFinaisPage() {
                 storageKey="af_howto_seen"
                 accentVar="var(--blue)"
                 washVar="var(--blue-wash)"
-                referencialLabel="Referencial Curricular de Atalaia — Anos Finais (6º ao 9º Ano)"
+                referencialLabel={`Referencial Curricular de ${muniName} — Anos Finais (6º ao 9º Ano)`}
                 onOpenTutorial={openTutorial}
               />
 
@@ -541,7 +546,7 @@ export default function AnosFinaisPage() {
                         <h2 className="cobj">{skill.objeto || skill.campo || 'Habilidade curricular'}</h2>
                         <p className="chab">{skill.habilidade}</p>
                         <div className="cmeta">
-                          {skill.campo ? skill.campo : 'Referencial Curricular de Atalaia'}
+                          {skill.campo ? skill.campo : `Referencial Curricular de ${muniName}`}
                         </div>
 
                         {isOpen && (
@@ -656,7 +661,7 @@ export default function AnosFinaisPage() {
                 <Field label="Escola">
                   <input list="af-schools" value={form.school} onChange={e => updateForm('school', e.target.value)} />
                   <datalist id="af-schools">
-                    {municipalSchools.map(s => <option key={s} value={s} />)}
+                    {schools.map(s => <option key={s} value={s} />)}
                   </datalist>
                 </Field>
                 <Field label="Ano/Turma">
@@ -681,7 +686,7 @@ export default function AnosFinaisPage() {
                 </Field>
                 <Field label="Tema da aula" wide>
                   <input value={form.title} onChange={e => updateForm('title', e.target.value)}
-                    placeholder="Ex.: A formação territorial de Atalaia/AL" />
+                    placeholder={`Ex.: A formação territorial de ${muniLabel}`} />
                 </Field>
                 <Field label="Objetivos do professor" wide>
                   <textarea value={form.objectives} onChange={e => updateForm('objectives', e.target.value)}
