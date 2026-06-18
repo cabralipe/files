@@ -1169,4 +1169,13 @@ A avaliacao sera formativa, observando participacao, colaboracao, clareza do reg
 
 9. REFERENCIAS
 - BRASIL. Base Nacional Comum Curricular (BNCC). Brasilia: MEC, 2017.
-- BNCC Computacao e documentos curriculares 
+- BNCC Computacao e documentos curriculares complementares.
+
+OBJETIVOS DO PROFESSOR
+${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'}
+
+OBSERVACOES
+${teacherNotes || 'Plano gerado para uso e edicao pelo professor.'}
+
+Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao.`
+}

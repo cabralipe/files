@@ -4,8 +4,8 @@ import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
-import { useMunicipality } from '@/lib/municipality-context'
 import { municipalSchools, schoolsFor } from '@/lib/education-options'
+import { useMunicipality } from '@/lib/municipality-context'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
@@ -206,8 +206,8 @@ export default function Home() {
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
   const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
-  const schools = schoolsFor(municipality)
   const muniLabelDash = `${muniName}${muniUf ? '-' + muniUf : ''}`
+  const schools = schoolsFor(municipality)
   const isLoggedIn = Boolean(user)
   const [view, setView] = useState<'skills' | 'plan' | 'saved'>('skills')
   const [skills, setSkills] = useState<Skill[]>([])
@@ -243,10 +243,9 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    // Filtro inicial por segmento, vindo do deep-link da home (?seg=ei|anos-iniciais|anos-finais|eja)
     try {
-      const s = new URLSearchParams(window.location.search).get('seg')
-      if (s) setSeg(s)
+      const sp = new URLSearchParams(window.location.search).get('seg')
+      if (sp) setSeg(sp)
     } catch {}
   }, [])
 
@@ -856,7 +855,7 @@ export default function Home() {
               <div style={{ marginTop: 14 }}>
                 <button
                   className="btn btn-out"
-                  onClick={() => { setQuery(''); setGrade(''); setSubject(''); setAxis('') }}
+                  onClick={() => { setQuery(''); setGrade(''); setSubject(''); setAxis(''); setSeg('') }}
                 >
                   ✕ Limpar filtros
                 </button>
@@ -1317,4 +1316,54 @@ export default function Home() {
       {!user && (
         <div className="mob-cta">
           <Link className="btn btn-out mob-cta-btn" href="/auth/login">Entrar</Link>
-          <Link className="btn btn-pri mob-cta-btn mob-cta-m
+          <Link className="btn btn-pri mob-cta-btn mob-cta-main" href="/auth/signup">Cadastrar professor</Link>
+        </div>
+      )}
+
+      <div id="toast" className={message ? 'show' : ''}>{message}</div>
+    </main>
+  )
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="sc">
+      <div className="sc-ic">•</div>
+      <div>
+        <div className="sc-n">{value}</div>
+        <div className="sc-l">{label}</div>
+      </div>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  children,
+  wide,
+  required,
+  hint,
+  example,
+}: {
+  label: string
+  children: React.ReactNode
+  wide?: boolean
+  required?: boolean
+  hint?: string
+  example?: React.ReactNode
+}) {
+  return (
+    <label className={`fgr ${wide ? 's2' : ''}`}>
+      <span className="fl fl-row">
+        {label}{required && <span className="req">*</span>}
+        {hint && (
+          <span className="fhint" tabIndex={0} role="note" aria-label={hint}>
+            ?<span className="fbubble">{hint}</span>
+          </span>
+        )}
+      </span>
+      {children}
+      {example && <span className="fex">{example}</span>}
+    </label>
+  )
+}
