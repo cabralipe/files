@@ -242,15 +242,23 @@ function normalizeSkill(raw: Record<string, unknown>, index: number): PublicSkil
   }
 }
 
-export async function listSkills(): Promise<PublicSkill[]> {
+export async function listSkills(municipalityId?: string | null): Promise<PublicSkill[]> {
   const supabase = getSupabase()
 
   if (supabase) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('skills')
       .select('*')
       .order('grade_level', { ascending: true })
       .order('code', { ascending: true })
+
+    // Isolamento por tenant: quando o município é conhecido, retorna só o
+    // currículo dele. Sem município, mantém o comportamento global anterior.
+    if (municipalityId) {
+      query = query.eq('municipality_id', municipalityId)
+    }
+
+    const { data, error } = await query
 
     if (!error && data?.length) {
       return data.map((skill, index) => normalizeSkill(skill, index))

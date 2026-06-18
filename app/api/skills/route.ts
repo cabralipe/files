@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { listSkills } from '@/lib/public-backend'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,9 @@ export async function GET(request: Request) {
   const subject = searchParams.get('subject')
   const axis = searchParams.get('axis')
 
-  let skills = await listSkills()
+  // Isolamento por tenant: cada município enxerga apenas o seu currículo.
+  const municipality = await resolveMunicipality(request)
+  let skills = await listSkills(municipality?.id)
 
   if (query) {
     skills = skills.filter((skill) =>
