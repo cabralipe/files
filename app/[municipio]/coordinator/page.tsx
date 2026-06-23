@@ -265,7 +265,7 @@ export default function CoordinatorDashboard() {
           <div className="saved-head">
             <div>
               <h1>Pipeline de PEIs</h1>
-              <p>Acompanhe os PEIs da escola: gerado → validação do AEE → família → vigente. (somente leitura)</p>
+              <p>Acompanhe os PEIs da escola: gerado → validação do AEE → família → vigente. Você pode registrar a ciência da família em nome dela quando o PEI estiver aguardando.</p>
             </div>
           </div>
           <PeiReviewQueue mode="coordination" />
@@ -277,7 +277,7 @@ export default function CoordinatorDashboard() {
           <div className="saved-head">
             <div>
               <h1>Pipeline de PAEEs</h1>
-              <p>Acompanhe os planos do AEE da escola: elaborado → família → vigente. (somente leitura)</p>
+              <p>Acompanhe os planos do AEE da escola: elaborado → família → vigente. Você pode registrar a ciência da família em nome dela quando o PAEE estiver aguardando.</p>
             </div>
           </div>
           <PeiReviewQueue mode="coordination" kind="paee" />

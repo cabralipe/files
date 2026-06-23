@@ -220,7 +220,7 @@ export default function AnosIniciaisPage() {
 
   // saved plans (localStorage for normal plans, server for PEI)
   const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string }>>([])
-  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string }>>([])
+  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string; coordinator_note?: string }>>([])
   const [loadingServerPlans, setLoadingServerPlans] = useState(false)
 
   // Set today's date after mount to avoid SSR/client timezone mismatch
@@ -349,12 +349,15 @@ export default function AnosIniciaisPage() {
   async function generatePlan() {
     if (!user) { showToast('Faça login para gerar.'); return }
 
-    // Modo "usar o PEI do AEE": carrega o documento existente, sem IA e sem exigir tema/habilidades.
+    // Modo "usar o PEI do AEE": carrega o conteudo existente como BASE, sem IA e
+    // sem exigir tema/habilidades. NAO reaproveita o id do documento original:
+    // ao salvar, gera uma nova versao e preserva o PEI do AEE (que pode estar
+    // vigente) intacto, evitando sobrescrita acidental.
     if (planKind === 'pei' && peiSource === 'use' && existingPei?.content) {
       setGenerated(existingPei.content)
-      setEditingPlanId(existingPei.id || null)
+      setEditingPlanId(null)
       setView('plan')
-      showToast('PEI do AEE carregado. Edite e salve se quiser.')
+      showToast('PEI do AEE carregado como base. Ao salvar, cria-se uma nova versão sem alterar o original.')
       return
     }
 
@@ -1006,6 +1009,11 @@ export default function AnosIniciaisPage() {
                           {peiStatusLabel(plan.plan_status)}
                         </span>
                       </div>
+                      {plan.plan_status === 'rascunho' && plan.coordinator_note?.trim() && (
+                        <div className="al-error" style={{ marginBottom: 8, fontSize: 13 }}>
+                          <strong>Devolvido pelo AEE:</strong> {plan.coordinator_note}
+                        </div>
+                      )}
                       <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
                       <div className="pi-actions">
                         <button className="btn btn-pri" onClick={() => {

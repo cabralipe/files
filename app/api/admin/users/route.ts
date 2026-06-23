@@ -34,8 +34,10 @@ export async function GET(request: Request) {
         return {
           id: authUser.id,
           email: authUser.email,
+          name: dbProfile?.full_name || authUser.user_metadata?.name || '',
           full_name: dbProfile?.full_name || authUser.user_metadata?.name || '',
           role: authUser.user_metadata?.role || dbProfile?.role || 'teacher',
+          school_id: dbProfile?.school_id || authUser.user_metadata?.school_id || null,
           school: authUser.user_metadata?.school || '',
           subject: dbProfile?.subject || authUser.user_metadata?.subject || '',
           blocked: authUser.user_metadata?.blocked === true,

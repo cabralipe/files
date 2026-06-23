@@ -50,6 +50,10 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
   const [open, setOpen] = useState<string>('')
+  // Registro de ciencia da familia em nome dela (coordenacao/gestao).
+  const [consentFor, setConsentFor] = useState('')
+  const [consentName, setConsentName] = useState('')
+  const [consentKin, setConsentKin] = useState('')
   const [filter, setFilter] = useState<string>(
     mode === 'aee' ? (kind === 'paee' ? 'rascunho' : 'aguardando_aee') : 'all',
   )
@@ -81,7 +85,11 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
     void load()
   }, [load])
 
-  async function act(id: string, action: 'approve_aee' | 'reject_aee' | 'submit_familia') {
+  async function act(
+    id: string,
+    action: 'approve_aee' | 'reject_aee' | 'submit_familia' | 'family_consent',
+    body: Record<string, unknown> = {},
+  ) {
     setBusy(id)
     setError('')
     try {
@@ -89,16 +97,34 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
       const res = await fetch(`/api/plans/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...body }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao atualizar status')
+      setConsentFor('')
+      setConsentName('')
+      setConsentKin('')
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao atualizar status')
     } finally {
       setBusy('')
     }
+  }
+
+  function registerConsent(id: string) {
+    if (!consentName.trim()) {
+      setError('Informe o nome do responsavel que deu ciencia.')
+      return
+    }
+    void act(id, 'family_consent', {
+      consulta_familia: {
+        responsavel_nome: consentName,
+        parentesco: consentKin,
+        concordancia: 'aprovado',
+        formato: 'presencial',
+      },
+    })
   }
 
   const filters =
@@ -204,7 +230,38 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
                       {busy === plan.id ? 'Enviando...' : 'Enviar para ciência da família'}
                     </button>
                   )}
+                  {mode === 'coordination' && status === 'aguardando_familia' && consentFor !== plan.id && (
+                    <button className="btn btn-pri" disabled={busy === plan.id} onClick={() => { setConsentFor(plan.id); setConsentName(''); setConsentKin('') }}>
+                      Registrar ciência da família
+                    </button>
+                  )}
                 </div>
+
+                {mode === 'coordination' && status === 'aguardando_familia' && consentFor === plan.id && (
+                  <div className="pei-source" style={{ marginTop: 10, padding: '12px 14px', border: '2px solid var(--ink)' }}>
+                    <p className="pei-note" style={{ marginBottom: 8 }}>
+                      Registro da ciência em nome da família/responsável. Ao confirmar, o {docLabel} passa a vigente.
+                    </p>
+                    <div className="fg" style={{ marginBottom: 8 }}>
+                      <label className="fgr">
+                        <span className="fl">Nome do responsável</span>
+                        <input value={consentName} onChange={(e) => setConsentName(e.target.value)} placeholder="Quem deu ciência" />
+                      </label>
+                      <label className="fgr">
+                        <span className="fl">Parentesco / relação</span>
+                        <input value={consentKin} onChange={(e) => setConsentKin(e.target.value)} placeholder="Ex.: mãe, pai, responsável legal" />
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-suc" disabled={busy === plan.id} onClick={() => registerConsent(plan.id)}>
+                        {busy === plan.id ? 'Registrando...' : 'Confirmar ciência'}
+                      </button>
+                      <button className="btn btn-out" disabled={busy === plan.id} onClick={() => setConsentFor('')}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </article>
             )
           })}

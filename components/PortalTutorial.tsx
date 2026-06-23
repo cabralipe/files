@@ -221,12 +221,14 @@ export function SkillsHowTo({
   accentVar = 'var(--blue)',
   washVar = 'var(--blue-wash)',
   referencialLabel,
+  itemLabel = 'habilidades',
   onOpenTutorial,
 }: {
   storageKey: string
   accentVar?: string
   washVar?: string
   referencialLabel: string
+  itemLabel?: string
   onOpenTutorial: () => void
 }) {
   const [hidden, setHidden] = useState(true)
@@ -250,7 +252,7 @@ export function SkillsHowTo({
         <div>
           <div className="howto-title">Como usar esta tela</div>
           <div className="howto-sub">
-            Aqui você explora todas as habilidades do {referencialLabel} e monta seu plano de aula em 3 passos:
+            Aqui você explora os itens ({itemLabel}) do {referencialLabel} e monta seu plano de aula em 3 passos:
           </div>
         </div>
       </div>
@@ -259,14 +261,14 @@ export function SkillsHowTo({
           <span className="howto-n">1</span>
           <div>
             <strong>Busque e filtre</strong>
-            <span>Use a busca ou os filtros de disciplina e ano para encontrar as habilidades da sua aula.</span>
+            <span>Use a busca ou os filtros de disciplina e ano para encontrar {itemLabel} para sua aula.</span>
           </div>
         </li>
         <li>
           <span className="howto-n">2</span>
           <div>
-            <strong>Selecione habilidades</strong>
-            <span>Clique em <em>Detalhes</em> para ver o desdobramento completo e em <em>+ Plano</em> para adicionar ao seu plano.</span>
+            <strong>Selecione {itemLabel}</strong>
+            <span>Clique em <em>Detalhes</em> para ver a referência completa e em <em>+ Plano</em> para adicionar ao seu plano.</span>
           </div>
         </li>
         <li>

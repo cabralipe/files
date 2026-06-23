@@ -244,8 +244,12 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const sp = new URLSearchParams(window.location.search).get('seg')
+      const params = new URLSearchParams(window.location.search)
+      const sp = params.get('seg')
       if (sp) setSeg(sp)
+      // Permite abrir o portal já filtrado por componente (ex.: card "BNCC Computação").
+      const subj = params.get('subject')
+      if (subj) setSubject(subj)
     } catch {}
   }, [])
 

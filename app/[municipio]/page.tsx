@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
 import { useMunicipality } from '@/lib/municipality-context'
 
-type Skill = { code: string }
+type Skill = { code: string; subject?: string }
 
 // Classificação de cada habilidade em um segmento, a partir do código.
 function segOf(code: string): 'ei' | 'anos-iniciais' | 'anos-finais' | 'eja' | null {
@@ -55,9 +55,19 @@ const CARDS: Record<
     desc: 'Habilidades do 1º e 2º segmentos da EJA, com práticas voltadas ao mundo do trabalho e ao território.',
     pills: ['1º e 2º Segmentos', 'Práticas e territórios'],
   },
+  computacao: {
+    stamp: 'CO',
+    cls: 'portal-card-comp',
+    tag: 'BNCC Computação',
+    title: ['BNCC', 'Computação'],
+    desc: 'Complemento da BNCC Computação: pensamento computacional, cultura digital e mundo digital, contextualizado para o município.',
+    pills: ['Pensamento computacional', 'Cultura digital'],
+  },
 }
 
-const ORDER = ['ei', 'anos-iniciais', 'anos-finais', 'eja'] as const
+// Computação é um eixo por componente (categoria), não uma etapa: por isso é
+// contado separadamente, pelo subject normalizado das habilidades.
+const ORDER = ['ei', 'anos-iniciais', 'anos-finais', 'eja', 'computacao'] as const
 
 export default function MunicipioHome() {
   const { municipality } = useMunicipality()
@@ -78,6 +88,8 @@ export default function MunicipioHome() {
         for (const s of (payload?.data || []) as Skill[]) {
           const k = segOf(s.code)
           if (k) c[k] = (c[k] || 0) + 1
+          // Computação é transversal às etapas: conta pelo componente.
+          if (s.subject === 'Computação') c.computacao = (c.computacao || 0) + 1
         }
         setCounts(c)
         setLoaded(true)
@@ -124,8 +136,11 @@ export default function MunicipioHome() {
           {cards.map((k) => {
             const c = CARDS[k]
             const total = counts[k] || 0
+            const href = k === 'computacao'
+              ? `/computacao?subject=${encodeURIComponent('Computação')}`
+              : `/computacao?seg=${k}`
             return (
-              <Link key={k} href={`/computacao?seg=${k}`} className={`portal-card ${c.cls}`}>
+              <Link key={k} href={href} className={`portal-card ${c.cls}`}>
                 <div className="portal-card-stamp">{c.stamp}</div>
                 <div className="portal-card-body">
                   <div className="portal-card-tag">

@@ -243,7 +243,7 @@ export default function PeiControls({
                   ) : existing ? (
                     <>
                       <p className="pei-note" style={{ marginBottom: 8 }}>
-                        Este aluno já tem um PEI cadastrado pelo professor AEE
+                        Este aluno já tem um PEI registrado
                         {' '}(<strong>{STATUS_LABEL[existing.plan_status] || existing.plan_status}</strong>). O que deseja fazer?
                       </p>
                       <label className="pei-check" style={{ display: 'block', marginBottom: 4 }}>
@@ -253,7 +253,7 @@ export default function PeiControls({
                           checked={peiSource === 'use'}
                           onChange={() => onPeiSourceChange?.('use')}
                         />{' '}
-                        Usar o PEI do AEE
+                        Usar o PEI existente como base (ao salvar, cria uma nova versão sem alterar o original)
                       </label>
                       <label className="pei-check" style={{ display: 'block' }}>
                         <input
@@ -262,7 +262,7 @@ export default function PeiControls({
                           checked={peiSource === 'create'}
                           onChange={() => onPeiSourceChange?.('create')}
                         />{' '}
-                        Criar o meu PEI (a IA combina o do AEE com o meu)
+                        Gerar um novo PEI (a IA combina o existente com os meus dados)
                       </label>
                     </>
                   ) : (

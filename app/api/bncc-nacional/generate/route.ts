@@ -25,6 +25,7 @@ type RequestBody = {
   objectives?: string
   materials?: string
   notes?: string
+  reference_type?: 'bncc' | 'saeb'
   skills: NacionalSkill[]
 }
 
@@ -36,8 +37,12 @@ function buildPrompt(body: RequestBody): string {
   const date = body.date || new Date().toLocaleDateString('pt-BR')
   const objectives = body.objectives?.trim() || '[Inferir objetivos a partir do tema e das habilidades selecionadas]'
   const methodology = body.methodology?.trim() || '[Propor metodologia ativa simples e viável para a turma]'
+  const isSaeb = body.reference_type === 'saeb'
+  const referenceHeading = isSaeb
+    ? 'DESCRITORES DA MATRIZ DE REFERÊNCIA DO SAEB SELECIONADOS'
+    : 'HABILIDADES DA BNCC SELECIONADAS'
 
-  return `Você é especialista em educação básica e BNCC. Gere um plano de aula completo e pronto para uso.
+  return `Você é especialista em educação básica, BNCC e avaliações do SAEB. Gere um plano de aula completo e pronto para uso.
 
 DADOS DO PLANO:
 - Professor(a): ${body.teacher || 'Não informado'}
@@ -56,8 +61,8 @@ ${objectives}
 METODOLOGIA INFORMADA:
 ${methodology}
 
-HABILIDADES DA BNCC SELECIONADAS (${body.skills.length}):
-${skillBlock || 'Nenhuma habilidade selecionada — inferir a partir do tema.'}
+${referenceHeading} (${body.skills.length}):
+${skillBlock || 'Nenhuma referência selecionada — inferir a partir do tema.'}
 
 Escreva em português do Brasil, linguagem clara, direta e prática. O plano deve conter: identificação, objetivos, metodologia/desenvolvimento (com momentos da aula), avaliação e referências. Entre 750 e 1100 palavras. Sem introduções longas ou decoração visual.`
 }
@@ -70,7 +75,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Informe o tema do plano.' }, { status: 400 })
     }
     if (!body.skills?.length) {
-      return NextResponse.json({ error: 'Selecione ao menos uma habilidade.' }, { status: 400 })
+      return NextResponse.json({ error: 'Selecione ao menos uma habilidade ou descritor.' }, { status: 400 })
     }
 
     const prompt = buildPrompt(body)

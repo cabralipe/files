@@ -156,8 +156,14 @@ const AEE_TUTORIAL = [
   {
     icon: '✓',
     iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
-    title: 'Salvar e gerar o PEI',
-    body: 'Ao concluir, o aluno aparece no seletor de PEI dos portais. Lá você escolhe o aluno e clica em "Gerar plano" para a IA montar o PEI a partir desta ficha.',
+    title: 'Salvar a ficha',
+    body: 'Ao concluir, o aluno passa a aparecer no seletor de PEI dos portais. Quem gera o PEI ali é o professor regente, a partir desta ficha. Você não precisa gerar o PEI aqui.',
+  },
+  {
+    icon: '4',
+    iconStyle: { background: 'var(--teal-wash)', color: 'var(--ink)' },
+    title: 'Validar os PEIs dos regentes',
+    body: 'Quando o regente envia o PEI, ele chega na aba "Validar PEIs" para sua aprovação. Ao aprovar, o PEI segue para a ciência da família e depois passa a vigente.',
   },
   {
     icon: '✦',
@@ -342,8 +348,8 @@ export default function AeePage() {
                     <li><strong>Cadastre o aluno</strong> — Preencha nome, escola, ano e turno. O cadastro e vinculado ao municipio automaticamente.</li>
                     <li><strong>Preencha a ficha AEE</strong> — Descreva necessidades educacionais, barreiras, potencialidades e recursos. Quanto mais completa, melhor sera o PEI gerado pela IA.</li>
                     <li><strong>Salve</strong> — Apos salvar, o aluno aparece no seletor PEI dos portais BNCC Computacao e Anos Iniciais.</li>
-                    <li><strong>Gere o PEI</strong> — Nos portais, selecione &quot;PEI&quot;, escolha o aluno e clique em &quot;Gerar plano&quot;. A IA usara a ficha AEE para criar um plano individualizado.</li>
-                    <li><strong>Elabore o PAEE</strong> — Na aba &quot;Elaborar PAEE&quot;, defina a organizacao do atendimento e gere o plano do AEE articulado com o PEI da sala regular.</li>
+                    <li><strong>O regente gera o PEI</strong> — Nos portais, o professor regente seleciona &quot;PEI&quot;, escolhe o aluno e clica em &quot;Gerar plano&quot;. A IA usa esta ficha AEE para criar o plano. Depois ele envia o PEI para sua validacao (aba &quot;Validar PEIs&quot;).</li>
+                    <li><strong>Elabore o PAEE</strong> — Na aba &quot;Elaborar PAEE&quot;, defina a organizacao do atendimento e gere o plano do AEE (este sim e de sua autoria), articulado com o PEI da sala regular.</li>
                   </ol>
                   <p className="pei-note" style={{ marginTop: 8 }}>
                     A ficha AEE e de acesso restrito (professor AEE, coordenacao, administracao). Dados de saude informados

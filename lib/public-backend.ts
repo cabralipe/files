@@ -659,6 +659,9 @@ export async function transitionPlanStatus(
     colaboracao_aee?: Partial<PlanAeeCollaboration>
     consulta_familia?: Partial<PlanFamilyConsultation>
     note?: string
+    // Identidade de quem executa a acao, para validar o escopo (escola/municipio
+    // ou vinculo familiar) e evitar que um usuario atue sobre documentos alheios.
+    actor?: { role?: string; userId?: string; school?: string; municipalityId?: string }
   } = {},
 ): Promise<PublicPlan | null> {
   const supabase = getSupabaseAdmin()
@@ -668,6 +671,32 @@ export async function transitionPlanStatus(
 
   const plan = mapPlanRow(current as Record<string, any>)
   if (!plan.is_pei && !plan.is_paee) throw new Error('TRANSITION_NOT_PEI')
+
+  // Escopo: alem do papel (validado na rota), o documento precisa pertencer ao
+  // usuario. Gestao (admin/municipio) tem alcance amplo; equipe escolar fica na
+  // sua escola; familia/responsavel so atua em alunos vinculados a sua conta.
+  const actor = payload.actor
+  if (actor?.role) {
+    const managers = ['admin', 'municipality_admin', 'super_admin']
+    if (actor.role === 'municipality_admin' && actor.municipalityId && current.municipality_id
+      && current.municipality_id !== actor.municipalityId) {
+      throw new Error('SCOPE_FORBIDDEN')
+    }
+    if (actor.role === 'family') {
+      const { data: link } = await supabase
+        .from('family_student_links')
+        .select('student_id')
+        .eq('family_user_id', actor.userId || '')
+        .eq('student_id', plan.student_id || '')
+        .maybeSingle()
+      if (!link) throw new Error('SCOPE_FORBIDDEN')
+    } else if (!managers.includes(actor.role)) {
+      // teacher / aee_teacher / coordinator: restritos a propria escola.
+      if (actor.school && plan.school && actor.school !== plan.school) {
+        throw new Error('SCOPE_FORBIDDEN')
+      }
+    }
+  }
 
   const status = plan.plan_status || 'rascunho'
   const now = new Date().toISOString()

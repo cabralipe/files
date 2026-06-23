@@ -19,6 +19,7 @@ type Skill = {
   objeto_conhecimento: string
   habilidade: string
   habilidade_raw: string
+  fonte?: string
 }
 
 type PlanForm = {
@@ -35,13 +36,13 @@ type PlanForm = {
   notes: string
 }
 
-type Nivel = 'infantil' | 'fundamental' | 'medio'
+type Nivel = 'infantil' | 'fundamental' | 'medio' | 'saeb'
 type PdfLayout = 'risografico' | 'institucional' | 'simples' | 'verde' | 'colorido' | 'noturno'
 
 const NIVEL_CONFIG: Record<Nivel, {
   label: string; sub: string; file: string; icon: string
   disciplinaLabel: string; hasUnidade: boolean
-  count: number; accentVar: string
+  count: number; accentVar: string; itemLabel: 'habilidade' | 'descritor'
 }> = {
   infantil: {
     label: 'Educação Infantil',
@@ -52,6 +53,7 @@ const NIVEL_CONFIG: Record<Nivel, {
     hasUnidade: false,
     count: 93,
     accentVar: 'var(--mustard)',
+    itemLabel: 'habilidade',
   },
   fundamental: {
     label: 'Ensino Fundamental',
@@ -62,6 +64,7 @@ const NIVEL_CONFIG: Record<Nivel, {
     hasUnidade: true,
     count: 1408,
     accentVar: 'var(--teal)',
+    itemLabel: 'habilidade',
   },
   medio: {
     label: 'Ensino Médio',
@@ -72,6 +75,18 @@ const NIVEL_CONFIG: Record<Nivel, {
     hasUnidade: false,
     count: 209,
     accentVar: 'var(--blue)',
+    itemLabel: 'habilidade',
+  },
+  saeb: {
+    label: 'Descritores SAEB',
+    sub: 'Língua Portuguesa e Matemática · 5º ano, 9º ano e Ensino Médio',
+    file: '/saeb-descriptors.json',
+    icon: 'SA',
+    disciplinaLabel: 'Componente',
+    hasUnidade: true,
+    count: 157,
+    accentVar: 'var(--red)',
+    itemLabel: 'descritor',
   },
 }
 
@@ -316,6 +331,9 @@ export default function BnccNacionalPage() {
   }
 
   const cfg = nivel ? NIVEL_CONFIG[nivel] : null
+  const itemLabel = cfg?.itemLabel || 'habilidade'
+  const itemLabelPlural = `${itemLabel}s`
+  const isSaeb = nivel === 'saeb'
 
   const disciplinas = useMemo(() => [...new Set(skills.map((s) => s.disciplina))].sort(), [skills])
 
@@ -350,13 +368,13 @@ export default function BnccNacionalPage() {
 
   async function generatePlan() {
     if (!form.title.trim()) { showToast('Informe o tema do plano.'); return }
-    if (!selected.length) { showToast('Selecione ao menos uma habilidade.'); return }
+    if (!selected.length) { showToast(`Selecione ao menos um ${itemLabel}.`); return }
     if (planKind === 'pei' && !user) { showToast('Faça login para gerar PEI.'); return }
     if (planKind === 'pei' && !selectedStudentId) { showToast('Selecione o aluno para gerar o PEI.'); return }
 
     const phrases = [
-      '🧠 Analisando as habilidades selecionadas...',
-      '📚 Consultando as diretrizes da BNCC...',
+      `🧠 Analisando ${isSaeb ? 'os descritores selecionados' : 'as habilidades selecionadas'}...`,
+      `📚 Consultando ${isSaeb ? 'a matriz de referência do SAEB' : 'as diretrizes da BNCC'}...`,
       '💡 Formulando objetivos didáticos...',
       '✏️ Estruturando os momentos da aula...',
       '🧩 Decompondo conceitos em atividades...',
@@ -400,6 +418,7 @@ export default function BnccNacionalPage() {
               }
             : {
                 ...form,
+                reference_type: isSaeb ? 'saeb' : 'bncc',
                 skills: selectedSkills.map((s) => ({
                   code: s.code, disciplina: s.disciplina,
                   unidade_tematica: s.unidade_tematica,
@@ -695,7 +714,7 @@ export default function BnccNacionalPage() {
                   <span className="bnac-nivel-card-icon">{nc.icon}</span>
                   <span className="bnac-nivel-card-label">{nc.label}</span>
                   <span className="bnac-nivel-card-sub">{nc.sub}</span>
-                  <span className="bnac-nivel-card-count" suppressHydrationWarning>{nc.count.toLocaleString('pt-BR')} habilidades</span>
+                  <span className="bnac-nivel-card-count" suppressHydrationWarning>{nc.count.toLocaleString('pt-BR')} {nc.itemLabel}s</span>
                 </button>
               ))}
             </div>
@@ -742,8 +761,8 @@ export default function BnccNacionalPage() {
               <div className="logo">
                 <div className="logo-ic" style={{ background: cfg!.accentVar }}>BN</div>
                 <div>
-                  <div className="logo-t">BNCC Nacional</div>
-                  <div className="logo-s">{cfg!.label} · Base Nacional Comum Curricular</div>
+                  <div className="logo-t">{isSaeb ? 'Matriz SAEB' : 'BNCC Nacional'}</div>
+                  <div className="logo-s">{cfg!.label} · {isSaeb ? 'Referência oficial Inep' : 'Base Nacional Comum Curricular'}</div>
                 </div>
               </div>
               <nav className="hdr-nav" aria-label="Navegação">
@@ -764,11 +783,11 @@ export default function BnccNacionalPage() {
             <section className="pg">
               <div className="bnac-hero" style={{ '--hero-accent': cfg!.accentVar } as React.CSSProperties}>
                 <div className="bnac-hero-badge" style={{ background: cfg!.accentVar }}>{cfg!.icon} {cfg!.label}</div>
-                <h1 className="bnac-title">Base Nacional Comum Curricular</h1>
+                <h1 className="bnac-title">{isSaeb ? 'Matriz de Referência do SAEB' : 'Base Nacional Comum Curricular'}</h1>
                 <p className="bnac-sub">
                   {skills.length > 0
-                    ? `${skills.length.toLocaleString('pt-BR')} habilidades · ${disciplinas.length} ${cfg!.disciplinaLabel.toLowerCase()}s`
-                    : 'Carregando habilidades...'}
+                    ? `${skills.length.toLocaleString('pt-BR')} ${itemLabelPlural} · ${disciplinas.length} componentes`
+                    : `Carregando ${itemLabelPlural}...`}
                 </p>
               </div>
 
@@ -776,14 +795,15 @@ export default function BnccNacionalPage() {
                 storageKey="bncc_nac_howto_seen"
                 accentVar={cfg!.accentVar}
                 washVar="var(--blue-wash)"
-                referencialLabel={`BNCC — ${cfg!.label}`}
+                referencialLabel={`${isSaeb ? 'SAEB' : 'BNCC'} — ${cfg!.label}`}
+                itemLabel={itemLabelPlural}
                 onOpenTutorial={openTutorial}
               />
 
               <div className="fbar">
                 <div className="sw">
                   <span className="sw-icon">⌕</span>
-                  <input type="search" placeholder="Pesquisar por código ou habilidade" value={query} onChange={(e) => setQuery(e.target.value)} />
+                  <input type="search" placeholder={`Pesquisar por código ou ${itemLabel}`} value={query} onChange={(e) => setQuery(e.target.value)} />
                 </div>
                 <select value={disciplina} onChange={(e) => setDisciplina(e.target.value)} aria-label={`Filtrar por ${cfg!.disciplinaLabel}`}>
                   <option value="">{cfg!.disciplinaLabel === 'Disciplina' ? 'Todas as disciplinas' : `Todos os ${cfg!.disciplinaLabel.toLowerCase()}s`}</option>
@@ -818,7 +838,10 @@ export default function BnccNacionalPage() {
                       {skill.unidade_tematica && <h2 className="cobj">{skill.unidade_tematica}</h2>}
                       <p className="chab">{skill.habilidade}</p>
                       {expanded === skill.id && skill.objeto_conhecimento && (
-                        <p className="bnac-objeto"><strong>Objeto:</strong> {skill.objeto_conhecimento}</p>
+                        <p className="bnac-objeto">
+                          <strong>{isSaeb ? 'Referência:' : 'Objeto:'}</strong> {skill.objeto_conhecimento}
+                          {skill.fonte && <><br /><strong>Fonte:</strong> {skill.fonte}</>}
+                        </p>
                       )}
                       <div className="cacts">
                         {skill.objeto_conhecimento && (
@@ -830,7 +853,7 @@ export default function BnccNacionalPage() {
                           className={`bsm badd ${isSel ? 'added' : ''}`}
                           onClick={() => {
                             toggleSkill(skill.id)
-                            if (!isSel) showToast(`"${skill.code || skill.disciplina}" adicionada ao plano.`)
+                            if (!isSel) showToast(`"${skill.code || skill.disciplina}" adicionado ao plano.`)
                           }}
                         >
                           {isSel ? 'Remover' : '+ Plano'}
@@ -842,11 +865,11 @@ export default function BnccNacionalPage() {
               </div>
 
               {skills.length === 0 && (
-                <div className="bnac-loading"><div className="bnac-spinner" /><p>Carregando habilidades...</p></div>
+                <div className="bnac-loading"><div className="bnac-spinner" /><p>Carregando {itemLabelPlural}...</p></div>
               )}
               {skills.length > 0 && filtered.length === 0 && (
                 <div className="bnac-empty">
-                  <p>Nenhuma habilidade encontrada.</p>
+                  <p>Nenhum {itemLabel} encontrado.</p>
                   <button className="bsm bdet" onClick={() => { setQuery(''); setDisciplina(''); setAno(''); setUnidade('') }}>Limpar filtros</button>
                 </div>
               )}
@@ -959,7 +982,7 @@ export default function BnccNacionalPage() {
               </div>
 
               <aside className="sb">
-                <div className="sbt">Habilidades <span className="sbc">{selected.length}</span></div>
+                <div className="sbt">{isSaeb ? 'Descritores' : 'Habilidades'} <span className="sbc">{selected.length}</span></div>
                 {selectedSkills.length ? (
                   <>
                     {selectedSkills.map((skill) => (
@@ -974,7 +997,7 @@ export default function BnccNacionalPage() {
                   </>
                 ) : (
                   <div className="esel">
-                    Nenhuma habilidade.{' '}
+                    Nenhum {itemLabel}.{' '}
                     <button className="link-btn" onClick={() => setView('skills')}>Pesquisar</button>
                   </div>
                 )}

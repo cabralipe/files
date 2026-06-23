@@ -7,6 +7,7 @@ import Link from '@/lib/m-link'
 import { useRouter } from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { useMunicipality } from '@/lib/municipality-context'
+import AdminSchoolCoordinatorCrud from '@/components/AdminSchoolCoordinatorCrud'
 
 
 type AdminUser = {
@@ -102,7 +103,7 @@ export default function AdminDashboard() {
   const muniUf = municipality?.state || ''
   const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
 
-  const [activeTab, setActiveTab] = useState<'users' | 'experiences' | 'analytics' | 'municipalities'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'schools' | 'coordinators' | 'experiences' | 'analytics' | 'municipalities'>('users')
   const [users, setUsers] = useState<AdminUser[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [loading, setLoading] = useState(true)
@@ -658,7 +659,7 @@ export default function AdminDashboard() {
           marginBottom: 24,
           gap: 0,
         }}>
-          {(['users', 'experiences', 'analytics', ...(isSuperAdmin ? ['municipalities'] as const : [])] as const).map((tab) => (
+          {(['users', 'schools', 'coordinators', 'experiences', 'analytics', ...(isSuperAdmin ? ['municipalities'] as const : [])] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -682,6 +683,10 @@ export default function AdminDashboard() {
             >
               {tab === 'users'
                 ? 'Usuários'
+                : tab === 'schools'
+                  ? 'Escolas'
+                  : tab === 'coordinators'
+                    ? 'Coordenadores'
                 : tab === 'experiences'
                   ? 'Experiências'
                   : tab === 'analytics'
@@ -690,6 +695,15 @@ export default function AdminDashboard() {
             </button>
           ))}
         </div>
+
+        {(activeTab === 'schools' || activeTab === 'coordinators') && (
+          <AdminSchoolCoordinatorCrud
+            view={activeTab}
+            municipalityName={muniName}
+            municipalityState={muniUf}
+            onCoordinatorsChanged={() => void fetchUsers()}
+          />
+        )}
 
         {/* ══════ ANALYTICS TAB ══════ */}
         {activeTab === 'analytics' && (
