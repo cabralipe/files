@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getSupabaseAdmin } from '@/lib/supabase-server'
 import { generatePlanFromPrompt } from '@/lib/public-backend'
+import { rateLimitShared, getClientIp } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
+
+// Geração pública desligada por padrão (exige login). Reabra com:
+//   ALLOW_PUBLIC_PLAN_GENERATION=true
+const PUBLIC_ENABLED = process.env.ALLOW_PUBLIC_PLAN_GENERATION === 'true'
 
 type NacionalSkill = {
   code: string
@@ -69,6 +74,22 @@ Escreva em português do Brasil, linguagem clara, direta e prática. O plano dev
 
 export async function POST(request: Request) {
   try {
+    const user = await getAuthenticatedUser(request)
+    if (!user && !PUBLIC_ENABLED) {
+      return NextResponse.json({ error: 'Faça login para gerar planos com IA.' }, { status: 401 })
+    }
+
+    // Rate limit compartilhado (Supabase): por usuário quando logado, por IP no público.
+    const limit = user
+      ? await rateLimitShared(`bncc-nacional:${user.id}`, 10, 60_000)
+      : await rateLimitShared(`bncc-nacional-public:${getClientIp(request)}`, 5, 60_000)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
+        { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } },
+      )
+    }
+
     const body: RequestBody = await request.json()
 
     if (!body.title?.trim()) {

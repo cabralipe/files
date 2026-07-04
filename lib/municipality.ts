@@ -93,6 +93,42 @@ export async function resolveMunicipality(request: Request): Promise<Municipalit
   return null
 }
 
+/**
+ * Resolve o município de forma SEGURA para rotas administrativas:
+ * - super_admin pode operar em qualquer município (via header/slug);
+ * - demais papéis ficam presos ao município do seu contexto (banco),
+ *   ignorando qualquer slug enviado pelo cliente.
+ * Lança 'MUNICIPALITY_NOT_FOUND' quando não há município resolvível.
+ */
+export async function scopedMunicipalityId(
+  request: Request,
+  ctx: { role: string; municipalityId: string | null },
+): Promise<string> {
+  if (ctx.role === 'super_admin') {
+    const m = await resolveMunicipality(request)
+    if (!m) throw new Error('MUNICIPALITY_NOT_FOUND')
+    return m.id
+  }
+  if (!ctx.municipalityId) throw new Error('MUNICIPALITY_NOT_FOUND')
+  return ctx.municipalityId
+}
+
+/** Igual a scopedMunicipalityId, mas retorna o município completo. */
+export async function scopedMunicipality(
+  request: Request,
+  ctx: { role: string; municipalityId: string | null },
+): Promise<Municipality> {
+  if (ctx.role === 'super_admin') {
+    const m = await resolveMunicipality(request)
+    if (!m) throw new Error('MUNICIPALITY_NOT_FOUND')
+    return m
+  }
+  if (!ctx.municipalityId) throw new Error('MUNICIPALITY_NOT_FOUND')
+  const m = await getMunicipalityById(ctx.municipalityId)
+  if (!m) throw new Error('MUNICIPALITY_NOT_FOUND')
+  return m
+}
+
 export async function requireMunicipality(request: Request): Promise<Municipality> {
   const m = await resolveMunicipality(request)
   if (!m) throw new Error('MUNICIPALITY_NOT_FOUND')
@@ -108,4 +144,16 @@ export async function getMunicipalityFromHeaders(): Promise<Municipality | null>
   const slug = h.get('x-municipality-slug')
   if (!slug) return null
   return getMunicipalityBySlug(slug)
+}
+
+export async function listActiveMunicipalities(): Promise<Municipality[]> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('municipalities')
+    .select('*')
+    .eq('is_active', true)
+    .order('state', { ascending: true })
+    .order('name', { ascending: true })
+  if (error) throw error
+  return (data || []) as Municipality[]
 }

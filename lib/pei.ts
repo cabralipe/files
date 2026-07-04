@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { User } from '@supabase/supabase-js'
 
 export const userRoleSchema = z.enum([
   'teacher',
@@ -83,15 +82,8 @@ export type Student = z.infer<typeof studentSchema> & {
 
 export type StudentAeeProfile = z.infer<typeof studentAeeProfileSchema>
 
-export function getUserRole(user: User): UserRole {
-  const role = String(user.user_metadata?.role || 'teacher')
-  if (userRoleSchema.safeParse(role).success) return role as UserRole
-  const adminEmail = process.env.ADMIN_EMAIL
-  if (user.email === 'admin@bncc.local' || (adminEmail && user.email === adminEmail)) {
-    return 'admin'
-  }
-  return 'teacher'
-}
+// getUserRole(user) foi REMOVIDO: o papel não é mais derivado de user_metadata.
+// Use requireUserContext(request).role (fonte de verdade: tabela public.users).
 
 export function canManageAeeStudents(role: UserRole) {
   return ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)

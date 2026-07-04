@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test \"lib/**/*.test.ts\"",
     "seed": "node -r ts-node/register seed/seed-skills.ts"
   },
   "dependencies": {

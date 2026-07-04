@@ -48,3 +48,37 @@ export function getClientIp(request: Request): string {
   if (forwarded) return forwarded.split(',')[0].trim()
   return request.headers.get('x-real-ip') || 'unknown'
 }
+
+/**
+ * Rate limit COMPARTILHADO entre instâncias, via função atômica no Supabase
+ * (public.consume_rate_limit — ver supabase-migration-ratelimit.sql).
+ * Cai para o limitador em memória se o Supabase/RPC não estiver disponível,
+ * garantindo que a rota nunca quebre por causa do limitador.
+ */
+export async function rateLimitShared(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<RateLimitResult> {
+  try {
+    // import dinâmico evita ciclo e mantém a versão em memória sem dependências.
+    const { getSupabaseAdmin } = await import('@/lib/supabase-server')
+    const supabase = getSupabaseAdmin()
+    const { data, error } = await supabase.rpc('consume_rate_limit', {
+      p_key: key,
+      p_limit: limit,
+      p_window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
+    })
+    if (error) throw error
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) throw new Error('rate limit RPC returned no row')
+    return {
+      ok: Boolean(row.allowed),
+      remaining: Number(row.remaining ?? 0),
+      retryAfterSeconds: Number(row.retry_after ?? 0),
+    }
+  } catch {
+    // Fallback resiliente: limitador local (melhor que desligar o limite).
+    return rateLimit(key, limit, windowMs)
+  }
+}

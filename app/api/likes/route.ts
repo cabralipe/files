@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
-import { addPoints } from '@/lib/points-server'
+import { awardPointsOnce } from '@/lib/points-server'
 import { ensureUserProfile, getAuthenticatedUser, getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 
 const likeSchema = z
@@ -112,11 +112,19 @@ export async function POST(request: Request) {
       .update({ likes_count: Number(experience?.likes_count || 0) + 1 })
       .eq('id', values.experience_id)
 
-    if (experience?.user_id) {
+    // Pontos idempotentes: cada curtidor pontua o autor UMA vez por experiência
+    // (descurtir não deduz; recurtir não volta a pontuar). Teto diário anti-farm.
+    if (experience?.user_id && experience.user_id !== user.id) {
       try {
-        await addPoints(experience.user_id, 5, 'like_recebido', values.experience_id)
+        await awardPointsOnce(
+          experience.user_id,
+          'like_recebido',
+          `${user.id}:${values.experience_id}`,
+          5,
+          { dailyCap: 50 },
+        )
       } catch (pointsError) {
-        console.error('[POST /api/likes] addPoints failed:', pointsError)
+        console.error('[POST /api/likes] awardPointsOnce failed:', pointsError)
       }
     }
 

@@ -22,11 +22,13 @@ export async function POST(request: Request) {
       throw error
     }
 
+    // Bloqueio é lido da tabela users (fonte de verdade), não de user_metadata.
+    let profile: Record<string, any> | null = null
     if (data.user) {
-      await ensureUserProfile(data.user)
+      profile = (await ensureUserProfile(data.user)) as Record<string, any>
     }
 
-    if (data.user?.user_metadata?.blocked === true) {
+    if (profile?.blocked === true) {
       return NextResponse.json(
         { error: 'Sua conta foi bloqueada. Entre em contato com o administrador.' },
         { status: 403 }

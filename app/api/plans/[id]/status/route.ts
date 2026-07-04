@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
-import { getUserRole, canApprovePeiAee, canConsentFamily, canGeneratePei } from '@/lib/pei'
+import { requireUserContext } from '@/lib/supabase-server'
+import { canApprovePeiAee, canConsentFamily, canGeneratePei } from '@/lib/pei'
 import {
   transitionPlanStatus,
   type PlanTransition,
   type PlanAeeCollaboration,
   type PlanFamilyConsultation,
 } from '@/lib/public-backend'
-import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,8 +20,8 @@ const schema = z.object({
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = getUserRole(user)
+    const ctx = await requireUserContext(request)
+    const role = ctx.role
     const body = schema.parse(await request.json())
 
     const allowed =
@@ -34,18 +33,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Acao nao permitida para o seu perfil' }, { status: 403 })
     }
 
-    const actorName = String(user.user_metadata?.name || user.user_metadata?.full_name || '')
-    const municipality = await resolveMunicipality(request)
     const plan = await transitionPlanStatus(params.id, body.action as PlanTransition, {
-      actorName,
+      actorName: ctx.fullName,
       note: body.note,
       colaboracao_aee: body.colaboracao_aee as Partial<PlanAeeCollaboration> | undefined,
       consulta_familia: body.consulta_familia as Partial<PlanFamilyConsultation> | undefined,
       actor: {
         role,
-        userId: user.id,
-        school: String(user.user_metadata?.school || ''),
-        municipalityId: municipality?.id,
+        userId: ctx.userId,
+        school: ctx.school || '',
+        municipalityId: ctx.municipalityId || undefined,
       },
     })
     if (!plan) {

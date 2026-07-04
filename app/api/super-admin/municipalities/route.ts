@@ -83,7 +83,7 @@ export async function POST(request: Request) {
         secondary_color: body.secondary_color || '#A6B0DD',
         contact_email: body.contact_email || null,
         config: body.config || {},
-        created_by: superUser.id,
+        created_by: superUser.userId,
       })
       .select()
       .single()
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         },
       })
       if (!createErr && created2.user) {
-        await ensureUserProfile(created2.user, created.id)
+        await ensureUserProfile(created2.user, created.id, { role: 'municipality_admin' })
         await supabase
           .from('user_municipalities')
           .upsert(

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuthenticatedUser } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimitShared } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -203,7 +203,7 @@ export async function POST(request: Request) {
     // Exige login: evita que terceiros consumam a cota da OpenAI anonimamente.
     const user = await requireAuthenticatedUser(request)
 
-    const limit = rateLimit(`plan-ai:${user.id}`, 10, 60_000)
+    const limit = await rateLimitShared(`plan-ai:${user.id}`, 10, 60_000)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
@@ -222,14 +222,24 @@ export async function POST(request: Request) {
     const prompt = buildPrompt(values, muni)
 
     let content: string
+    let source: 'ai' | 'fallback' = 'ai'
     try {
       content = await callOpenAi(prompt)
     } catch (aiError) {
-      console.error('[POST /api/plans/generate-ai] OpenAI indisponivel, usando fallback:', aiError instanceof Error ? aiError.message : aiError)
+      console.error('[POST /api/plans/generate-ai] OpenAI indisponivel, usando fallback:', aiError instanceof Error ? aiError.message : 'erro')
       content = buildFallback(values, muni)
+      source = 'fallback'
     }
 
-    return NextResponse.json({ data: { content } })
+    return NextResponse.json({
+      data: {
+        content,
+        source,
+        ...(source === 'fallback'
+          ? { warning: 'A IA não respondeu agora. Este plano foi gerado por um modelo local — revise com atenção antes de publicar.' }
+          : {}),
+      },
+    })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio para gerar plano' }, { status: 401 })

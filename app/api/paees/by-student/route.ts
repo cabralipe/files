@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
-import { getUserRole, canGeneratePei } from '@/lib/pei'
+import { canGeneratePei } from '@/lib/pei'
 import { getLatestPaeeForStudent } from '@/lib/public-backend'
 
 export const dynamic = 'force-dynamic'
@@ -10,9 +10,8 @@ export const dynamic = 'force-dynamic'
 // painel AEE e pelos portais para sinalizar a articulacao PAEE <-> PEI.
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = getUserRole(user)
-    if (!canGeneratePei(role)) {
+    const ctx = await requireUserContext(request)
+    if (!canGeneratePei(ctx.role)) {
       return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
     }
 
@@ -22,8 +21,35 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'student_id obrigatorio' }, { status: 400 })
     }
 
-    const municipality = await resolveMunicipality(request)
-    const paee = await getLatestPaeeForStudent(studentId, municipality?.id)
+    const isManager = ['admin', 'municipality_admin', 'super_admin'].includes(ctx.role)
+    const municipalityId =
+      ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
+
+    if (ctx.role !== 'super_admin' && !municipalityId) {
+      return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
+    }
+
+    const supabase = getSupabaseAdmin()
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id, school_name, municipality_id')
+      .eq('id', studentId)
+      .maybeSingle()
+
+    if (studentError) throw studentError
+    if (!student) {
+      return NextResponse.json({ error: 'Aluno nao encontrado' }, { status: 404 })
+    }
+
+    if (ctx.role !== 'super_admin' && student.municipality_id !== municipalityId) {
+      return NextResponse.json({ error: 'Aluno nao pertence ao seu municipio' }, { status: 403 })
+    }
+
+    if (!isManager && (!ctx.school || student.school_name !== ctx.school)) {
+      return NextResponse.json({ error: 'Aluno nao pertence a escola do usuario' }, { status: 403 })
+    }
+
+    const paee = await getLatestPaeeForStudent(studentId, municipalityId ?? undefined)
 
     return NextResponse.json({ success: true, data: paee })
   } catch (error) {

@@ -2,8 +2,9 @@ import { randomUUID } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import skillsSeed from '@/bncc-skills.json'
-import { addPoints } from '@/lib/points-server'
+import { awardPointsOnce } from '@/lib/points-server'
 import { getSupabaseAdmin } from '@/lib/supabase-server'
+import { safeError, safeLog } from '@/lib/logger'
 
 export type PublicSkill = {
   id: string
@@ -275,6 +276,11 @@ function parseDurationMinutes(duration: string) {
   return match ? Number(match[0]) : 50
 }
 
+// Colunas ESPELHO adicionadas em supabase-migration-plans-columns.sql. Se a
+// migração ainda não foi aplicada, o PostgREST devolve PGRST204 e os helpers
+// de escrita (planInsert/planUpdateById) reenviam sem estas colunas.
+const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'workflow_status'] as const
+
 function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
   const row: Record<string, unknown> = {
     user_id: userId,
@@ -288,12 +294,50 @@ function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
     objectives: plan.objectives,
     is_published: Boolean(plan.is_published),
     is_pei: Boolean(plan.is_pei),
+    // Espelhos para filtro/índice em SQL (sincronizados com o JSON).
+    is_paee: Boolean(plan.is_paee),
+    school_name: plan.school || null,
+    workflow_status: plan.plan_status || (plan.is_published ? 'vigente' : 'rascunho'),
     student_id: plan.student_id || null,
     pei_snapshot: plan.pei_snapshot || {},
     updated_at: plan.updated_at,
   }
   if (municipalityId) row.municipality_id = municipalityId
   return row
+}
+
+function stripMirrorCols(row: Record<string, unknown>) {
+  const clone = { ...row }
+  for (const col of MIRROR_PLAN_COLS) delete clone[col]
+  return clone
+}
+
+// INSERT resiliente: se as colunas espelho não existem (PGRST204), reenvia sem elas.
+async function planInsert(row: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin()
+  let res = await supabase.from('plans').insert(row).select().single()
+  if (res.error?.code === 'PGRST204') {
+    res = await supabase.from('plans').insert(stripMirrorCols(row)).select().single()
+  }
+  return res
+}
+
+// UPDATE resiliente por id, com o mesmo fallback de colunas ausentes.
+async function planUpdateById(
+  id: string,
+  row: Record<string, unknown>,
+  opts: { select?: boolean } = {},
+) {
+  const supabase = getSupabaseAdmin()
+  const run = (r: Record<string, unknown>) => {
+    const q = supabase.from('plans').update(r).eq('id', id)
+    return opts.select ? q.select().maybeSingle() : q
+  }
+  let res = await run(row)
+  if (res.error?.code === 'PGRST204') {
+    res = await run(stripMirrorCols(row))
+  }
+  return res
 }
 
 function hasText(value: unknown) {
@@ -461,27 +505,31 @@ async function ensurePublicPlanUser() {
   return authUser.id
 }
 
-export async function listPlans(userId?: string, municipalityId?: string): Promise<PublicPlan[]> {
+// Consulta de planos com filtros SQL. Usa apenas colunas GARANTIDAS no schema
+// (user_id, municipality_id, is_pei, student_id) para não depender da migração
+// de colunas-espelho. Filtros por is_paee/escola/status (que vivem no JSON)
+// são aplicados em memória, mas já sobre um conjunto reduzido pelo SQL.
+async function queryPlans(filters: {
+  userId?: string
+  municipalityId?: string
+  isPei?: boolean
+  studentId?: string
+}): Promise<PublicPlan[]> {
   const supabase = getSupabaseAdmin()
-  let query = supabase
-    .from('plans')
-    .select('*')
-    .order('created_at', { ascending: false })
+  let query = supabase.from('plans').select('*').order('created_at', { ascending: false })
 
-  if (userId) {
-    query = query.eq('user_id', userId)
-  }
-  if (municipalityId) {
-    query = query.eq('municipality_id', municipalityId)
-  }
+  if (filters.userId) query = query.eq('user_id', filters.userId)
+  if (filters.municipalityId) query = query.eq('municipality_id', filters.municipalityId)
+  if (typeof filters.isPei === 'boolean') query = query.eq('is_pei', filters.isPei)
+  if (filters.studentId) query = query.eq('student_id', filters.studentId)
 
   const { data, error } = await query
-
-  if (error) {
-    throw error
-  }
-
+  if (error) throw error
   return (data || []).map((row) => mapPlanRow(row as Record<string, any>))
+}
+
+export async function listPlans(userId?: string, municipalityId?: string): Promise<PublicPlan[]> {
+  return queryPlans({ userId, municipalityId })
 }
 
 export async function createPlan(
@@ -514,12 +562,7 @@ export async function createPlan(
 
   validatePublicationReadiness(plan)
 
-  const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
-    .from('plans')
-    .insert(toPlanRow(plan, planUserId, municipalityId))
-    .select()
-    .single()
+  const { data, error } = await planInsert(toPlanRow(plan, planUserId, municipalityId))
 
   if (error) {
     throw error
@@ -560,13 +603,39 @@ export async function updatePlan(id: string, input: z.infer<typeof updatePlanSch
 
   validatePublicationReadiness(nextPlan)
 
-  const { error } = await supabase.from('plans').update(toPlanRow(nextPlan, current.user_id)).eq('id', id)
+  const { error } = await planUpdateById(id, toPlanRow(nextPlan, current.user_id))
 
   if (error) {
     throw error
   }
 
   return nextPlan
+}
+
+// Dados mínimos de um plano para decisões de autorização (dono, município,
+// escola e se é documento sensível PEI/PAEE), sem carregar toda a lista.
+export async function getPlanOwnership(id: string): Promise<
+  | { userId: string; municipalityId: string | null; school: string; isPei: boolean; isPaee: boolean }
+  | null
+> {
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('plans')
+    .select('user_id, municipality_id, content, is_pei')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  const plan = mapPlanRow(data as Record<string, any>)
+  return {
+    userId: String(data.user_id),
+    municipalityId: (data.municipality_id as string | null) ?? null,
+    school: plan.school,
+    isPei: Boolean(plan.is_pei),
+    isPaee: Boolean(plan.is_paee),
+  }
 }
 
 export async function deletePlan(id: string) {
@@ -582,8 +651,11 @@ export async function deletePlan(id: string) {
   return Boolean(count)
 }
 
-export async function listPlansBySchool(school: string): Promise<PublicPlan[]> {
-  const plans = await listPlans()
+export async function listPlansBySchool(
+  school: string,
+  municipalityId?: string,
+): Promise<PublicPlan[]> {
+  const plans = await listPlans(undefined, municipalityId)
   const normalizedSchool = school.trim().toLowerCase()
   return plans.filter((plan) => plan.school.trim().toLowerCase() === normalizedSchool)
 }
@@ -594,8 +666,8 @@ export async function listPeisForReview(opts: {
   school?: string
   status?: PublicPlan['plan_status']
 }): Promise<PublicPlan[]> {
-  let plans = await listPlans(undefined, opts.municipalityId)
-  plans = plans.filter((plan) => plan.is_pei)
+  // is_pei + municipality vão no SQL; escola/status (JSON) filtram o subconjunto.
+  let plans = await queryPlans({ municipalityId: opts.municipalityId, isPei: true })
   if (opts.school) {
     const s = opts.school.trim().toLowerCase()
     plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
@@ -611,8 +683,8 @@ export async function getLatestPeiForStudent(
   studentId: string,
   municipalityId?: string,
 ): Promise<PublicPlan | null> {
-  const plans = await listPlans(undefined, municipalityId)
-  const peis = plans.filter((plan) => plan.is_pei && plan.student_id === studentId)
+  // student_id + is_pei vão no SQL: carrega só os PEIs deste aluno.
+  const peis = await queryPlans({ municipalityId, isPei: true, studentId })
   const vigente = peis.find((plan) => plan.plan_status === 'vigente')
   return vigente || peis[0] || null
 }
@@ -623,7 +695,8 @@ export async function listPaeesForReview(opts: {
   school?: string
   status?: PublicPlan['plan_status']
 }): Promise<PublicPlan[]> {
-  let plans = await listPlans(undefined, opts.municipalityId)
+  // is_paee vive no JSON; filtra em memória sobre o conjunto do município (SQL).
+  let plans = await queryPlans({ municipalityId: opts.municipalityId })
   plans = plans.filter((plan) => plan.is_paee)
   if (opts.school) {
     const s = opts.school.trim().toLowerCase()
@@ -640,8 +713,9 @@ export async function getLatestPaeeForStudent(
   studentId: string,
   municipalityId?: string,
 ): Promise<PublicPlan | null> {
-  const plans = await listPlans(undefined, municipalityId)
-  const paees = plans.filter((plan) => plan.is_paee && plan.student_id === studentId)
+  // student_id vai no SQL: carrega só os planos deste aluno e filtra PAEE.
+  const plans = await queryPlans({ municipalityId, studentId })
+  const paees = plans.filter((plan) => plan.is_paee)
   const vigente = paees.find((plan) => plan.plan_status === 'vigente')
   return vigente || paees[0] || null
 }
@@ -692,7 +766,7 @@ export async function transitionPlanStatus(
       if (!link) throw new Error('SCOPE_FORBIDDEN')
     } else if (!managers.includes(actor.role)) {
       // teacher / aee_teacher / coordinator: restritos a propria escola.
-      if (actor.school && plan.school && actor.school !== plan.school) {
+      if (!actor.school || !plan.school || actor.school !== plan.school) {
         throw new Error('SCOPE_FORBIDDEN')
       }
     }
@@ -745,10 +819,7 @@ export async function transitionPlanStatus(
     throw new Error('TRANSITION_UNKNOWN')
   }
 
-  const { error: upErr } = await supabase
-    .from('plans')
-    .update(toPlanRow(next, current.user_id))
-    .eq('id', id)
+  const { error: upErr } = await planUpdateById(id, toPlanRow(next, current.user_id))
   if (upErr) throw upErr
   return next
 }
@@ -782,12 +853,7 @@ export async function reviewPlan(
     updated_at: now,
   }
 
-  const { error, data } = await supabase
-    .from('plans')
-    .update(toPlanRow(nextPlan, current.user_id))
-    .eq('id', id)
-    .select()
-    .maybeSingle()
+  const { error, data } = await planUpdateById(id, toPlanRow(nextPlan, current.user_id), { select: true })
 
   if (error) {
     throw error
@@ -902,7 +968,8 @@ export async function createExperience(
 
   experience.id = data.id
 
-  await addPoints(owner.user_id, 10, 'experiência_publicada', experience.id)
+  // Idempotente: pontua a publicação uma única vez por experiência.
+  await awardPointsOnce(owner.user_id, 'experiencia_publicada', experience.id, 10)
 
   return experience
 }
@@ -1016,12 +1083,6 @@ function envNumber(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
-function describeOpenAiError(err: unknown, timeoutMs: number): string {
-  if (err instanceof Error && err.name === 'AbortError') {
-    return `timeout / abortado apos ${timeoutMs}ms`
-  }
-  return err instanceof Error ? err.message : 'erro desconhecido'
-}
 
 function extractOpenAiText(payload: OpenAiResponsePayload): string {
   if (payload.output_text) {
@@ -1042,7 +1103,7 @@ async function callOpenAiResponse(opts: OpenAiCallOptions): Promise<string> {
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
   const callStartTime = Date.now()
 
-  console.log(`[IA-GERADOR] [openai] Modelo: "${opts.model}" | Timeout: ${opts.timeoutMs}ms`)
+  safeLog('[IA-GERADOR] openai chamada', { code: opts.model })
 
   try {
     const body: Record<string, unknown> = {
@@ -1080,11 +1141,11 @@ async function callOpenAiResponse(opts: OpenAiCallOptions): Promise<string> {
       throw new Error('[openai] Resposta vazia da API')
     }
 
-    console.log(`[IA-GERADOR] [openai] Sucesso em ${callDuration}ms. Tamanho: ${content.length} caracteres.`)
+    safeLog('[IA-GERADOR] openai sucesso', { code: opts.model, durationMs: callDuration })
     return content
   } catch (error) {
     const callDuration = Date.now() - callStartTime
-    console.error(`[IA-GERADOR] [openai] Falhou apos ${callDuration}ms: ${describeOpenAiError(error, opts.timeoutMs)}`)
+    safeError('[IA-GERADOR] openai falhou', error, { durationMs: callDuration })
     throw error
   } finally {
     clearTimeout(timer)
@@ -1103,7 +1164,12 @@ export async function generatePlanFromPrompt(prompt: string): Promise<string> {
   return callOpenAiResponse({ key: apiKey, model, timeoutMs, prompt, maxTokens, reasoningEffort })
 }
 
-export async function generatePlanText(input: z.infer<typeof createPlanSchema>) {
+export type PlanGenerationSource = 'ai' | 'fallback'
+
+/** Retorna o plano E a origem (IA ou template local), para o front sinalizar. */
+export async function generatePlanWithSource(
+  input: z.infer<typeof createPlanSchema>,
+): Promise<{ content: string; source: PlanGenerationSource }> {
   const prompt = await buildPlanPrompt(input)
   const totalStartTime = Date.now()
   const apiKey = process.env.OPENAI_API_KEY || ''
@@ -1116,13 +1182,8 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
   const selected = skills.filter((skill) => input.skill_ids.includes(skill.id) || input.skill_ids.includes(skill.code))
   const date = input.date || new Date().toLocaleDateString('pt-BR')
 
-  console.log('\n==================================================')
-  console.log(`[IA-GERADOR] [${new Date().toISOString()}] Nova solicitacao de plano recebida.`)
-  console.log(`[IA-GERADOR] Tema: "${input.title}" | Ano/Turma: "${input.grade_level}" | Componente: "${input.subject}"`)
-  console.log(`[IA-GERADOR] Habilidades resolvidas: ${selected.map((skill) => skill.code).join(', ') || 'nenhuma'} (Total: ${selected.length})`)
-  console.log(`[IA-GERADOR] Provedor: OpenAI | Modelo: ${model} | Timeout: ${timeoutMs}ms | Max output tokens: ${maxTokens} | Reasoning: ${reasoningEffort}`)
-  console.log(`[IA-GERADOR] Chave OpenAI configurada? ${apiKey ? 'Sim' : 'Nao'}`)
-  console.log('==================================================')
+  // Log sem conteúdo pedagógico (apenas contagem/modelo). Verboso só fora de prod.
+  safeLog('[IA-GERADOR] solicitacao de plano', { code: model, count: selected.length })
 
   if (apiKey) {
     try {
@@ -1134,10 +1195,12 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
         maxTokens,
         reasoningEffort,
       })
-      console.log(`[IA-GERADOR] Sucesso total via OpenAI/${model}. Tempo total: ${Date.now() - totalStartTime}ms.`)
-      return content
-    } catch {
-      console.error(`[IA-GERADOR] OpenAI falhou apos ${Date.now() - totalStartTime}ms. Usando template local.`)
+      safeLog('[IA-GERADOR] sucesso via OpenAI', { code: model, durationMs: Date.now() - totalStartTime })
+      return { content, source: 'ai' }
+    } catch (aiError) {
+      safeError('[IA-GERADOR] OpenAI falhou, usando template local', aiError, {
+        durationMs: Date.now() - totalStartTime,
+      })
     }
   }
 
@@ -1148,7 +1211,7 @@ export async function generatePlanText(input: z.infer<typeof createPlanSchema>) 
   const teacherMethodology = (input.methodology || '').trim()
   const teacherNotes = (input.notes || '').trim()
 
-  return `PLANO DE AULA: ${input.title.toUpperCase()}
+  const template = `PLANO DE AULA: ${input.title.toUpperCase()}
 
 1. IDENTIFICACAO
 Professor(a): ${input.teacher || 'Professor(a)'}
@@ -1207,4 +1270,11 @@ OBSERVACOES
 ${teacherNotes || 'Plano gerado para uso e edicao pelo professor.'}
 
 Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao.`
+
+  return { content: template, source: 'fallback' }
+}
+
+/** Compatibilidade: retorna apenas o texto do plano. */
+export async function generatePlanText(input: z.infer<typeof createPlanSchema>): Promise<string> {
+  return (await generatePlanWithSource(input)).content
 }

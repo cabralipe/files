@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { requireUserContext } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
-import { getUserRole, canViewPeiPipeline } from '@/lib/pei'
+import { canViewPeiPipeline } from '@/lib/pei'
 import { listPaeesForReview, type PublicPlan } from '@/lib/public-backend'
 
 export const dynamic = 'force-dynamic'
@@ -9,24 +9,29 @@ export const dynamic = 'force-dynamic'
 // Fila de PAEEs para acompanhamento do AEE e da coordenacao.
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = getUserRole(user)
-    if (!canViewPeiPipeline(role)) {
+    const ctx = await requireUserContext(request)
+    if (!canViewPeiPipeline(ctx.role)) {
       return NextResponse.json({ error: 'Acesso restrito' }, { status: 403 })
     }
 
-    const municipality = await resolveMunicipality(request)
     const url = new URL(request.url)
     const status = url.searchParams.get('status') || undefined
 
+    const isManager = ['admin', 'municipality_admin', 'super_admin'].includes(ctx.role)
+    const municipalityId =
+      ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
+
+    if (!isManager && !ctx.school) {
+      return NextResponse.json({ success: true, data: [], total: 0 })
+    }
+
     // Gestao ve todas as escolas do municipio; AEE/coordenacao ficam na sua escola.
-    const isManager = ['admin', 'municipality_admin', 'super_admin'].includes(role)
     const school = isManager
       ? url.searchParams.get('school') || undefined
-      : String(user.user_metadata?.school || '') || undefined
+      : ctx.school || undefined
 
     const plans = await listPaeesForReview({
-      municipalityId: municipality?.id,
+      municipalityId: municipalityId ?? undefined,
       school,
       status: status as PublicPlan['plan_status'] | undefined,
     })

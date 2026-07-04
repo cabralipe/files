@@ -1,32 +1,111 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { municipalSchools, teacherSubjectOptions } from '@/lib/education-options'
+import { teacherSubjectOptions } from '@/lib/education-options'
+
+type MunicipalityOption = {
+  id: string
+  slug: string
+  name: string
+  state: string
+  schools?: string[]
+}
+
+const BRAZIL_STATES = [
+  { uf: 'AC', name: 'Acre' },
+  { uf: 'AL', name: 'Alagoas' },
+  { uf: 'AP', name: 'Amapa' },
+  { uf: 'AM', name: 'Amazonas' },
+  { uf: 'BA', name: 'Bahia' },
+  { uf: 'CE', name: 'Ceara' },
+  { uf: 'DF', name: 'Distrito Federal' },
+  { uf: 'ES', name: 'Espirito Santo' },
+  { uf: 'GO', name: 'Goias' },
+  { uf: 'MA', name: 'Maranhao' },
+  { uf: 'MT', name: 'Mato Grosso' },
+  { uf: 'MS', name: 'Mato Grosso do Sul' },
+  { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PA', name: 'Para' },
+  { uf: 'PB', name: 'Paraiba' },
+  { uf: 'PR', name: 'Parana' },
+  { uf: 'PE', name: 'Pernambuco' },
+  { uf: 'PI', name: 'Piaui' },
+  { uf: 'RJ', name: 'Rio de Janeiro' },
+  { uf: 'RN', name: 'Rio Grande do Norte' },
+  { uf: 'RS', name: 'Rio Grande do Sul' },
+  { uf: 'RO', name: 'Rondonia' },
+  { uf: 'RR', name: 'Roraima' },
+  { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'SP', name: 'Sao Paulo' },
+  { uf: 'SE', name: 'Sergipe' },
+  { uf: 'TO', name: 'Tocantins' },
+]
 
 export default function SignUp() {
   const router = useRouter()
   const { signUp, loading, error: authError } = useAuth()
 
+  const [municipalities, setMunicipalities] = useState<MunicipalityOption[]>([])
+  const [loadingMunicipalities, setLoadingMunicipalities] = useState(true)
+  const [municipalityError, setMunicipalityError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
     role: 'teacher',
+    state: '',
+    municipality_id: '',
     school: '',
     subject: '',
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  useEffect(() => {
+    let active = true
+    async function loadMunicipalities() {
+      try {
+        setLoadingMunicipalities(true)
+        setMunicipalityError('')
+        const response = await fetch('/api/municipalities')
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Erro ao carregar municipios')
+        if (active) setMunicipalities(payload.data || [])
+      } catch (err) {
+        if (active) setMunicipalityError(err instanceof Error ? err.message : 'Erro ao carregar municipios')
+      } finally {
+        if (active) setLoadingMunicipalities(false)
+      }
+    }
+    void loadMunicipalities()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const stateMunicipalities = useMemo(
+    () => municipalities.filter((municipality) => municipality.state === formData.state),
+    [municipalities, formData.state],
+  )
+
+  const selectedMunicipality = useMemo(
+    () => municipalities.find((municipality) => municipality.id === formData.municipality_id) || null,
+    [municipalities, formData.municipality_id],
+  )
+
+  const schoolOptions = selectedMunicipality?.schools?.filter(Boolean) || []
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      ...(name === 'state' ? { municipality_id: '', school: '' } : {}),
+      ...(name === 'municipality_id' ? { school: '' } : {}),
       ...(name === 'role' && value !== 'teacher' ? { subject: '' } : {}),
     }))
   }
@@ -36,19 +115,28 @@ export default function SignUp() {
     setError('')
     setSuccess('')
 
-    // Validação
+    if (!formData.state || !formData.municipality_id) {
+      setError('Informe o estado e o municipio da sua rede de ensino')
+      return
+    }
+
+    if (!selectedMunicipality) {
+      setError('Municipio invalido ou indisponivel')
+      return
+    }
+
     if (!formData.name || !formData.email || !formData.password || !formData.school) {
-      setError('Todos os campos são obrigatórios')
+      setError('Todos os campos sao obrigatorios')
       return
     }
 
     if (formData.role === 'teacher' && !formData.subject) {
-      setError('Informe a disciplina que você leciona')
+      setError('Informe a disciplina que voce leciona')
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não correspondem')
+      setError('As senhas nao correspondem')
       return
     }
 
@@ -65,15 +153,15 @@ export default function SignUp() {
         formData.role as 'teacher' | 'aee_teacher' | 'coordinator' | 'family',
         formData.school,
         formData.subject,
+        formData.municipality_id,
       )
       setSuccess('Cadastro realizado com sucesso.')
       setTimeout(() => {
         const meta = data.user?.user_metadata
-        const role = meta?.role
-        const slug = meta?.municipality_slug
+        const role = meta?.role || formData.role
+        const slug = data.municipality?.slug || meta?.municipality_slug || selectedMunicipality.slug
         const dest = role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
-        // Rotas por papel vivem sob /[municipio]; sem o slug elas dao 404.
-        router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/')
+        router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/bncc-nacional')
       }, 800)
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar')
@@ -84,16 +172,16 @@ export default function SignUp() {
     <div className="auth-shell">
       <div className="auth-box">
         <div className="auth-head">
-          <Link href="/" className="logo">
+          <Link href="/bncc-nacional" className="logo">
             <div className="logo-ic">BN</div>
             <div style={{ textAlign: 'left' }}>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Plataforma BNCC · Referencial Curricular Municipal</div>
+              <div className="logo-t">Portal BNCC</div>
+              <div className="logo-s">Plataforma BNCC - Referencial Curricular Municipal</div>
             </div>
           </Link>
           <span className="auth-eyebrow">Primeira vez por aqui?</span>
           <h1 className="auth-title">Cadastro de <em>professor</em></h1>
-          <p className="auth-sub">Crie sua conta para gerar planos, PEIs e PAEEs, e compartilhar experiências.</p>
+          <p className="auth-sub">Escolha seu estado e municipio para acessar o referencial curricular correto.</p>
         </div>
 
         <div className="auth-card">
@@ -103,14 +191,53 @@ export default function SignUp() {
             </div>
           )}
 
-          {(error || authError) && (
+          {(error || authError || municipalityError) && (
             <div className="al-error" style={{ marginBottom: 14 }}>
-              {error || authError}
+              {error || authError || municipalityError}
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* Name */}
+            <label className="fgr">
+              <span className="fl">Estado</span>
+              <select name="state" value={formData.state} onChange={handleChange} disabled={loadingMunicipalities}>
+                <option value="">{loadingMunicipalities ? 'Carregando municipios...' : 'Selecione o estado'}</option>
+                {BRAZIL_STATES.map((state) => (
+                  <option key={state.uf} value={state.uf}>
+                    {state.uf} - {state.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="fgr">
+              <span className="fl">Municipio</span>
+              <select
+                name="municipality_id"
+                value={formData.municipality_id}
+                onChange={handleChange}
+                disabled={!formData.state || loadingMunicipalities}
+              >
+                <option value="">
+                  {!formData.state
+                    ? 'Selecione o estado primeiro'
+                    : stateMunicipalities.length
+                    ? 'Selecione o municipio'
+                    : 'Nenhum municipio ativo neste estado'}
+                </option>
+                {stateMunicipalities.map((municipality) => (
+                  <option key={municipality.id} value={municipality.id}>
+                    {municipality.name}/{municipality.state}
+                  </option>
+                ))}
+              </select>
+              {formData.state && !loadingMunicipalities && stateMunicipalities.length === 0 && (
+                <span className="fex">
+                  Este estado ainda nao possui referencial municipal cadastrado na plataforma. A area publica nacional continua disponivel.
+                </span>
+              )}
+            </label>
+
             <label className="fgr">
               <span className="fl">Nome Completo</span>
               <input
@@ -118,50 +245,49 @@ export default function SignUp() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="João Silva"
+                placeholder="Joao Silva"
               />
             </label>
 
             <label className="fgr">
               <span className="fl">Tipo de acesso</span>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-              >
+              <select name="role" value={formData.role} onChange={handleChange}>
                 <option value="teacher">Professor(a)</option>
                 <option value="aee_teacher">Professor(a) AEE / sala especial</option>
                 <option value="coordinator">Coordenador(a)</option>
               </select>
               <span className="fex">
-                O acesso de família/responsável é criado pela coordenação da escola — não é necessário se cadastrar aqui.
+                O acesso de familia/responsavel e criado pela coordenacao da escola.
               </span>
             </label>
 
             <label className="fgr">
               <span className="fl">Escola</span>
-              <select
-                name="school"
-                value={formData.school}
-                onChange={handleChange}
-              >
-                <option value="">Selecione a escola</option>
-                {municipalSchools.map((school) => (
-                  <option key={school} value={school}>
-                    {school}
-                  </option>
-                ))}
-              </select>
+              {schoolOptions.length ? (
+                <select name="school" value={formData.school} onChange={handleChange} disabled={!selectedMunicipality}>
+                  <option value="">Selecione a escola</option>
+                  {schoolOptions.map((school) => (
+                    <option key={school} value={school}>
+                      {school}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  name="school"
+                  value={formData.school}
+                  onChange={handleChange}
+                  disabled={!selectedMunicipality}
+                  placeholder={selectedMunicipality ? 'Informe o nome da escola' : 'Selecione o municipio primeiro'}
+                />
+              )}
             </label>
 
             {formData.role === 'teacher' && (
               <label className="fgr">
                 <span className="fl">Disciplina que leciona</span>
-                <select
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                >
+                <select name="subject" value={formData.subject} onChange={handleChange}>
                   <option value="">Selecione a disciplina</option>
                   {teacherSubjectOptions.map((subject) => (
                     <option key={subject} value={subject}>
@@ -172,7 +298,6 @@ export default function SignUp() {
               </label>
             )}
 
-            {/* Email */}
             <label className="fgr">
               <span className="fl">Email</span>
               <input
@@ -184,7 +309,6 @@ export default function SignUp() {
               />
             </label>
 
-            {/* Password */}
             <label className="fgr">
               <span className="fl">Senha</span>
               <input
@@ -192,11 +316,10 @@ export default function SignUp() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="********"
               />
             </label>
 
-            {/* Confirm Password */}
             <label className="fgr">
               <span className="fl">Confirmar Senha</span>
               <input
@@ -204,30 +327,30 @@ export default function SignUp() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="********"
               />
             </label>
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || loadingMunicipalities || !municipalities.length}
               className="btn btn-pri btn-lg"
               style={{ width: '100%', marginTop: 8 }}
             >
-              {loading ? 'Criando conta...' : 'Criar conta →'}
+              {loading ? 'Criando conta...' : 'Criar conta ->'}
             </button>
           </form>
 
           <p className="auth-alt">
-            Já tem conta?{' '}
+            Ja tem conta?{' '}
             <Link href="/auth/login" className="auth-link">
-              Faça login
+              Faca login
             </Link>
           </p>
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <Link href="/" className="auth-back">← Voltar aos portais</Link>
+          <Link href="/bncc-nacional" className="auth-back">Voltar ao BNCC Nacional</Link>
         </div>
       </div>
     </div>

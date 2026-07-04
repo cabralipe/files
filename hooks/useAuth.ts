@@ -43,6 +43,7 @@ export function useAuth() {
     role: UserRole = 'teacher',
     school = '',
     subject = '',
+    municipalityId = '',
   ) => {
     setLoading(true)
     setError(null)
@@ -57,6 +58,7 @@ export function useAuth() {
           role,
           school,
           subject,
+          municipality_id: municipalityId,
         }),
       })
       const data = await response.json()

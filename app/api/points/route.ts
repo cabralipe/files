@@ -1,31 +1,11 @@
 import { NextResponse } from 'next/server'
-import { z, ZodError } from 'zod'
-import { addPoints, getTotalPoints } from '@/lib/points-server'
+import { getTotalPoints } from '@/lib/points-server'
 import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 
-const addPointsSchema = z.object({
-  points_amount: z.number().int().min(-100).max(100),
-  reason: z.string().trim().min(3),
-  related_item_id: z.string().uuid().nullable().optional(),
-})
-
-export async function POST(request: Request) {
-  try {
-    const user = await requireAuthenticatedUser(request)
-    const values = addPointsSchema.parse(await request.json())
-    await addPoints(user.id, values.points_amount, values.reason, values.related_item_id)
-    const totalPoints = await getTotalPoints(user.id)
-
-    return NextResponse.json({ success: true, total_points: totalPoints })
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
-    }
-
-    const status = error instanceof Error && error.message === 'UNAUTHORIZED' ? 401 : 500
-    return NextResponse.json({ error: status === 401 ? 'Login obrigatorio' : 'Erro ao registrar pontos' }, { status })
-  }
-}
+// NOTA: o antigo POST /api/points foi REMOVIDO. Ele permitia que qualquer
+// usuário autenticado creditasse pontos arbitrários a si mesmo (cheat/farming).
+// Pontos passam a ser concedidos APENAS pelo servidor, em ações reais
+// (like/comentário/experiência/plano) via awardPointsOnce (idempotente).
 
 export async function GET(request: Request) {
   try {

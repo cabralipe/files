@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { createPlan, listPlans } from '@/lib/public-backend'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { requireUserContext } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const municipality = await resolveMunicipality(request)
-    const plans = await listPlans(user.id, municipality?.id)
+    const ctx = await requireUserContext(request)
+    // Município do contexto (banco); super_admin pode inspecionar outro via header.
+    const municipalityId =
+      ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
+    const plans = await listPlans(ctx.userId, municipalityId ?? undefined)
 
     return NextResponse.json({
       success: true,
@@ -32,10 +34,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const municipality = await resolveMunicipality(request)
+    const ctx = await requireUserContext(request)
+    // Plano é sempre criado no município do próprio usuário (não do header).
+    const municipalityId =
+      ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
     const body = await request.json()
-    const plan = await createPlan(body, user.id, municipality?.id)
+    const plan = await createPlan(body, ctx.userId, municipalityId ?? undefined)
 
     return NextResponse.json({ success: true, data: plan, plan }, { status: 201 })
   } catch (error) {

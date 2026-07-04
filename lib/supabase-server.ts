@@ -1,8 +1,50 @@
 import { createClient, type User } from '@supabase/supabase-js'
+import { ADMIN_ROLES, isAdminRole as isAdminRoleRule, isSameTenant } from '@/lib/authz-rules'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+// ============================================================
+// Papéis e contexto de autorização
+// ------------------------------------------------------------
+// REGRA CENTRAL: papel (role), bloqueio, município e escola vêm
+// SEMPRE da tabela public.users (fonte de verdade no servidor),
+// NUNCA de user.user_metadata (que o próprio usuário pode editar
+// pelo client via supabase.auth.updateUser). Use requireUserContext
+// para qualquer decisão de permissão.
+// ============================================================
+
+export type AppRole =
+  | 'teacher'
+  | 'aee_teacher'
+  | 'coordinator'
+  | 'family'
+  | 'admin'
+  | 'municipality_admin'
+  | 'super_admin'
+
+const VALID_ROLES: AppRole[] = [
+  'teacher',
+  'aee_teacher',
+  'coordinator',
+  'family',
+  'admin',
+  'municipality_admin',
+  'super_admin',
+]
+
+export type UserContext = {
+  userId: string
+  email: string
+  role: AppRole
+  blocked: boolean
+  municipalityId: string | null
+  schoolId: string | null
+  /** Nome da escola (texto) — ponte com plans.school / students.school_name. */
+  school: string | null
+  fullName: string
+}
 
 export function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -51,21 +93,16 @@ export async function getAuthenticatedUser(request: Request): Promise<User | nul
   return data.user
 }
 
-export async function requireAuthenticatedUser(request: Request) {
-  const user = await getAuthenticatedUser(request)
-
-  if (!user) {
-    throw new Error('UNAUTHORIZED')
-  }
-
-  if (user.user_metadata?.blocked === true) {
-    throw new Error('BLOCKED')
-  }
-
-  return user
+type ProfileSeed = {
+  role?: string
+  school?: string
 }
 
-export async function ensureUserProfile(user: User, municipalityId?: string) {
+export async function ensureUserProfile(
+  user: User,
+  municipalityId?: string,
+  seed?: ProfileSeed,
+) {
   const supabase = getSupabaseAdmin()
   const fullName =
     (user.user_metadata?.name as string | undefined) ||
@@ -75,6 +112,13 @@ export async function ensureUserProfile(user: User, municipalityId?: string) {
 
   const resolvedMuni =
     municipalityId || (user.user_metadata?.municipality_id as string | undefined)
+
+  // O papel só é semeado a partir de uma fonte CONFIÁVEL (rota de cadastro
+  // ou de criação por admin, validada no servidor). Nunca de user_metadata
+  // em fluxos de login, para não permitir escalonamento por metadata forjado.
+  const seededRole =
+    seed?.role && VALID_ROLES.includes(seed.role as AppRole) ? seed.role : undefined
+  const seededSchool = seed?.school?.trim() || undefined
 
   const { data: existingProfile, error: selectError } = await supabase
     .from('users')
@@ -87,11 +131,13 @@ export async function ensureUserProfile(user: User, municipalityId?: string) {
   }
 
   if (existingProfile) {
-    if (resolvedMuni && !existingProfile.municipality_id) {
-      await supabase
-        .from('users')
-        .update({ municipality_id: resolvedMuni })
-        .eq('id', user.id)
+    // Backfill de campos ausentes, sem sobrescrever o que já existe.
+    const patch: Record<string, unknown> = {}
+    if (resolvedMuni && !existingProfile.municipality_id) patch.municipality_id = resolvedMuni
+    if (seededSchool && !existingProfile.school_name) patch.school_name = seededSchool
+    if (Object.keys(patch).length > 0) {
+      await supabase.from('users').update(patch).eq('id', user.id)
+      return { ...existingProfile, ...patch }
     }
     return existingProfile
   }
@@ -99,65 +145,127 @@ export async function ensureUserProfile(user: User, municipalityId?: string) {
   const email = user.email || `${user.id}@local.invalid`
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) || null
 
-  // O schema de producao pode ter as colunas "name" (legada, NOT NULL) e/ou
-  // "full_name". Para nao depender de qual existe, tentamos preencher AMBAS.
-  // Se alguma coluna nao existir neste banco, o PostgREST retorna PGRST204 e
-  // caimos para variacoes mais simples ate uma funcionar.
-  const candidates: Array<Record<string, unknown>> = [
-    { id: user.id, email, full_name: fullName, name: fullName, avatar_url: avatarUrl },
-    { id: user.id, email, full_name: fullName, avatar_url: avatarUrl },
-    { id: user.id, email, name: fullName, avatar_url: avatarUrl, points: 0 },
-  ]
-  if (resolvedMuni) {
-    for (const candidate of candidates) candidate.municipality_id = resolvedMuni
+  // Insert canônico usando full_name (padronizado por supabase-migration-users-normalize.sql).
+  const row: Record<string, unknown> = { id: user.id, email, full_name: fullName, avatar_url: avatarUrl }
+  if (seededRole) row.role = seededRole
+  if (seededSchool) row.school_name = seededSchool
+  if (resolvedMuni) row.municipality_id = resolvedMuni
+
+  const first = await supabase.from('users').insert(row).select().single()
+  if (!first.error) return first.data
+
+  // Único fallback para ambientes ainda não normalizados:
+  //  - coluna legada `name` NOT NULL (23502) -> preenche `name`;
+  //  - coluna `school_name` inexistente (PGRST204) -> remove-a.
+  if (first.error.code === '23502' || first.error.code === 'PGRST204') {
+    const retry: Record<string, unknown> = { ...row, name: fullName }
+    if (first.error.code === 'PGRST204') delete retry.school_name
+    const second = await supabase.from('users').insert(retry).select().single()
+    if (!second.error) return second.data
+    throw second.error
   }
 
-  let lastError: { code?: string; message?: string } | null = null
-  for (const candidate of candidates) {
-    const { data, error } = await supabase
-      .from('users')
-      .insert(candidate)
-      .select()
-      .single()
-
-    if (!error) {
-      return data
-    }
-
-    // PGRST204 = coluna inexistente neste schema; tenta a proxima variacao.
-    // Qualquer outro erro e real (ex.: permissao, conexao) e deve interromper.
-    if (error.code !== 'PGRST204') {
-      throw error
-    }
-    lastError = error
-  }
-
-  throw lastError || new Error('Nao foi possivel criar o perfil do usuario')
+  throw first.error
 }
 
-export async function requireAdminUser(request: Request) {
-  const user = await requireAuthenticatedUser(request)
-  const isAdmin =
-    user.user_metadata?.role === 'admin' ||
-    user.user_metadata?.role === 'municipality_admin' ||
-    user.user_metadata?.role === 'super_admin' ||
-    user.email === 'admin@bncc.local' ||
-    user.email === process.env.ADMIN_EMAIL
-
-  if (!isAdmin) {
-    throw new Error('FORBIDDEN')
+/**
+ * Carrega o contexto de autorização REAL do usuário a partir do banco.
+ * Lança 'UNAUTHORIZED' (sem token/token inválido) ou 'BLOCKED' (conta bloqueada).
+ */
+async function loadContext(request: Request): Promise<{ user: User; ctx: UserContext }> {
+  const user = await getAuthenticatedUser(request)
+  if (!user) {
+    throw new Error('UNAUTHORIZED')
   }
+
+  const profile = (await ensureUserProfile(user)) as Record<string, any>
+
+  const email = user.email || String(profile.email || '')
+  let role: AppRole = VALID_ROLES.includes(profile.role) ? (profile.role as AppRole) : 'teacher'
+
+  // Bootstrap por email (contas de operação iniciais). NUNCA rebaixa papel.
+  const adminEmail = process.env.ADMIN_EMAIL
+  const superEmail = process.env.SUPER_ADMIN_EMAIL
+  if (superEmail && email === superEmail) {
+    role = 'super_admin'
+  } else if (
+    (email === 'admin@bncc.local' || (adminEmail && email === adminEmail)) &&
+    !ADMIN_ROLES.includes(role)
+  ) {
+    role = 'admin'
+  }
+
+  const blocked = profile.blocked === true
+  if (blocked) {
+    throw new Error('BLOCKED')
+  }
+
+  const ctx: UserContext = {
+    userId: user.id,
+    email,
+    role,
+    blocked,
+    municipalityId: (profile.municipality_id as string | null) || null,
+    schoolId: (profile.school_id as string | null) || null,
+    school: (profile.school_name as string | null) || null,
+    fullName:
+      (profile.full_name as string | undefined) ||
+      (profile.name as string | undefined) ||
+      email ||
+      'Professor(a)',
+  }
+
+  return { user, ctx }
+}
+
+/**
+ * Contexto de autorização confiável (papel/município/escola do banco).
+ * Use este helper em QUALQUER rota que decida permissão.
+ */
+export async function requireUserContext(request: Request): Promise<UserContext> {
+  const { ctx } = await loadContext(request)
+  return ctx
+}
+
+/**
+ * Retorna o usuário autenticado (objeto do Supabase Auth) e valida bloqueio
+ * pela tabela users. Mantido por compatibilidade para rotas que só precisam
+ * do id. Para decisões de papel/escopo, prefira requireUserContext.
+ */
+export async function requireAuthenticatedUser(request: Request) {
+  const { user } = await loadContext(request)
   return user
 }
 
-export async function requireSuperAdmin(request: Request) {
-  const user = await requireAuthenticatedUser(request)
-  const isSuper =
-    user.user_metadata?.role === 'super_admin' ||
-    user.email === process.env.SUPER_ADMIN_EMAIL
+export function isAdminRole(role: AppRole) {
+  return isAdminRoleRule(role)
+}
 
-  if (!isSuper) {
+export async function requireAdminUser(request: Request): Promise<UserContext> {
+  const ctx = await requireUserContext(request)
+  if (!isAdminRole(ctx.role)) {
     throw new Error('FORBIDDEN')
   }
-  return user
+  return ctx
+}
+
+export async function requireSuperAdmin(request: Request): Promise<UserContext> {
+  const ctx = await requireUserContext(request)
+  if (ctx.role !== 'super_admin') {
+    throw new Error('FORBIDDEN')
+  }
+  return ctx
+}
+
+/**
+ * Garante que o recurso pertence ao mesmo município do usuário.
+ * super_admin ignora a fronteira. Lança 'SCOPE_FORBIDDEN' caso contrário.
+ */
+export function assertSameTenant(
+  resourceMunicipalityId: string | null | undefined,
+  ctx: Pick<UserContext, 'role' | 'municipalityId'>,
+) {
+  if (!isSameTenant(resourceMunicipalityId, ctx)) {
+    throw new Error('SCOPE_FORBIDDEN')
+  }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
-import { addPoints } from '@/lib/points-server'
+import { awardPointsOnce } from '@/lib/points-server'
 import { getAuthenticatedUser, getSupabaseAdmin } from '@/lib/supabase-server'
 
 const enrollSchema = z.object({
@@ -40,12 +40,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Plano n?o encontrado' }, { status: 404 })
     }
 
-    await addPoints(userId, 10, 'plano_acessado', values.planId)
+    // Idempotente: cada usuário pontua o acesso a um plano UMA vez (sem farm
+    // por registrar/remover repetidamente).
+    const res = await awardPointsOnce(userId, 'plano_acessado', values.planId, 10)
 
     return NextResponse.json({
       success: true,
       message: 'Plano registrado com sucesso',
-      pointsEarned: 10,
+      pointsEarned: res.awarded ? 10 : 0,
     })
   } catch (error) {
     if (error instanceof ZodError) {
@@ -66,8 +68,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
     }
 
-    await addPoints(userId, -10, 'plano_removido', values.planId)
-
+    // Remover o registro NÃO deduz pontos: deduzir aqui reabriria o farm
+    // (registrar→remover→registrar). O crédito do acesso é único e definitivo.
     return NextResponse.json({
       success: true,
       message: 'Registro do plano removido',

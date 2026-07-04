@@ -5,15 +5,21 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    await requireAdminUser(request)
+    const ctx = await requireAdminUser(request)
     const supabase = getSupabaseAdmin()
 
     // Fetch all available columns so older databases do not fail when optional
     // columns are missing from the deployed schema.
-    const { data: experiences, error } = await supabase
+    let query = supabase
       .from('successful_experiences')
       .select('*')
       .order('created_at', { ascending: false })
+    // Admin municipal só vê experiências do próprio município.
+    if (ctx.role !== 'super_admin') {
+      if (!ctx.municipalityId) return NextResponse.json({ success: true, data: [] })
+      query = query.eq('municipality_id', ctx.municipalityId)
+    }
+    const { data: experiences, error } = await query
 
     if (error) {
       // Table might not exist yet
@@ -57,7 +63,7 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAdminUser(request)
+    const ctx = await requireAdminUser(request)
     const supabase = getSupabaseAdmin()
 
     const { searchParams } = new URL(request.url)
@@ -65,6 +71,19 @@ export async function DELETE(request: Request) {
 
     if (!id) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 })
+    }
+
+    // Admin municipal só exclui experiências do próprio município.
+    if (ctx.role !== 'super_admin') {
+      const { data: exp } = await supabase
+        .from('successful_experiences')
+        .select('municipality_id')
+        .eq('id', id)
+        .maybeSingle()
+      if (!exp) return NextResponse.json({ error: 'Experiência não encontrada' }, { status: 404 })
+      if (exp.municipality_id !== ctx.municipalityId) {
+        return NextResponse.json({ error: 'Experiência fora do seu município' }, { status: 403 })
+      }
     }
 
     const { error } = await supabase

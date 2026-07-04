@@ -1,23 +1,22 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
-import { buildPeiPrompt, canGeneratePei, generatePeiSchema, getUserRole } from '@/lib/pei'
+import { getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
+import { buildPeiPrompt, canGeneratePei, generatePeiSchema } from '@/lib/pei'
 import { generatePlanFromPrompt, getLatestPaeeForStudent, getLatestPeiForStudent } from '@/lib/public-backend'
 import { resolveMunicipality } from '@/lib/municipality'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimitShared } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = getUserRole(user)
-    if (!canGeneratePei(role)) {
+    const ctx = await requireUserContext(request)
+    if (!canGeneratePei(ctx.role)) {
       return NextResponse.json({ error: 'Acesso restrito a usuarios pedagogicos autenticados' }, { status: 403 })
     }
 
-    const limit = rateLimit(`pei-generate:${user.id}`, 10, 60_000)
+    const limit = await rateLimitShared(`pei-generate:${ctx.userId}`, 10, 60_000)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
@@ -39,8 +38,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Aluno nao encontrado' }, { status: 404 })
     }
 
-    const userSchool = String(user.user_metadata?.school || '')
-    if (role !== 'super_admin' && userSchool && student.school_name !== userSchool) {
+    // Escopo por município (não-super) e por escola (não-gestão).
+    const isManager = ['admin', 'municipality_admin', 'super_admin'].includes(ctx.role)
+    if (ctx.role !== 'super_admin' && !ctx.municipalityId) {
+      return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
+    }
+    if (ctx.role !== 'super_admin' && student.municipality_id !== ctx.municipalityId) {
+      return NextResponse.json({ error: 'Aluno nao pertence ao seu municipio' }, { status: 403 })
+    }
+    if (!isManager && (!ctx.school || student.school_name !== ctx.school)) {
       return NextResponse.json({ error: 'Aluno nao pertence a escola do usuario' }, { status: 403 })
     }
 
@@ -64,18 +70,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Ficha AEE obrigatoria para gerar PEI' }, { status: 422 })
     }
 
+    // Município para articulação: contexto (banco) para não-super; header p/ super.
+    const municipalityId =
+      ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
+
     // Quando o professor regente opta por combinar, busca o PEI ja existente
     // (do AEE) do aluno para a IA consolidar os dois em um documento unico.
-    const municipality = await resolveMunicipality(request)
     let basePei: string | undefined
     if (values.merge_existing) {
-      const existing = await getLatestPeiForStudent(values.student_id, municipality?.id)
+      const existing = await getLatestPeiForStudent(values.student_id, municipalityId ?? undefined)
       basePei = existing?.content || undefined
     }
 
     // Articulacao PEI <-> PAEE: se o AEE ja elaborou o PAEE do aluno, o PEI
     // nasce alinhado aos recursos e estrategias do atendimento especializado.
-    const existingPaee = await getLatestPaeeForStudent(values.student_id, municipality?.id)
+    const existingPaee = await getLatestPaeeForStudent(values.student_id, municipalityId ?? undefined)
     const paeeContext = existingPaee?.content || undefined
 
     const prompt = buildPeiPrompt({

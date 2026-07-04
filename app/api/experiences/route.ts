@@ -41,12 +41,8 @@ export async function GET(request: Request) {
             canDelete = true
           }
         }
-        // Admin can delete any experience
-        const isAdmin = currentUserProfile.role === 'admin' ||
-          currentUser.user_metadata?.role === 'admin' ||
-          currentUser.email === 'admin@bncc.local' ||
-          currentUser.email === process.env.ADMIN_EMAIL
-        if (isAdmin) {
+        // Admin/gestão pode excluir qualquer experiência (papel do banco).
+        if (['admin', 'municipality_admin', 'super_admin'].includes(String(currentUserProfile.role))) {
           canDelete = true
         }
         enhancedData.push({
@@ -137,12 +133,8 @@ export async function DELETE(request: Request) {
         canDelete = true
       }
     }
-    // Admin can delete any experience
-    const isAdmin = userProfile.role === 'admin' ||
-      user.user_metadata?.role === 'admin' ||
-      user.email === 'admin@bncc.local' ||
-      user.email === process.env.ADMIN_EMAIL
-    if (isAdmin) {
+    // Admin/gestão pode excluir qualquer experiência (papel do banco).
+    if (['admin', 'municipality_admin', 'super_admin'].includes(String(userProfile.role))) {
       canDelete = true
     }
     

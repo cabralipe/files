@@ -2,7 +2,7 @@ import { createClient, type User } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { ensureUserProfile, getSupabaseAdmin } from '@/lib/supabase-server'
-import { resolveMunicipality } from '@/lib/municipality'
+import { getMunicipalityById, resolveMunicipality } from '@/lib/municipality'
 
 const registerSchema = z.object({
   email: z.string().email('Email invalido'),
@@ -11,6 +11,7 @@ const registerSchema = z.object({
   role: z.enum(['teacher', 'aee_teacher', 'coordinator', 'family']).default('teacher'),
   school: z.string().trim().optional().default(''),
   subject: z.string().trim().optional().default(''),
+  municipality_id: z.string().trim().uuid('Selecione o municipio').optional().or(z.literal('')).default(''),
 }).superRefine((values, ctx) => {
   // Lista de escolas é por município; aqui só rejeita string vazia.
   if (!values.school || values.school.trim().length < 2) {
@@ -33,10 +34,12 @@ const registerSchema = z.object({
 export async function POST(request: Request) {
   try {
     const values = registerSchema.parse(await request.json())
-    const municipality = await resolveMunicipality(request)
-    if (!municipality) {
+    const municipality = values.municipality_id
+      ? await getMunicipalityById(values.municipality_id)
+      : await resolveMunicipality(request)
+    if (!municipality || !municipality.is_active) {
       return NextResponse.json(
-        { error: 'Municipio nao identificado. Cadastre-se a partir da pagina do municipio.' },
+        { error: 'Selecione um municipio ativo para vincular sua conta ao referencial curricular correto.' },
         { status: 400 },
       )
     }
@@ -47,6 +50,8 @@ export async function POST(request: Request) {
       subject: values.role === 'teacher' ? values.subject : '',
       municipality_id: municipality.id,
       municipality_slug: municipality.slug,
+      municipality_name: municipality.name,
+      municipality_state: municipality.state,
     }
     const authClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -100,7 +105,9 @@ export async function POST(request: Request) {
 
     if (user) {
       try {
-        await ensureUserProfile(user, municipality.id)
+        // Semeia papel e escola na tabela users (fonte de verdade de autorização),
+        // a partir dos dados validados do formulário — não de user_metadata.
+        await ensureUserProfile(user, municipality.id, { role: values.role, school: values.school })
       } catch (profileError) {
         console.error('[register] ensureUserProfile failed:', profileError)
       }
@@ -135,7 +142,7 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ user: sessionData.user, session: sessionData.session }, { status: 201 })
+    return NextResponse.json({ user: sessionData.user, session: sessionData.session, municipality: { id: municipality.id, slug: municipality.slug, name: municipality.name, state: municipality.state } }, { status: 201 })
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })

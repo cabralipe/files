@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
-import { getUserRole } from '@/lib/pei'
+import { getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    if (getUserRole(user) !== 'family') {
+    const ctx = await requireUserContext(request)
+    if (ctx.role !== 'family') {
       return NextResponse.json({ error: 'Acesso restrito a familia/responsavel' }, { status: 403 })
     }
+    const user = { id: ctx.userId }
 
     const supabase = getSupabaseAdmin()
     const { data: links, error: linksError } = await supabase

@@ -5,7 +5,7 @@ import {
   getSupabaseAdmin,
   requireAdminUser,
 } from "@/lib/supabase-server";
-import { requireMunicipality } from "@/lib/municipality";
+import { scopedMunicipality, scopedMunicipalityId } from "@/lib/municipality";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +33,13 @@ async function getMunicipalitySchool(schoolId: string, municipalityId: string) {
 
 export async function GET(request: Request) {
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipalityId = await scopedMunicipalityId(request, ctx);
     const supabase = getSupabaseAdmin();
     const { data: profiles, error } = await supabase
       .from("users")
-      .select("id, full_name, school_id, schools(name)")
-      .eq("municipality_id", municipality.id)
+      .select("id, full_name, school_id, blocked, schools(name)")
+      .eq("municipality_id", municipalityId)
       .eq("role", "coordinator")
       .order("full_name");
     if (error) throw error;
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
         email: auth?.email || "",
         school_id: profile.school_id,
         school_name: school?.name || "",
-        blocked: auth?.user_metadata?.blocked === true,
+        blocked: (profile as { blocked?: boolean }).blocked === true,
       };
     });
     return NextResponse.json({ success: true, data });
@@ -75,15 +75,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let createdUserId: string | null = null;
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipality = await scopedMunicipality(request, ctx);
+    const municipalityId = municipality.id;
     const values = coordinatorSchema
       .required({ password: true })
       .omit({ id: true })
       .parse(await request.json());
     const school = await getMunicipalitySchool(
       values.school_id,
-      municipality.id,
+      municipalityId,
     );
     if (!school) {
       return NextResponse.json(
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
           name: values.name,
           role: "coordinator",
           blocked: values.blocked,
-          municipality_id: municipality.id,
+          municipality_id: municipalityId,
           municipality_slug: municipality.slug,
           school_id: values.school_id,
           school: school.name,
@@ -111,13 +112,18 @@ export async function POST(request: Request) {
     if (createError || !created.user)
       throw createError || new Error("Usuário não criado");
     createdUserId = created.user.id;
-    await ensureUserProfile(created.user, municipality.id);
+    await ensureUserProfile(created.user, municipalityId, {
+      role: "coordinator",
+      school: school.name,
+    });
     const { error: profileError } = await supabase
       .from("users")
       .update({
         full_name: values.name,
         role: "coordinator",
         school_id: values.school_id,
+        school_name: school.name,
+        blocked: values.blocked === true,
       })
       .eq("id", created.user.id);
     if (profileError) throw profileError;
@@ -135,14 +141,15 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipality = await scopedMunicipality(request, ctx);
+    const municipalityId = municipality.id;
     const values = coordinatorSchema
       .required({ id: true })
       .parse(await request.json());
     const school = await getMunicipalitySchool(
       values.school_id,
-      municipality.id,
+      municipalityId,
     );
     if (!school) {
       return NextResponse.json(
@@ -156,7 +163,7 @@ export async function PUT(request: Request) {
       .from("users")
       .select("id")
       .eq("id", values.id)
-      .eq("municipality_id", municipality.id)
+      .eq("municipality_id", municipalityId)
       .eq("role", "coordinator")
       .maybeSingle();
     if (!profile)
@@ -171,7 +178,7 @@ export async function PUT(request: Request) {
         name: values.name,
         role: "coordinator",
         blocked: values.blocked,
-        municipality_id: municipality.id,
+        municipality_id: municipalityId,
         municipality_slug: municipality.slug,
         school_id: values.school_id,
         school: school.name,
@@ -189,7 +196,10 @@ export async function PUT(request: Request) {
       .update({
         full_name: values.name,
         email: values.email,
+        role: "coordinator",
         school_id: values.school_id,
+        school_name: school.name,
+        blocked: values.blocked === true,
       })
       .eq("id", values.id);
     if (profileError) throw profileError;
@@ -201,8 +211,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const admin = await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const admin = { id: ctx.userId };
+    const municipalityId = await scopedMunicipalityId(request, ctx);
     const id = new URL(request.url).searchParams.get("id");
     if (!id)
       return NextResponse.json(
@@ -220,7 +231,7 @@ export async function DELETE(request: Request) {
       .from("users")
       .select("id")
       .eq("id", id)
-      .eq("municipality_id", municipality.id)
+      .eq("municipality_id", municipalityId)
       .eq("role", "coordinator")
       .maybeSingle();
     if (!profile)

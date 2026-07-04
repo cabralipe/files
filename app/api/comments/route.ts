@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
-import { addPoints } from '@/lib/points-server'
+import { awardPointsOnce } from '@/lib/points-server'
 import { ensureUserProfile, getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
 
 const commentSchema = z
@@ -82,13 +82,16 @@ export async function POST(request: Request) {
       throw error
     }
 
+    // Pontos idempotentes por comentário, com teto diário anti-spam.
+    let pointsEarned = 0
     try {
-      await addPoints(user.id, 2, 'comentario_criado', data.id)
+      const res = await awardPointsOnce(user.id, 'comentario_criado', data.id, 2, { dailyCap: 20 })
+      pointsEarned = res.awarded ? 2 : 0
     } catch (pointsError) {
-      console.error('[POST /api/comments] addPoints failed:', pointsError)
+      console.error('[POST /api/comments] awardPointsOnce failed:', pointsError)
     }
 
-    return NextResponse.json({ success: true, comment: data, pointsEarned: 2 }, { status: 201 })
+    return NextResponse.json({ success: true, comment: data, pointsEarned }, { status: 201 })
   } catch (error) {
     console.error('Error in POST /api/comments:', error)
     if (error instanceof ZodError) {

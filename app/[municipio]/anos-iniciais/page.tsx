@@ -403,6 +403,7 @@ export default function AnosIniciaisPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erro ao gerar')
       const text: string = data.data?.content || ''
+      const warning: string = data.data?.warning || ''
       if (!text.trim()) throw new Error('Plano gerado vazio.')
 
       clearInterval(progTimer); clearInterval(phraseTimer)
@@ -416,7 +417,7 @@ export default function AnosIniciaisPage() {
           clearInterval(typer)
           setGenerated(text)
           setGenerating(false)
-          showToast('Plano gerado! Edite antes de salvar.')
+          showToast(warning || 'Plano gerado! Edite antes de salvar.')
         } else {
           setGenerated(text.slice(0, cur) + ' ▌')
           const ta = document.getElementById('ai-plan-ta') as HTMLTextAreaElement | null

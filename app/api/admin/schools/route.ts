@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { getSupabaseAdmin, requireAdminUser } from "@/lib/supabase-server";
-import { requireMunicipality } from "@/lib/municipality";
+import { scopedMunicipalityId } from "@/lib/municipality";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +15,13 @@ const schoolSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipalityId = await scopedMunicipalityId(request, ctx);
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("schools")
       .select("*")
-      .eq("municipality_id", municipality.id)
+      .eq("municipality_id", municipalityId)
       .order("name");
 
     if (error) throw error;
@@ -33,8 +33,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipalityId = await scopedMunicipalityId(request, ctx);
     const values = schoolSchema.omit({ id: true }).parse(await request.json());
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
         ...values,
         state: values.state.toUpperCase(),
         cnpj: values.cnpj || null,
-        municipality_id: municipality.id,
+        municipality_id: municipalityId,
       })
       .select()
       .single();
@@ -57,8 +57,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipalityId = await scopedMunicipalityId(request, ctx);
     const values = schoolSchema
       .required({ id: true })
       .parse(await request.json());
@@ -72,7 +72,7 @@ export async function PUT(request: Request) {
         cnpj: changes.cnpj || null,
       })
       .eq("id", id)
-      .eq("municipality_id", municipality.id)
+      .eq("municipality_id", municipalityId)
       .select()
       .single();
 
@@ -85,8 +85,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireAdminUser(request);
-    const municipality = await requireMunicipality(request);
+    const ctx = await requireAdminUser(request);
+    const municipalityId = await scopedMunicipalityId(request, ctx);
     const id = new URL(request.url).searchParams.get("id");
     if (!id)
       return NextResponse.json(
@@ -119,7 +119,7 @@ export async function DELETE(request: Request) {
       .from("schools")
       .delete()
       .eq("id", id)
-      .eq("municipality_id", municipality.id);
+      .eq("municipality_id", municipalityId);
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -39,6 +39,69 @@ export async function addPoints(
     .eq('id', userId)
 }
 
+/**
+ * Credita `points` a `userId` APENAS UMA VEZ por (userId, sourceType, sourceId).
+ * Previne farming (curtir/descurtir/curtir, spam de comentários). Opcionalmente
+ * respeita um teto diário por tipo de evento.
+ *
+ * - Evento novo  -> registra em score_events e credita em points_transactions.
+ * - Evento repetido (mesma tripla) -> não credita nada (idempotente).
+ * - Sem tabela score_events (não migrado) -> degrada para addPoints legado.
+ *
+ * Retorna { awarded } indicando se houve crédito nesta chamada.
+ */
+export async function awardPointsOnce(
+  userId: string,
+  sourceType: string,
+  sourceId: string,
+  points: number,
+  opts: { dailyCap?: number } = {},
+): Promise<{ awarded: boolean }> {
+  const supabase = getSupabaseAdmin()
+
+  // 1) Idempotência: tenta registrar o evento. Conflito (23505) => já pontuado.
+  const { error: insErr } = await supabase.from('score_events').insert({
+    user_id: userId,
+    source_type: sourceType,
+    source_id: sourceId,
+    points,
+  })
+
+  if (insErr) {
+    if (insErr.code === '23505') {
+      return { awarded: false } // duplicado — não credita de novo
+    }
+    // Tabela ausente (migração não aplicada): degrada para o modelo legado.
+    if (['42P01', 'PGRST205', 'PGRST204'].includes(insErr.code || '')) {
+      await addPoints(userId, points, sourceType, sourceId)
+      return { awarded: true }
+    }
+    throw insErr
+  }
+
+  // 2) Teto diário opcional: soma os pontos já registrados hoje deste tipo
+  //    (inclui o evento recém-inserido). Acima do teto, registra sem creditar.
+  let credit = true
+  if (opts.dailyCap && opts.dailyCap > 0) {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const { data: todayEvents } = await supabase
+      .from('score_events')
+      .select('points')
+      .eq('user_id', userId)
+      .eq('source_type', sourceType)
+      .gte('created_at', start.toISOString())
+    const sumToday = (todayEvents || []).reduce((sum, e) => sum + Number(e.points || 0), 0)
+    if (sumToday > opts.dailyCap) credit = false
+  }
+
+  // 3) Credita de fato (uma única vez).
+  if (credit) {
+    await addPoints(userId, points, sourceType, sourceId)
+  }
+  return { awarded: credit }
+}
+
 export async function getTotalPoints(userId: string) {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { listPlansBySchool, reviewPlan } from '@/lib/public-backend'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,15 +11,19 @@ const reviewSchema = z.object({
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = user.user_metadata?.role
-    const school = String(user.user_metadata?.school || '')
+    const ctx = await requireUserContext(request)
 
-    if (role !== 'coordinator') {
+    if (ctx.role !== 'coordinator') {
       return NextResponse.json({ error: 'Acesso restrito a coordenadores' }, { status: 403 })
     }
 
-    const plans = await listPlansBySchool(school)
+    const school = ctx.school || ''
+    if (!school) {
+      return NextResponse.json({ error: 'Coordenador sem escola vinculada' }, { status: 400 })
+    }
+
+    // Só pode revisar planos da própria escola/município.
+    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined)
     const canReview = plans.some((plan) => plan.id === params.id)
 
     if (!canReview) {
@@ -27,8 +31,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const values = reviewSchema.parse(await request.json())
-    const reviewerName =
-      String(user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'Coordenador(a)')
+    const reviewerName = ctx.fullName || 'Coordenador(a)'
     const plan = await reviewPlan(params.id, reviewerName, values.note)
 
     return NextResponse.json({ success: true, data: plan, plan })

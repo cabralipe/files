@@ -509,6 +509,7 @@ export default function Home() {
       }
 
       const content: string = payload.data?.content || ''
+      const warning: string = payload.data?.warning || ''
       if (!content.trim()) {
         throw new Error('Plano gerado vazio. Tente novamente.')
       }
@@ -530,7 +531,7 @@ export default function Home() {
           clearInterval(typingInterval)
           setGenerated(fullText)
           setLoading(false)
-          showToast('Plano gerado com sucesso! Você já pode editar ou salvar.')
+          showToast(warning || 'Plano gerado com sucesso! Você já pode editar ou salvar.')
         } else {
           setGenerated(fullText.slice(0, currentLength) + ' ▌')
           const textarea = document.getElementById('po') as HTMLTextAreaElement | null

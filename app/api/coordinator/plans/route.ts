@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server'
 import { listPlansBySchool } from '@/lib/public-backend'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = user.user_metadata?.role
-    const school = String(user.user_metadata?.school || '')
+    const ctx = await requireUserContext(request)
 
-    if (role !== 'coordinator') {
+    if (ctx.role !== 'coordinator') {
       return NextResponse.json({ error: 'Acesso restrito a coordenadores' }, { status: 403 })
     }
 
+    const school = ctx.school || ''
     if (!school) {
       return NextResponse.json({ error: 'Coordenador sem escola vinculada' }, { status: 400 })
     }
 
-    const plans = await listPlansBySchool(school)
+    // Escopo por município + escola (do contexto, não do cliente).
+    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined)
 
     return NextResponse.json({
       success: true,

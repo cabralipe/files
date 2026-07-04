@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { getSupabaseAdmin, requireAuthenticatedUser } from '@/lib/supabase-server'
-import { getUserRole } from '@/lib/pei'
+import { getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
 import { buildPaeePrompt, canGeneratePaee, generatePaeeSchema, paeeOrganizacaoSchema } from '@/lib/paee'
 import { generatePlanFromPrompt, getLatestPeiForStudent } from '@/lib/public-backend'
 import { resolveMunicipality } from '@/lib/municipality'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimitShared } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -14,13 +13,12 @@ export const maxDuration = 300
 // PEI da sala regular quando houver.
 export async function POST(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = getUserRole(user)
-    if (!canGeneratePaee(role)) {
+    const ctx = await requireUserContext(request)
+    if (!canGeneratePaee(ctx.role)) {
       return NextResponse.json({ error: 'Acesso restrito ao professor AEE, coordenacao ou administracao' }, { status: 403 })
     }
 
-    const limit = rateLimit(`paee-generate:${user.id}`, 10, 60_000)
+    const limit = await rateLimitShared(`paee-generate:${ctx.userId}`, 10, 60_000)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
@@ -42,8 +40,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Aluno nao encontrado' }, { status: 404 })
     }
 
-    const userSchool = String(user.user_metadata?.school || '')
-    if (role !== 'super_admin' && userSchool && student.school_name !== userSchool) {
+    const isManager = ['admin', 'municipality_admin', 'super_admin'].includes(ctx.role)
+    if (ctx.role !== 'super_admin' && !ctx.municipalityId) {
+      return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
+    }
+    if (ctx.role !== 'super_admin' && student.municipality_id !== ctx.municipalityId) {
+      return NextResponse.json({ error: 'Aluno nao pertence ao seu municipio' }, { status: 403 })
+    }
+    if (!isManager && (!ctx.school || student.school_name !== ctx.school)) {
       return NextResponse.json({ error: 'Aluno nao pertence a escola do usuario' }, { status: 403 })
     }
 
@@ -70,13 +74,14 @@ export async function POST(request: Request) {
     let peiVigente: string | undefined
     let linkedPeiId = ''
     if (values.articular_pei) {
-      const municipality = await resolveMunicipality(request)
-      const existing = await getLatestPeiForStudent(values.student_id, municipality?.id)
+      const municipalityId =
+        ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
+      const existing = await getLatestPeiForStudent(values.student_id, municipalityId ?? undefined)
       peiVigente = existing?.content || undefined
       linkedPeiId = existing?.id || ''
     }
 
-    const aeeTeacherName = String(user.user_metadata?.name || user.user_metadata?.full_name || '')
+    const aeeTeacherName = ctx.fullName || ''
     const prompt = buildPaeePrompt({
       student,
       profile,

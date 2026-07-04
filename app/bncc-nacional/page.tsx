@@ -431,6 +431,7 @@ export default function BnccNacionalPage() {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Erro ao gerar')
       const content: string = payload.data?.content || ''
+      const warning: string = payload.data?.warning || ''
       if (!content.trim()) throw new Error('Plano gerado vazio. Tente novamente.')
 
       clearInterval(pi); clearInterval(pp); setProgress(100)
@@ -439,7 +440,7 @@ export default function BnccNacionalPage() {
         cur += 150
         if (cur >= content.length) {
           clearInterval(ti); setGenerated(content); setLoading(false)
-          showToast(planKind === 'pei' ? 'PEI gerado! Revise, copie ou baixe em PDF.' : 'Plano gerado! Edite, copie ou baixe em PDF.')
+          showToast(warning || (planKind === 'pei' ? 'PEI gerado! Revise, copie ou baixe em PDF.' : 'Plano gerado! Edite, copie ou baixe em PDF.'))
         } else {
           setGenerated(content.slice(0, cur) + ' ▌')
           const ta = document.getElementById('po-nac') as HTMLTextAreaElement | null

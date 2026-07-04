@@ -1,55 +1,86 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { requireAuthenticatedUser, getSupabaseAdmin, ensureUserProfile } from '@/lib/supabase-server'
-import { resolveMunicipality, getMunicipalityById } from '@/lib/municipality'
-import { canManageAeeStudents, createStudentWithProfileSchema, getUserRole } from '@/lib/pei'
+import { getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
+import { resolveMunicipality } from '@/lib/municipality'
+import { canManageAeeStudents, createStudentWithProfileSchema } from '@/lib/pei'
+import { canSeeSensitiveStudentData } from '@/lib/authz-rules'
 
 export const dynamic = 'force-dynamic'
 
-async function resolveUserMunicipality(request: Request, user: Awaited<ReturnType<typeof requireAuthenticatedUser>>) {
-  const fromRequest = await resolveMunicipality(request)
-  if (fromRequest) return fromRequest
-  const metadataMunicipalityId = user.user_metadata?.municipality_id
-  return typeof metadataMunicipalityId === 'string' ? getMunicipalityById(metadataMunicipalityId) : null
-}
+const MANAGER_ROLES = ['admin', 'municipality_admin', 'super_admin']
+
+const STUDENT_FIELDS =
+  'id, full_name, birth_date, grade_level, class_name, shift, enrollment_number, school_id, school_name, municipality_id, active, created_at, updated_at'
 
 export async function GET(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const municipality = await resolveUserMunicipality(request, user)
-    if (!municipality) {
+    const ctx = await requireUserContext(request)
+
+    // Município vem SEMPRE do contexto do usuário (banco), nunca do header do
+    // cliente. Apenas super_admin pode inspecionar outro município explicitamente.
+    let municipalityId = ctx.municipalityId
+    if (ctx.role === 'super_admin') {
+      const m = await resolveMunicipality(request)
+      municipalityId = m?.id ?? null
+    }
+    if (!municipalityId && ctx.role !== 'super_admin') {
       return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
     }
 
-    const url = new URL(request.url)
-    const schoolName = url.searchParams.get('school') || String(user.user_metadata?.school || '')
-    const role = getUserRole(user)
     const supabase = getSupabaseAdmin()
+    const canSeeSensitive = canSeeSensitiveStudentData(ctx.role)
+    const isManager = MANAGER_ROLES.includes(ctx.role)
+
+    // Família: apenas alunos vinculados à sua conta, sem ficha AEE.
+    if (ctx.role === 'family') {
+      const { data: links, error: linksError } = await supabase
+        .from('family_student_links')
+        .select('student_id')
+        .eq('family_user_id', ctx.userId)
+      if (linksError) throw linksError
+      const ids = (links || []).map((l) => l.student_id).filter(Boolean)
+      if (!ids.length) return NextResponse.json({ success: true, data: [] })
+      const { data, error } = await supabase
+        .from('students')
+        .select(STUDENT_FIELDS)
+        .in('id', ids)
+        .order('full_name', { ascending: true })
+      if (error) throw error
+      return NextResponse.json({ success: true, data: data || [] })
+    }
+
+    const selectClause = canSeeSensitive ? `${STUDENT_FIELDS}, student_aee_profiles(*)` : STUDENT_FIELDS
 
     let query = supabase
       .from('students')
-      .select('*, student_aee_profiles(*)')
-      .eq('municipality_id', municipality.id)
+      .select(selectClause)
       .eq('active', true)
       .order('full_name', { ascending: true })
 
-    if (schoolName && !['admin', 'municipality_admin', 'super_admin'].includes(role)) {
-      query = query.eq('school_name', schoolName)
+    if (municipalityId) query = query.eq('municipality_id', municipalityId)
+
+    // Não-gestores ficam restritos à PRÓPRIA escola (do contexto, não do cliente).
+    if (!isManager) {
+      if (!ctx.school) {
+        return NextResponse.json({ success: true, data: [] })
+      }
+      query = query.eq('school_name', ctx.school)
     }
 
     const { data, error } = await query
 
-    // Se a relação student_aee_profiles não foi reconhecida pelo PostgREST
-    // (falta de FK registrada), tenta sem o join e retorna perfis vazio.
     if (error) {
+      // Se a relação student_aee_profiles não foi reconhecida pelo PostgREST,
+      // refaz sem o join.
       if (error.message?.includes('student_aee_profiles') || error.code === 'PGRST200') {
-        console.warn('[GET /api/students] FK student_aee_profiles nao resolvida, buscando sem join:', error.message)
-        const { data: fallback, error: fallbackError } = await supabase
+        let fb = supabase
           .from('students')
-          .select('*')
-          .eq('municipality_id', municipality.id)
+          .select(STUDENT_FIELDS)
           .eq('active', true)
           .order('full_name', { ascending: true })
+        if (municipalityId) fb = fb.eq('municipality_id', municipalityId)
+        if (!isManager && ctx.school) fb = fb.eq('school_name', ctx.school)
+        const { data: fallback, error: fallbackError } = await fb
         if (fallbackError) throw fallbackError
         const withEmpty = (fallback || []).map((s) => ({ ...s, student_aee_profiles: [] }))
         return NextResponse.json({ success: true, data: withEmpty })
@@ -59,45 +90,46 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, data: data || [] })
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
-    }
-    if (error instanceof Error && error.message === 'BLOCKED') {
-      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
-    }
-    console.error('[GET /api/students]', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao listar alunos' }, { status: 500 })
+    return handleStudentsError(error, 'Erro ao listar alunos')
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    const role = getUserRole(user)
-    if (!canManageAeeStudents(role)) {
-      return NextResponse.json({ error: 'Acesso restrito ao professor AEE, coordenacao ou administracao' }, { status: 403 })
+    const ctx = await requireUserContext(request)
+    if (!canManageAeeStudents(ctx.role)) {
+      return NextResponse.json(
+        { error: 'Acesso restrito ao professor AEE, coordenacao ou administracao' },
+        { status: 403 },
+      )
     }
 
-    const municipality = await resolveUserMunicipality(request, user)
-    if (!municipality) {
+    let municipalityId = ctx.municipalityId
+    if (ctx.role === 'super_admin') {
+      const m = await resolveMunicipality(request)
+      municipalityId = m?.id ?? municipalityId
+    }
+    if (!municipalityId) {
       return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
     }
-
-    await ensureUserProfile(user, municipality.id)
 
     const values = createStudentWithProfileSchema.parse(await request.json())
     const supabase = getSupabaseAdmin()
     const now = new Date().toISOString()
 
+    // Não-gestores só cadastram/editam alunos da própria escola.
+    if (!MANAGER_ROLES.includes(ctx.role) && ctx.school && values.student.school_name !== ctx.school) {
+      return NextResponse.json({ error: 'Voce so pode cadastrar alunos da sua escola' }, { status: 403 })
+    }
+
     const { school_id, ...studentFields } = values.student
     const studentRow: Record<string, unknown> = {
       ...studentFields,
       ...(school_id ? { school_id } : {}),
-      municipality_id: municipality.id,
-      created_by: user.id,
+      municipality_id: municipalityId,
+      created_by: ctx.userId,
       updated_at: now,
     }
-    // Coerce empty strings to null for non-TEXT typed columns (DATE, UUID)
     if (!studentRow.birth_date) studentRow.birth_date = null
 
     const { data: student, error: studentError } = await supabase
@@ -113,7 +145,7 @@ export async function POST(request: Request) {
       const { data, error } = await supabase
         .from('student_aee_profiles')
         .upsert(
-          { ...values.profile, student_id: student.id, updated_by: user.id, updated_at: now },
+          { ...values.profile, student_id: student.id, updated_by: ctx.userId, updated_at: now },
           { onConflict: 'student_id' },
         )
         .select()
@@ -122,18 +154,25 @@ export async function POST(request: Request) {
       profile = data
     }
 
-    return NextResponse.json({ success: true, data: { ...student, student_aee_profiles: profile ? [profile] : [] } }, { status: 201 })
+    return NextResponse.json(
+      { success: true, data: { ...student, student_aee_profiles: profile ? [profile] : [] } },
+      { status: 201 },
+    )
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
-    }
-    if (error instanceof Error && error.message === 'BLOCKED') {
-      return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
-    }
-    if (error instanceof ZodError) {
-      return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
-    }
-    console.error('[POST /api/students]', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro ao salvar aluno' }, { status: 500 })
+    return handleStudentsError(error, 'Erro ao salvar aluno')
   }
+}
+
+function handleStudentsError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+    return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })
+  }
+  if (error instanceof Error && error.message === 'BLOCKED') {
+    return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
+  }
+  if (error instanceof ZodError) {
+    return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
+  }
+  console.error('[api/students]', error)
+  return NextResponse.json({ error: error instanceof Error ? error.message : fallback }, { status: 500 })
 }
