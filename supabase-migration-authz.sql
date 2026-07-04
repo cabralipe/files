@@ -21,19 +21,9 @@ alter table public.users
 alter table public.users
   add column if not exists school_name text;
 
--- 2) Ampliar o CHECK de role para incluir municipality_admin ---
+-- 2) Remove o CHECK antigo de role (o novo é adicionado após o backfill,
+--    para nunca rejeitar valores durante a sincronização). --
 alter table public.users drop constraint if exists users_role_check;
-alter table public.users
-  add constraint users_role_check
-  check (role in (
-    'teacher',
-    'aee_teacher',
-    'coordinator',
-    'family',
-    'admin',
-    'municipality_admin',
-    'super_admin'
-  ));
 
 -- 3) Backfill (uma vez, confiável) a partir do metadata legado -
 -- Como até aqui o papel real vivia em auth.users.raw_user_meta_data
@@ -47,11 +37,24 @@ update public.users u set
 from auth.users au
 where au.id = u.id;
 
--- Normaliza qualquer role fora do CHECK para 'teacher' (evita quebra).
+-- Normaliza qualquer role fora do conjunto permitido para 'teacher'.
 update public.users
 set role = 'teacher'
 where role is null
    or role not in ('teacher','aee_teacher','coordinator','family','admin','municipality_admin','super_admin');
+
+-- Agora sim: adiciona o CHECK ampliado (dados já normalizados).
+alter table public.users
+  add constraint users_role_check
+  check (role in (
+    'teacher',
+    'aee_teacher',
+    'coordinator',
+    'family',
+    'admin',
+    'municipality_admin',
+    'super_admin'
+  ));
 
 -- 4) FECHAR o furo de escalonamento no próprio banco -----------
 -- A policy "Users can update own profile" permitia UPDATE em qualquer
