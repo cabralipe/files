@@ -44,6 +44,7 @@ type Plan = {
   coordinator_note?: string
   is_published?: boolean
   plan_status?: 'rascunho' | 'vigente' | 'arquivado' | 'substituido'
+  kind?: DocFormat
   is_pei?: boolean
   student_id?: string
   pei_snapshot?: Record<string, unknown>
@@ -404,6 +405,7 @@ export default function Home() {
       ...form,
       skill_ids: selected,
       content,
+      kind: planKind === 'pei' ? 'plano' : docFormat,
       is_pei: planKind === 'pei',
       student_id: planKind === 'pei' ? selectedStudentId : '',
       pei_snapshot: planKind === 'pei' ? { student: selectedStudent } : {},
@@ -1277,6 +1279,9 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="pi-meta">
+                    {plan.kind && plan.kind !== 'plano' && (
+                      <span className="tag tcd">{DOC_LABELS[plan.kind].label}</span>
+                    )}
                     <span className="tag ta">{plan.grade_level}</span>
                     <span className={`tag ${tagClass[plan.subject] || 'tm'}`}>{plan.subject}</span>
                     <span className="tag ta">{plan.duration}</span>

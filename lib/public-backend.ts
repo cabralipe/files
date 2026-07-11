@@ -37,6 +37,8 @@ export type PublicPlan = {
   coordinator_note?: string
   is_published?: boolean
   plan_status?: 'rascunho' | 'aguardando_aee' | 'aguardando_familia' | 'vigente' | 'arquivado' | 'substituido'
+  // Tipo de documento gerado: plano de aula, lista de exercicios ou atividade avaliativa.
+  kind?: 'plano' | 'exercicios' | 'avaliacao'
   is_pei?: boolean
   student_id?: string
   pei_snapshot?: Record<string, unknown>
@@ -121,6 +123,7 @@ const planSchemaBase = {
   content: z.string().trim().optional().default(''),
   is_published: z.boolean().optional().default(false),
   plan_status: z.enum(['rascunho', 'aguardando_aee', 'aguardando_familia', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
+  kind: z.enum(['plano', 'exercicios', 'avaliacao']).optional().default('plano'),
   is_pei: z.boolean().optional().default(false),
   is_paee: z.boolean().optional().default(false),
   paee_organizacao: z.object({
@@ -279,7 +282,7 @@ function parseDurationMinutes(duration: string) {
 // Colunas ESPELHO adicionadas em supabase-migration-plans-columns.sql. Se a
 // migração ainda não foi aplicada, o PostgREST devolve PGRST204 e os helpers
 // de escrita (planInsert/planUpdateById) reenviam sem estas colunas.
-const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'workflow_status'] as const
+const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'workflow_status', 'kind'] as const
 
 function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
   const row: Record<string, unknown> = {
@@ -294,6 +297,7 @@ function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
     objectives: plan.objectives,
     is_published: Boolean(plan.is_published),
     is_pei: Boolean(plan.is_pei),
+    kind: plan.kind || 'plano',
     // Espelhos para filtro/índice em SQL (sincronizados com o JSON).
     is_paee: Boolean(plan.is_paee),
     school_name: plan.school || null,
@@ -399,6 +403,7 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
       coordinator_note: parsed.plan.coordinator_note || row.coordinator_note || '',
       is_published: Boolean(row.is_published || parsed.plan.is_published),
       plan_status: parsed.plan.plan_status || (row.is_published ? 'vigente' : 'rascunho'),
+      kind: parsed.plan.kind || row.kind || 'plano',
       is_pei: Boolean(row.is_pei || parsed.plan.is_pei),
       is_paee: Boolean(parsed.plan.is_paee),
       student_id: parsed.plan.student_id || row.student_id || '',
@@ -431,6 +436,7 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
     coordinator_note: String(row.coordinator_note || ''),
     is_published: Boolean(row.is_published),
     plan_status: row.is_published ? 'vigente' : 'rascunho',
+    kind: (row.kind as PublicPlan['kind']) || 'plano',
     is_pei: Boolean(row.is_pei),
     is_paee: false,
     student_id: String(row.student_id || ''),
