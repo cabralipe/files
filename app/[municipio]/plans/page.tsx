@@ -27,7 +27,7 @@ type Plan = {
 
 export default function PlansPage() {
   const router = useRouter()
-  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
   const { enrollPlan, loading: planLoading } = usePlans()
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,31 +96,12 @@ export default function PlansPage() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Planos de aula</div>
-              <div className="logo-s">Planos publicados no portal</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb nb-cta" href="/">
-              Criar plano
-            </Link>
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
+      {/* Acoes da pagina (header global fica acima) */}
+      <nav className="subnav" aria-label="Ações de planos">
+        <Link className="nb nb-cta" href="/">
+          + Criar plano
+        </Link>
+      </nav>
 
       <section className="pg">
         <div className="saved-head">

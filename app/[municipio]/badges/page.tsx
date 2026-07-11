@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from '@/lib/m-link'
-import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 
 
@@ -95,7 +94,7 @@ const AVAILABLE_BADGES: Badge[] = [
 
 export default function Badges() {
   const router = useRouter()
-  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
 
   const [badges, setBadges] = useState<Badge[]>(AVAILABLE_BADGES)
   const [userPoints, setUserPoints] = useState(0)
@@ -161,35 +160,6 @@ export default function Badges() {
 
   return (
     <main>
-      {/* Header */}
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo" aria-label="Voltar ao portal">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Minhas conquistas e insígnias</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/">
-              Início
-            </Link>
-            <Link className="nb" href="/experiences">
-              Experiências
-            </Link>
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
 
       {/* Main Content */}
       <section className="pg">

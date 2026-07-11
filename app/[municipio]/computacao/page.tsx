@@ -102,6 +102,16 @@ const emptyForm: PlanForm = {
   notes: '',
 }
 
+// Tipos de documento que o gerador de IA sabe produzir (além do PEI).
+type DocFormat = 'plano' | 'exercicios' | 'avaliacao'
+type Difficulty = 'facil' | 'medio' | 'dificil' | 'mista'
+
+const DOC_LABELS: Record<DocFormat, { label: string; docType: string; docSubtitle: string; button: string }> = {
+  plano: { label: 'Plano de aula', docType: 'PLANO DE AULA', docSubtitle: 'BNCC Computação', button: '✦ Gerar plano com IA' },
+  exercicios: { label: 'Lista de exercícios', docType: 'LISTA DE EXERCÍCIOS', docSubtitle: 'Exercícios · BNCC Computação', button: '✦ Gerar exercícios com IA' },
+  avaliacao: { label: 'Atividade avaliativa', docType: 'ATIVIDADE AVALIATIVA', docSubtitle: 'Avaliação · BNCC Computação', button: '✦ Gerar avaliação com IA' },
+}
+
 const emptyAeeCollaboration: AeeCollaboration = {
   professor_id: '',
   nome: '',
@@ -201,7 +211,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 ]
 
 export default function Home() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const { municipality } = useMunicipality()
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
@@ -220,6 +230,9 @@ export default function Home() {
   const [seg, setSeg] = useState('')
   const [form, setForm] = useState<PlanForm>(emptyForm)
   const [planKind, setPlanKind] = useState<PlanKind>('plano')
+  const [docFormat, setDocFormat] = useState<DocFormat>('plano')
+  const [numQuestions, setNumQuestions] = useState(10)
+  const [difficulty, setDifficulty] = useState<Difficulty>('mista')
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
@@ -403,8 +416,13 @@ export default function Home() {
   }
 
   async function generatePlan() {
+    // Exercicios e avaliacoes usam o gerador dedicado (/api/plans/generate-ai);
+    // o plano de aula mantem o fluxo publico existente (/api/plans/generate).
+    const useGenAi = planKind !== 'pei' && docFormat !== 'plano'
+    const docLabel = planKind === 'pei' ? 'PEI' : DOC_LABELS[docFormat].label
+
     if (!form.title.trim()) {
-      showToast('Informe o tema do plano.')
+      showToast(docFormat === 'plano' || planKind === 'pei' ? 'Informe o tema do plano.' : 'Informe o tema/assunto.')
       return
     }
 
@@ -415,6 +433,11 @@ export default function Home() {
 
     if (planKind === 'pei' && !user) {
       showToast('Faça login para gerar PEI.')
+      return
+    }
+
+    if (useGenAi && !user) {
+      showToast('Faça login para gerar exercícios e avaliações.')
       return
     }
 
@@ -482,8 +505,16 @@ export default function Home() {
     }, 2200)
 
     try {
-      const token = planKind === 'pei' ? await getAccessToken() : ''
-      const response = await fetch(planKind === 'pei' ? '/api/pei/generate' : '/api/plans/generate', {
+      const skillsContext = selectedSkills
+        .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
+        .join('\n\n')
+      const endpoint = planKind === 'pei'
+        ? '/api/pei/generate'
+        : useGenAi
+          ? '/api/plans/generate-ai'
+          : '/api/plans/generate'
+      const token = (planKind === 'pei' || useGenAi) ? await getAccessToken() : ''
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -495,11 +526,11 @@ export default function Home() {
                 student_id: selectedStudentId,
                 portal: 'computacao',
                 plan: planPayload(''),
-                skills_context: selectedSkills
-                  .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
-                  .join('\n\n'),
+                skills_context: skillsContext,
               }
-            : planPayload(''),
+            : useGenAi
+              ? { ...form, skills_context: skillsContext, kind: docFormat, num_questions: numQuestions, difficulty }
+              : planPayload(''),
         ),
       })
       const payload = await response.json()
@@ -531,7 +562,7 @@ export default function Home() {
           clearInterval(typingInterval)
           setGenerated(fullText)
           setLoading(false)
-          showToast(warning || 'Plano gerado com sucesso! Você já pode editar ou salvar.')
+          showToast(warning || `${docLabel} gerado com sucesso! Você já pode editar ou salvar.`)
         } else {
           setGenerated(fullText.slice(0, currentLength) + ' ▌')
           const textarea = document.getElementById('po') as HTMLTextAreaElement | null
@@ -670,9 +701,11 @@ export default function Home() {
     const concordancia = (value: string, label: string) =>
       `${familyPdf.concordancia === value ? '(X)' : '( )'} ${label}`
 
+    const docFmtForPdf: DocFormat = plan ? 'plano' : docFormat
+    const withSignatures = isPei || docFmtForPdf === 'plano'
     await downloadRisoPdf({
-      docType: isPei ? 'PEI' : 'PLANO DE AULA',
-      docSubtitle: isPei ? 'Plano Educacional Individualizado' : 'BNCC Computação',
+      docType: isPei ? 'PEI' : DOC_LABELS[docFmtForPdf].docType,
+      docSubtitle: isPei ? 'Plano Educacional Individualizado' : DOC_LABELS[docFmtForPdf].docSubtitle,
       masthead: `Portal BNCC Computação · Secretaria Municipal de Educação de ${muniLabel}`,
       title,
       meta: [
@@ -685,9 +718,9 @@ export default function Home() {
         { label: 'Duração', value: meta.duration || '—' },
       ],
       body: text,
-      sectionNames: ['HABILIDADES DA BNCC COMPUTAÇÃO', 'HABILIDADES DA BNCC COMPUTACAO'],
-      skipLines: ['PLANO DE AULA', 'PEI', title, `Secretaria Municipal de Educação de ${muniLabel}`],
-      extraSections: [
+      sectionNames: ['HABILIDADES DA BNCC COMPUTAÇÃO', 'HABILIDADES DA BNCC COMPUTACAO', 'HABILIDADES AVALIADAS', 'IDENTIFICAÇÃO', 'INSTRUÇÕES', 'QUESTÕES', 'GABARITO COMENTADO', 'GABARITO E CRITÉRIOS DE CORREÇÃO', 'GABARITO'],
+      skipLines: ['PLANO DE AULA', 'LISTA DE EXERCÍCIOS', 'ATIVIDADE AVALIATIVA', 'PEI', title, `Secretaria Municipal de Educação de ${muniLabel}`],
+      extraSections: withSignatures ? [
         {
           title: 'Colaboração do professor da sala especial/AEE',
           lines: [
@@ -714,77 +747,36 @@ export default function Home() {
             { text: 'Professor(a) da sala especial/AEE', signature: true },
           ],
         },
-      ],
+      ] : [],
       footerLeft: `PORTAL BNCC COMPUTAÇÃO · ${muniLabel.toUpperCase()}`,
-      fileName: `${isPei ? 'pei' : 'plano'}-${pdfSlug(title) || 'aula'}.pdf`,
+      fileName: `${isPei ? 'pei' : docFmtForPdf === 'exercicios' ? 'exercicios' : docFmtForPdf === 'avaliacao' ? 'avaliacao' : 'plano'}-${pdfSlug(title) || 'aula'}.pdf`,
     })
   }
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <div className="logo">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
-            </div>
-          </div>
-          <nav className="hdr-nav" aria-label="Navegação principal">
-            <Link className="nb" href="/" style={{ opacity: .65, fontSize: 12 }}>← Portais</Link>
-            <button className={`nb ${view === 'skills' ? 'on' : ''}`} onClick={() => setView('skills')}>
-              Pesquisar
-            </button>
-            <button className={`nb ${view === 'plan' ? 'on' : ''}`} onClick={() => setView('plan')}>
-              Plano <span className="nbadge">{selected.length}</span>
-            </button>
-            {isLoggedIn && (
-              <button className={`nb ${view === 'saved' ? 'on' : ''}`} onClick={() => setView('saved')}>
-                Meus Planos <span className="nbadge">{plans.length}</span>
-              </button>
-            )}
-            <Link className="nb" href="/experiences">
-              Experiências
-            </Link>
-            {user?.user_metadata?.role === 'coordinator' && (
-              <Link className="nb" href="/coordinator">
-                Coordenação
-              </Link>
-            )}
-            {(['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) || user?.email === 'admin@bncc.local') && (
-              <Link className="nb" href="/aee">
-                AEE
-              </Link>
-            )}
-            {(user?.user_metadata?.role === 'admin' || user?.email === 'admin@bncc.local') && (
-              <Link className="nb" href="/admin" style={{ color: 'var(--red)' }}>
-                ⚙ Admin
-              </Link>
-            )}
-            {user ? (
-              <>
-                <span className="nb user-pill">Logado: {user.user_metadata?.name || user.email}</span>
-                <button className="nb" onClick={() => void signOut()}>
-                  Sair
-                </button>
-              </>
-            ) : (
-              <>
-                <Link className="nb nb-login" href="/auth/login">
-                  <span className="nb-label">Login</span>
-                  <span className="nb-icon-only" aria-hidden="true">→</span>
-                </Link>
-                <Link className="nb nb-cta" href="/auth/signup">
-                  <span className="nb-label">Cadastrar professor</span>
-                  <span className="nb-icon-only" aria-hidden="true">+</span>
-                </Link>
-              </>
-            )}
-            <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">?</button>
-          </nav>
-        </div>
-      </header>
+      {/* ── Abas da pagina (header global fica acima) ── */}
+      <nav className="subnav" aria-label="Seções do portal · BNCC Computação">
+        <button className={`nb ${view === 'skills' ? 'on' : ''}`} onClick={() => setView('skills')}>
+          Pesquisar
+        </button>
+        <button className={`nb ${view === 'plan' ? 'on' : ''}`} onClick={() => setView('plan')}>
+          Plano <span className="nbadge">{selected.length}</span>
+        </button>
+        {isLoggedIn && (
+          <button className={`nb ${view === 'saved' ? 'on' : ''}`} onClick={() => setView('saved')}>
+            Meus Planos <span className="nbadge">{plans.length}</span>
+          </button>
+        )}
+        <button
+          className="nb subnav-help tut-open"
+          onClick={openTutorial}
+          aria-label="Abrir tutorial de uso"
+          title="Como usar o portal"
+        >
+          ? Tutorial
+        </button>
+      </nav>
 
       {view === 'skills' && (
         <section className="pg">
@@ -1002,7 +994,7 @@ export default function Home() {
             </div>
 
             <div className="pc">
-              <h1 className="pct">Criar plano de aula</h1>
+              <h1 className="pct">Criar {planKind === 'pei' ? 'PEI' : DOC_LABELS[docFormat].label.toLowerCase()}</h1>
               <PeiControls
                 user={user}
                 school={form.school}
@@ -1014,6 +1006,47 @@ export default function Home() {
                   setSelectedStudent(student || null)
                 }}
               />
+
+              {planKind !== 'pei' && (
+                <div className="doc-format">
+                  <div className="fl" style={{ marginBottom: 8 }}>O que você quer gerar?</div>
+                  <div className="doc-format-seg">
+                    {(['plano', 'exercicios', 'avaliacao'] as DocFormat[]).map(fmt => (
+                      <button
+                        key={fmt}
+                        type="button"
+                        className={`btn ${docFormat === fmt ? 'btn-pri' : 'btn-out'}`}
+                        aria-pressed={docFormat === fmt}
+                        onClick={() => setDocFormat(fmt)}
+                      >
+                        {DOC_LABELS[fmt].label}
+                      </button>
+                    ))}
+                  </div>
+                  {docFormat !== 'plano' && (
+                    <div className="fg" style={{ marginTop: 12 }}>
+                      <Field label="Quantidade de questões" hint="Quantas questões o documento deve ter (1 a 30).">
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={numQuestions}
+                          onChange={e => setNumQuestions(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+                        />
+                      </Field>
+                      <Field label="Nível de dificuldade" hint="A IA calibra a complexidade das questões para a turma.">
+                        <select value={difficulty} onChange={e => setDifficulty(e.target.value as Difficulty)}>
+                          <option value="facil">Fácil</option>
+                          <option value="medio">Médio</option>
+                          <option value="dificil">Difícil</option>
+                          <option value="mista">Progressiva (fácil → difícil)</option>
+                        </select>
+                      </Field>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="fg">
                 <Field label="Professor(a)" hint="Seu nome, como deve aparecer no cabeçalho do plano." example="Ex.: Carlos Henrique Lima">
                   <input value={form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} placeholder="Nome do professor" />
@@ -1058,14 +1091,14 @@ export default function Home() {
               <div className="brow">
                 <button className="btn btn-out" onClick={() => setView('skills')}>Adicionar habilidades</button>
                 <button className="btn btn-pri" disabled={loading} onClick={generatePlan}>
-                  {loading ? 'Gerando...' : 'Gerar plano'}
+                  {loading ? 'Gerando...' : planKind === 'pei' ? '✦ Gerar PEI com IA' : DOC_LABELS[docFormat].button}
                 </button>
               </div>
             </div>
 
             <div className="oa">
               <div className="oa-toolbar">
-                <span className="oa-label">Plano editável</span>
+                <span className="oa-label">{planKind === 'pei' ? 'PEI editável' : `${DOC_LABELS[docFormat].label} (editável)`}</span>
                 <button className="btn btn-gh" onClick={() => void downloadPlanPdf()}>Baixar PDF</button>
                 {isLoggedIn ? (
                   <>
@@ -1097,7 +1130,7 @@ export default function Home() {
                 id="po"
                 value={generated}
                 onChange={(event) => setGenerated(event.target.value)}
-                placeholder="O plano gerado aparecerá aqui. Você pode editar o texto antes de salvar."
+                placeholder="O documento gerado aparecerá aqui. Você pode editar o texto antes de salvar."
               />
               {planKind === 'pei' && (
                 <div className="pei-flow">
@@ -1325,7 +1358,7 @@ export default function Home() {
         </div>
       )}
 
-      <div id="toast" className={message ? 'show' : ''}>{message}</div>
+      <div id="toast" role="status" aria-live="polite" className={message ? 'show' : ''}>{message}</div>
     </main>
   )
 }

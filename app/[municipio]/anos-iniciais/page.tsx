@@ -73,6 +73,31 @@ const DISC_COLORS: Record<string, { bg: string; fg: string }> = {
 
 const PAGE_SIZE = 24
 
+// Tipos de documento que o gerador de IA sabe produzir (além do PEI, tratado à parte).
+type DocFormat = 'plano' | 'exercicios' | 'avaliacao'
+type Difficulty = 'facil' | 'medio' | 'dificil' | 'mista'
+
+const DOC_LABELS: Record<DocFormat, { label: string; docType: string; docSubtitle: string; button: string }> = {
+  plano: {
+    label: 'Plano de aula',
+    docType: 'PLANO DE AULA',
+    docSubtitle: 'Referencial Curricular · Anos Iniciais',
+    button: '✦ Gerar plano com IA',
+  },
+  exercicios: {
+    label: 'Lista de exercícios',
+    docType: 'LISTA DE EXERCÍCIOS',
+    docSubtitle: 'Exercícios · Anos Iniciais',
+    button: '✦ Gerar exercícios com IA',
+  },
+  avaliacao: {
+    label: 'Atividade avaliativa',
+    docType: 'ATIVIDADE AVALIATIVA',
+    docSubtitle: 'Avaliação · Anos Iniciais',
+    button: '✦ Gerar avaliação com IA',
+  },
+}
+
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     icon: 'AI',
@@ -177,8 +202,8 @@ async function getAccessToken() {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AnosIniciaisPage() {
-  const { user, signOut } = useAuth()
-  const { slug, municipality } = useMunicipality()
+  const { user } = useAuth()
+  const { municipality } = useMunicipality()
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
   const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
@@ -204,6 +229,9 @@ export default function AnosIniciaisPage() {
   // plan state
   const [form, setForm] = useState<PlanForm>(emptyForm)
   const [planKind, setPlanKind] = useState<PlanKind>('plano')
+  const [docFormat, setDocFormat] = useState<DocFormat>('plano')
+  const [numQuestions, setNumQuestions] = useState(10)
+  const [difficulty, setDifficulty] = useState<Difficulty>('mista')
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [peiSource, setPeiSource] = useState<PeiSource>('create')
@@ -219,7 +247,7 @@ export default function AnosIniciaisPage() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
 
   // saved plans (localStorage for normal plans, server for PEI)
-  const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string }>>([])
+  const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string; kind?: DocFormat }>>([])
   const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string; coordinator_note?: string }>>([])
   const [loadingServerPlans, setLoadingServerPlans] = useState(false)
 
@@ -361,7 +389,8 @@ export default function AnosIniciaisPage() {
       return
     }
 
-    if (!form.title.trim()) { showToast('Informe o tema do plano.'); return }
+    const docLabel = planKind === 'pei' ? 'PEI' : DOC_LABELS[docFormat].label
+    if (!form.title.trim()) { showToast(docFormat === 'plano' || planKind === 'pei' ? 'Informe o tema do plano.' : 'Informe o tema/assunto.'); return }
     if (!form.grade_level.trim()) { showToast('Informe o ano/turma.'); return }
     if (!selected.length) { showToast('Selecione ao menos uma habilidade.'); return }
     if (planKind === 'pei' && !selectedStudentId) { showToast('Selecione o aluno para gerar o PEI.'); return }
@@ -397,7 +426,7 @@ export default function AnosIniciaisPage() {
         body: JSON.stringify(
           planKind === 'pei'
             ? { student_id: selectedStudentId, portal: 'anos_iniciais', plan: form, skills_context, merge_existing: peiSource === 'create' && !!existingPei }
-            : { ...form, skills_context },
+            : { ...form, skills_context, kind: docFormat, num_questions: numQuestions, difficulty },
         ),
       })
       const data = await res.json()
@@ -417,7 +446,7 @@ export default function AnosIniciaisPage() {
           clearInterval(typer)
           setGenerated(text)
           setGenerating(false)
-          showToast(warning || 'Plano gerado! Edite antes de salvar.')
+          showToast(warning || `${docLabel} gerado! Edite antes de salvar.`)
         } else {
           setGenerated(text.slice(0, cur) + ' ▌')
           const ta = document.getElementById('ai-plan-ta') as HTMLTextAreaElement | null
@@ -440,8 +469,8 @@ export default function AnosIniciaisPage() {
     const title = sanitizePdfText(form.title || (isPei && selectedStudent ? selectedStudent.full_name : 'plano'))
 
     await downloadRisoPdf({
-      docType: isPei ? 'PEI' : 'PLANO DE AULA',
-      docSubtitle: isPei ? 'Plano Educacional Individualizado' : 'Referencial Curricular · Anos Iniciais',
+      docType: isPei ? 'PEI' : DOC_LABELS[docFormat].docType,
+      docSubtitle: isPei ? 'Plano Educacional Individualizado' : DOC_LABELS[docFormat].docSubtitle,
       masthead: `Referencial Curricular Anos Iniciais · Secretaria Municipal de Educação · ${muniLabel}`,
       title,
       meta: [
@@ -460,8 +489,8 @@ export default function AnosIniciaisPage() {
         { label: 'Duração', value: form.duration || '—' },
       ],
       body: text,
-      sectionNames: ['HABILIDADES DO REFERENCIAL CURRICULAR', 'OBJETIVOS DO PROFESSOR'],
-      skipLines: ['PLANO DE AULA', 'PEI', 'PLANO EDUCACIONAL INDIVIDUALIZADO', title, 'Secretaria Municipal de Educação'],
+      sectionNames: ['HABILIDADES DO REFERENCIAL CURRICULAR', 'HABILIDADES AVALIADAS', 'OBJETIVOS DO PROFESSOR', 'IDENTIFICAÇÃO', 'INSTRUÇÕES', 'QUESTÕES', 'GABARITO COMENTADO', 'GABARITO E CRITÉRIOS DE CORREÇÃO', 'GABARITO'],
+      skipLines: ['PLANO DE AULA', 'LISTA DE EXERCÍCIOS', 'ATIVIDADE AVALIATIVA', 'PEI', 'PLANO EDUCACIONAL INDIVIDUALIZADO', title, 'Secretaria Municipal de Educação'],
       extraSections: isPei ? [
         {
           title: 'Ciência e assinaturas',
@@ -549,12 +578,12 @@ export default function AnosIniciaisPage() {
   // ── Save/load plans ────────────────────────────────────────────────────────
 
   function savePlanLocally() {
-    if (!generated.trim()) { showToast('Gere o plano antes de salvar.'); return }
-    const plan = { id: Date.now().toString(), name: form.title || 'Plano sem título', content: generated, createdAt: new Date().toISOString() }
+    if (!generated.trim()) { showToast('Gere o documento antes de salvar.'); return }
+    const plan = { id: Date.now().toString(), name: form.title || `${DOC_LABELS[docFormat].label} sem título`, content: generated, createdAt: new Date().toISOString(), kind: docFormat }
     const next = [plan, ...saved]
     setSaved(next)
     localStorage.setItem('ai-plans', JSON.stringify(next))
-    showToast('Plano salvo localmente.')
+    showToast(`${DOC_LABELS[docFormat].label} salva localmente.`)
   }
 
   function deleteSaved(id: string) {
@@ -573,40 +602,26 @@ export default function AnosIniciaisPage() {
 
   return (
     <main>
-      {/* ── Header ── */}
-      <header id="hdr">
-        <div className="hdr-in">
-          <div className="logo">
-            <div className="logo-ic ai-ic" />
-            <div>
-              <div className="logo-t">Referencial Curricular · Anos Iniciais</div>
-              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
-            </div>
-          </div>
-          <nav className="hdr-nav" aria-label="Navegação">
-            <button className={`nb${view === 'skills' ? ' on' : ''}`} onClick={() => setView('skills')}>
-              Habilidades
-            </button>
-            <button className={`nb${view === 'plan' ? ' on' : ''}`} onClick={() => setView('plan')}>
-              Plano <span className="nbadge">{selected.length}</span>
-            </button>
-            <button className={`nb${view === 'saved' ? ' on' : ''}`} onClick={() => setView('saved')}>
-              Salvos <span className="nbadge">{saved.length}</span>
-            </button>
-            <Link className="nb" href="/computacao">BNCC Comp.</Link>
-            {(['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(String(user?.user_metadata?.role || '')) || user?.email === 'admin@bncc.local') && (
-              <Link className="nb" href="/aee">AEE</Link>
-            )}
-            <Link className="nb" href={slug ? `/${slug}` : '/'} style={{ opacity: .65, fontSize: 12 }}>Portais</Link>
-            {user ? (
-              <button className="nb" onClick={() => void signOut()}>Sair</button>
-            ) : (
-              <Link className="nb nb-cta" href="/auth/login">Login</Link>
-            )}
-            <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">?</button>
-          </nav>
-        </div>
-      </header>
+      {/* ── Abas da pagina (header global fica acima) ── */}
+      <nav className="subnav" aria-label="Seções do referencial · Anos Iniciais">
+        <button className={`nb${view === 'skills' ? ' on' : ''}`} onClick={() => setView('skills')}>
+          Habilidades
+        </button>
+        <button className={`nb${view === 'plan' ? ' on' : ''}`} onClick={() => setView('plan')}>
+          Plano <span className="nbadge">{selected.length}</span>
+        </button>
+        <button className={`nb${view === 'saved' ? ' on' : ''}`} onClick={() => setView('saved')}>
+          Salvos <span className="nbadge">{saved.length}</span>
+        </button>
+        <button
+          className="nb subnav-help tut-open"
+          onClick={openTutorial}
+          aria-label="Abrir tutorial de uso"
+          title="Como usar o portal"
+        >
+          ? Tutorial
+        </button>
+      </nav>
 
       <PortalTutorial
         open={tutorialOpen}
@@ -836,6 +851,47 @@ export default function AnosIniciaisPage() {
                 onPeiSourceChange={setPeiSource}
                 onExistingPeiChange={setExistingPei}
               />
+
+              {planKind !== 'pei' && (
+                <div className="doc-format">
+                  <div className="fl" style={{ marginBottom: 8 }}>O que você quer gerar?</div>
+                  <div className="doc-format-seg">
+                    {(['plano', 'exercicios', 'avaliacao'] as DocFormat[]).map(fmt => (
+                      <button
+                        key={fmt}
+                        type="button"
+                        className={`btn ${docFormat === fmt ? 'btn-pri' : 'btn-out'}`}
+                        aria-pressed={docFormat === fmt}
+                        onClick={() => setDocFormat(fmt)}
+                      >
+                        {DOC_LABELS[fmt].label}
+                      </button>
+                    ))}
+                  </div>
+                  {docFormat !== 'plano' && (
+                    <div className="fg" style={{ marginTop: 12 }}>
+                      <Field label="Quantidade de questões" hint="Quantas questões o documento deve ter (1 a 30).">
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={numQuestions}
+                          onChange={e => setNumQuestions(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+                        />
+                      </Field>
+                      <Field label="Nível de dificuldade" hint="A IA calibra a complexidade das questões para a turma.">
+                        <select value={difficulty} onChange={e => setDifficulty(e.target.value as Difficulty)}>
+                          <option value="facil">Fácil</option>
+                          <option value="medio">Médio</option>
+                          <option value="dificil">Difícil</option>
+                          <option value="mista">Progressiva (fácil → difícil)</option>
+                        </select>
+                      </Field>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="fg">
                 <Field label="Professor(a)" hint="Seu nome, como deve aparecer no cabeçalho do plano." example="Ex.: Ana Paula Ferreira">
                   <input value={form.teacher} onChange={e => updateForm('teacher', e.target.value)} placeholder="Nome completo" />
@@ -890,7 +946,7 @@ export default function AnosIniciaisPage() {
                       ? 'Usar PEI do AEE'
                       : planKind === 'pei' && existingPei
                         ? '✦ Gerar PEI combinando com o do AEE'
-                        : '✦ Gerar plano com IA'}
+                        : DOC_LABELS[docFormat].button}
                 </button>
               </div>
             </div>
@@ -898,7 +954,7 @@ export default function AnosIniciaisPage() {
             {/* Output area */}
             <div className="oa">
               <div className="oa-toolbar">
-                <span className="oa-label">Plano editável</span>
+                <span className="oa-label">{planKind === 'pei' ? 'PEI editável' : `${DOC_LABELS[docFormat].label} (editável)`}</span>
                 <button className="btn btn-gh" onClick={downloadPdf}>Baixar PDF</button>
                 {planKind === 'pei' ? (
                   <button className="btn btn-suc" disabled={!generated || savingPei} onClick={() => void savePei()}>
@@ -926,7 +982,7 @@ export default function AnosIniciaisPage() {
                 id="ai-plan-ta"
                 value={generated}
                 onChange={e => setGenerated(e.target.value)}
-                placeholder="O plano gerado aparecerá aqui. Você pode editar antes de salvar ou baixar."
+                placeholder="O documento gerado aparecerá aqui. Você pode editar antes de salvar ou baixar."
               />
 
               {planKind === 'pei' && generated && (
@@ -1040,7 +1096,10 @@ export default function AnosIniciaisPage() {
                 <article className="plan-item" key={plan.id}>
                   <div className="pi-header">
                     <h2 className="pi-title">{plan.name}</h2>
-                    <div className="pi-date">{new Date(plan.createdAt).toLocaleString('pt-BR')}</div>
+                    <div className="pi-date">
+                      <span className="pi-kind">{DOC_LABELS[plan.kind || 'plano'].label}</span>
+                      {new Date(plan.createdAt).toLocaleString('pt-BR')}
+                    </div>
                   </div>
                   <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
                   <div className="pi-actions">
@@ -1054,7 +1113,7 @@ export default function AnosIniciaisPage() {
         </section>
       )}
 
-      <div id="toast" className={toast ? 'show' : ''}>{toast}</div>
+      <div id="toast" role="status" aria-live="polite" className={toast ? 'show' : ''}>{toast}</div>
 
       <style>{`
         .ai-ic::before { content: "AI" !important; font-size: 14px !important; letter-spacing: -.05em; }

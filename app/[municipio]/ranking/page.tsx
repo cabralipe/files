@@ -15,7 +15,7 @@ interface RankingUser {
 
 export default function Ranking() {
   const router = useRouter()
-  const { isAuthenticated, loading: authLoading, signOut } = useAuth()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const { getRanking } = usePoints()
 
   const [ranking, setRanking] = useState<RankingUser[]>([])
@@ -60,35 +60,6 @@ export default function Ranking() {
 
   return (
     <div>
-      {/* Header */}
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo" aria-label="Voltar ao portal">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Ranking Global de Professores</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/">
-              Habilidades e planos
-            </Link>
-            <Link className="nb" href="/experiences">
-              Experiências
-            </Link>
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="pg">

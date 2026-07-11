@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 const schema = z.object({
-  title: z.string().trim().min(1, 'Informe o tema do plano.'),
+  title: z.string().trim().min(1, 'Informe o tema.'),
   teacher: z.string().trim().optional().default('Professor(a)'),
   school: z.string().trim().optional().default('Escola Municipal'),
   grade_level: z.string().trim().min(1, 'Informe o ano/turma.'),
@@ -20,7 +20,18 @@ const schema = z.object({
   materials: z.string().optional().default(''),
   notes: z.string().optional().default(''),
   skills_context: z.string().min(1, 'Selecione ao menos uma habilidade.'),
+  // Tipo de documento a gerar. 'plano' preserva o comportamento original.
+  kind: z.enum(['plano', 'exercicios', 'avaliacao']).optional().default('plano'),
+  num_questions: z.coerce.number().int().min(1).max(30).optional().default(10),
+  difficulty: z.enum(['facil', 'medio', 'dificil', 'mista']).optional().default('mista'),
 })
+
+const DIFFICULTY_LABEL: Record<string, string> = {
+  facil: 'fácil',
+  medio: 'médio',
+  dificil: 'difícil',
+  mista: 'progressiva (do mais fácil ao mais difícil)',
+}
 
 function envNumber(key: string, fallback: number) {
   const v = process.env[key]
@@ -69,7 +80,7 @@ function muniLabel(muni: MunicipalityInfo): string {
   return muni.state ? `${muni.name}-${muni.state}` : muni.name
 }
 
-function buildPrompt(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
+function buildPlanPrompt(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
   const date = input.date || new Date().toLocaleDateString('pt-BR')
   const obj = input.objectives?.trim() || '[Inferir objetivos a partir do tema e das habilidades selecionadas.]'
   const met = input.methodology?.trim() || '[Propor metodologia ativa viável para a turma.]'
@@ -140,7 +151,104 @@ Critérios formativos objetivos.
 - BRASIL. BNCC. Brasília: MEC, 2017.`
 }
 
-function buildFallback(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
+function buildExercisesPrompt(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
+  const local = muniLabel(muni)
+  const n = input.num_questions
+  const dif = DIFFICULTY_LABEL[input.difficulty]
+
+  return `Você é especialista em educação básica e no Referencial Curricular de ${local}. \
+Elabore uma LISTA DE EXERCÍCIOS pronta para impressão e uso por professores da rede municipal de ${local}.
+
+DADOS:
+- Professor(a): ${input.teacher}
+- Escola: ${input.school} | Município: ${local}
+- Ano/Turma: ${input.grade_level}
+- Componente Curricular: ${input.subject}
+- Tema/Assunto: ${input.title}
+- Quantidade de questões: ${n}
+- Nível de dificuldade: ${dif}
+- Observações: ${input.notes || 'nenhuma'}
+
+HABILIDADES DO REFERENCIAL CURRICULAR DE ${muni.name.toUpperCase()} (${input.skills_context.split('\n\n').length} selecionadas):
+${input.skills_context}
+
+Escreva em português do Brasil, com linguagem adequada à faixa etária do ${input.grade_level}. \
+Contextualize os enunciados na realidade local de ${local} (cultura, paisagens, festas, comunidade, nomes e lugares da região). \
+Varie os tipos de questão: múltipla escolha (com 4 alternativas a–d), completar lacunas, verdadeiro ou falso, associação e questões abertas/dissertativas curtas. \
+As questões devem avaliar as habilidades listadas. Não inclua decoração visual nem introduções longas.
+
+Use exatamente esta estrutura:
+
+LISTA DE EXERCÍCIOS: ${input.title.toUpperCase()}
+
+IDENTIFICAÇÃO
+Escola, professor(a), componente, ano/turma e espaço para nome e data do aluno.
+
+INSTRUÇÕES
+Uma ou duas frases orientando como responder.
+
+QUESTÕES
+Numere de 1 a ${n}. Em cada questão indique entre colchetes a habilidade avaliada (ex.: [EF01LP01]). \
+Para múltipla escolha, liste as alternativas a) b) c) d). Deixe claro o comando da questão.
+
+GABARITO COMENTADO
+Ao final, liste a resposta de cada questão numerada, com uma breve justificativa pedagógica (1 a 2 frases). \
+Nas questões abertas, descreva o que se espera na resposta.`
+}
+
+function buildAssessmentPrompt(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
+  const local = muniLabel(muni)
+  const n = input.num_questions
+  const dif = DIFFICULTY_LABEL[input.difficulty]
+
+  return `Você é especialista em avaliação da aprendizagem na educação básica e no Referencial Curricular de ${local}. \
+Elabore uma ATIVIDADE AVALIATIVA (prova) pronta para aplicação por professores da rede municipal de ${local}.
+
+DADOS:
+- Professor(a): ${input.teacher}
+- Escola: ${input.school} | Município: ${local}
+- Ano/Turma: ${input.grade_level}
+- Componente Curricular: ${input.subject}
+- Tema/Conteúdo avaliado: ${input.title}
+- Quantidade de questões: ${n}
+- Nível de dificuldade: ${dif}
+- Observações: ${input.notes || 'nenhuma'}
+
+HABILIDADES DO REFERENCIAL CURRICULAR DE ${muni.name.toUpperCase()} (${input.skills_context.split('\n\n').length} selecionadas):
+${input.skills_context}
+
+Escreva em português do Brasil, com linguagem clara e adequada ao ${input.grade_level}. \
+Contextualize as questões na realidade local de ${local}. \
+Combine questões objetivas (múltipla escolha com 4 alternativas a–d) e questões discursivas. \
+Distribua a pontuação de forma que a soma total seja 10,0 pontos e indique o valor de cada questão. \
+As questões devem avaliar as habilidades listadas de forma justa e progressiva.
+
+Use exatamente esta estrutura:
+
+ATIVIDADE AVALIATIVA: ${input.title.toUpperCase()}
+
+IDENTIFICAÇÃO
+Escola, professor(a), componente, ano/turma. Espaço para Nome do aluno, Turma, Data e Nota.
+
+INSTRUÇÕES
+Regras da avaliação (uso de material, tempo, orientação de preenchimento) em 2 a 3 frases.
+
+QUESTÕES
+Numere de 1 a ${n}. Em cada questão indique o valor em pontos e, entre colchetes, a habilidade avaliada (ex.: [EF01MA01]). \
+Para múltipla escolha, liste as alternativas a) b) c) d).
+
+GABARITO E CRITÉRIOS DE CORREÇÃO
+Ao final, liste a resposta esperada de cada questão e os critérios de pontuação das questões discursivas (o que vale pontuação parcial e total). \
+Confirme que a soma dos valores é 10,0 pontos.`
+}
+
+function buildPrompt(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
+  if (input.kind === 'exercicios') return buildExercisesPrompt(input, muni)
+  if (input.kind === 'avaliacao') return buildAssessmentPrompt(input, muni)
+  return buildPlanPrompt(input, muni)
+}
+
+function buildPlanFallback(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
   const date = input.date || new Date().toLocaleDateString('pt-BR')
   const local = muniLabel(muni)
   return `PLANO DE AULA: ${input.title.toUpperCase()}
@@ -198,6 +306,46 @@ ${input.notes ? `\nOBSERVAÇÕES:\n${input.notes}` : ''}
 Plano elaborado com base no Referencial Curricular de ${local} — Secretaria Municipal de Educação.`
 }
 
+function buildQuestionsFallback(
+  input: z.infer<typeof schema>,
+  muni: MunicipalityInfo,
+  header: string,
+): string {
+  const local = muniLabel(muni)
+  const n = input.num_questions
+  const lines: string[] = []
+  for (let i = 1; i <= n; i++) {
+    lines.push(`${i}. [Habilidade selecionada] Questão ${i} sobre ${input.title}, contextualizada na realidade de ${local}. \
+(Elabore o enunciado a partir das habilidades selecionadas e do nível ${DIFFICULTY_LABEL[input.difficulty]}.)`)
+  }
+  const gab = Array.from({ length: n }, (_v, i) => `${i + 1}. Resposta esperada — revisar conforme o enunciado.`).join('\n')
+
+  return `${header}: ${input.title.toUpperCase()}
+
+IDENTIFICAÇÃO
+Escola: ${input.school} | Município: ${local}
+Professor(a): ${input.teacher} | Componente: ${input.subject} | Ano/Turma: ${input.grade_level}
+Aluno(a): _______________________  Data: ____/____/____
+
+HABILIDADES AVALIADAS
+${input.skills_context}
+
+QUESTÕES
+${lines.join('\n\n')}
+
+GABARITO
+${gab}
+
+Documento elaborado com base no Referencial Curricular de ${local} — Secretaria Municipal de Educação.
+(A IA não respondeu agora; este é um rascunho local — revise e complete os enunciados antes de aplicar.)`
+}
+
+function buildFallback(input: z.infer<typeof schema>, muni: MunicipalityInfo): string {
+  if (input.kind === 'exercicios') return buildQuestionsFallback(input, muni, 'LISTA DE EXERCÍCIOS')
+  if (input.kind === 'avaliacao') return buildQuestionsFallback(input, muni, 'ATIVIDADE AVALIATIVA')
+  return buildPlanFallback(input, muni)
+}
+
 export async function POST(request: Request) {
   try {
     // Exige login: evita que terceiros consumam a cota da OpenAI anonimamente.
@@ -231,12 +379,14 @@ export async function POST(request: Request) {
       source = 'fallback'
     }
 
+    const docLabel = values.kind === 'exercicios' ? 'Esta lista de exercícios' : values.kind === 'avaliacao' ? 'Esta atividade avaliativa' : 'Este plano'
     return NextResponse.json({
       data: {
         content,
         source,
+        kind: values.kind,
         ...(source === 'fallback'
-          ? { warning: 'A IA não respondeu agora. Este plano foi gerado por um modelo local — revise com atenção antes de publicar.' }
+          ? { warning: `A IA não respondeu agora. ${docLabel} foi gerado por um modelo local — revise com atenção antes de publicar.` }
           : {}),
       },
     })

@@ -185,25 +185,12 @@ export default function NewExperiencePage() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo" aria-label="Voltar ao portal">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Cadastro privado de experiência</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/experiences">
-              Lista de experiências
-            </Link>
-            <Link className="nb" href="/">
-              Habilidades e planos
-            </Link>
-          </nav>
-        </div>
-      </header>
+      {/* Acoes da pagina (header global fica acima) */}
+      <nav className="subnav" aria-label="Navegação de experiências">
+        <Link className="nb" href="/experiences">
+          ← Lista de experiências
+        </Link>
+      </nav>
 
       <section className="pg">
         <form className="pc exp-form" onSubmit={saveExperience}>
@@ -291,7 +278,7 @@ export default function NewExperiencePage() {
         </form>
       </section>
 
-      <div id="toast" className={message ? 'show' : ''}>{message}</div>
+      <div id="toast" role="status" aria-live="polite" className={message ? 'show' : ''}>{message}</div>
     </main>
   )
 }

@@ -104,18 +104,6 @@ export default function MunicipioHome() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <div className="logo">
-            <div className="logo-ic" />
-            <div>
-              <div className="logo-t">Portal Educacional</div>
-              <div className="logo-s">{secretaria}</div>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <section className="pg portal-sel-pg">
         <div className="portal-sel-hero">
           <p className="portal-sel-eyebrow">{secretaria}</p>

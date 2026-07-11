@@ -18,7 +18,7 @@ type UserProfile = {
 
 export default function Profile() {
   const router = useRouter()
-  const { loading: authLoading, isAuthenticated, signOut } = useAuth()
+  const { loading: authLoading, isAuthenticated } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -121,28 +121,6 @@ export default function Profile() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <button className="logo" type="button" onClick={() => router.push('/')}>
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Meu Perfil</div>
-              <div className="logo-s">Dados do professor</div>
-            </div>
-          </button>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
 
       <section className="pg">
         {message && <div className="al-ok">{message}</div>}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from '@/lib/m-link'
-import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { useStorage } from '@/hooks/useStorage'
 
@@ -17,7 +16,7 @@ interface UploadedFile {
 
 export default function Gallery() {
   const router = useRouter()
-  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth()
+  const { user, isAuthenticated, loading: authLoading } = useAuth()
   const { uploadExperienceImage, listFiles, deleteFile } = useStorage()
 
   const [files, setFiles] = useState<UploadedFile[]>([])
@@ -130,35 +129,6 @@ export default function Gallery() {
 
   return (
     <main>
-      {/* Header */}
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo" aria-label="Voltar ao portal">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Galeria de imagens pedagógicas</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/">
-              Início
-            </Link>
-            <Link className="nb" href="/experiences">
-              Experiências
-            </Link>
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
 
       {/* Main Content */}
       <section className="pg">

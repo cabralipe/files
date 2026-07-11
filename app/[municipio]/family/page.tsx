@@ -3,7 +3,6 @@
 import { supabase } from '@/lib/supabase-client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 
 
@@ -143,17 +142,6 @@ export default function FamilyPage() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo">
-            <div className="logo-ic logo-ic--pei" />
-            <div>
-              <div className="logo-t">Acesso da familia</div>
-              <div className="logo-s">Consulta e ciencia do PEI</div>
-            </div>
-          </Link>
-        </div>
-      </header>
 
       <section className="pg">
         <div className="saved-head">

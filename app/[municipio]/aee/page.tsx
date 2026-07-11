@@ -3,7 +3,6 @@
 import { supabase } from '@/lib/supabase-client'
 
 import { useState, useEffect } from 'react'
-import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import { municipalSchools } from '@/lib/education-options'
 import PeiReviewQueue from '@/components/PeiReviewQueue'
@@ -276,21 +275,6 @@ export default function AeePage() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo">
-            <div className="logo-ic logo-ic--aee" />
-            <div>
-              <div className="logo-t">Sala especial / AEE</div>
-              <div className="logo-s">Cadastro de alunos, ficha AEE, PEI e PAEE</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/computacao">BNCC Computacao</Link>
-            <Link className="nb" href="/anos-iniciais">Anos Iniciais</Link>
-          </nav>
-        </div>
-      </header>
 
       <section className="pg">
         <div className="hero hero--panel">

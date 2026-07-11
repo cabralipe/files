@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getMunicipalityBySlug } from '@/lib/municipality'
 import { MunicipalityProvider } from '@/lib/municipality-context'
+import AppHeader from '@/components/AppHeader'
 
 export async function generateMetadata({
   params,
@@ -32,7 +33,10 @@ export default async function MunicipalityLayout({
 
   return (
     <div style={styleVars as React.CSSProperties}>
-      <MunicipalityProvider municipality={municipality}>{children}</MunicipalityProvider>
+      <MunicipalityProvider municipality={municipality}>
+        <AppHeader />
+        {children}
+      </MunicipalityProvider>
     </div>
   )
 }

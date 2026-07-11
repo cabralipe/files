@@ -116,25 +116,12 @@ export default function ExperienceDetailPage() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/experiences" className="logo">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Experiência exitosa</div>
-              <div className="logo-s">{experience.teacher}</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/experiences">
-              Lista de experiências
-            </Link>
-            <Link className="nb" href="/">
-              Habilidades e planos
-            </Link>
-          </nav>
-        </div>
-      </header>
+      {/* Acoes da pagina (header global fica acima) */}
+      <nav className="subnav" aria-label="Navegação de experiências">
+        <Link className="nb" href="/experiences">
+          ← Lista de experiências
+        </Link>
+      </nav>
 
       <section className="pg">
         <article className="pc">

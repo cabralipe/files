@@ -301,6 +301,53 @@ body {
   background: var(--red);
 }
 
+/* Seletor de tipo de documento (plano / exercicios / avaliacao) no gerador. */
+.doc-format {
+  border: 2px solid var(--ink);
+  background: var(--mustard-wash);
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.doc-format-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.doc-format-seg .btn { flex: 1 1 auto; justify-content: center; min-width: 140px; }
+.pi-kind {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+  margin-right: 8px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+/* Sub-barra de abas dentro de uma pagina (fica abaixo do header global). */
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 14px 18px 0;
+}
+.subnav .subnav-help {
+  margin-left: auto;
+}
+@media (max-width: 760px) {
+  .subnav { padding: 10px 12px 0; }
+  .subnav .subnav-help { margin-left: 0; }
+}
+
 .nb-label {
   display: inline;
 }

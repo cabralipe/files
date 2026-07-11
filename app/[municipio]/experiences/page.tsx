@@ -3,7 +3,6 @@
 import { supabase } from '@/lib/supabase-client'
 
 import Link from '@/lib/m-link'
-import { useRouter } from '@/lib/m-link'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -24,8 +23,7 @@ type Experience = {
 
 
 export default function ExperiencesPage() {
-  const router = useRouter()
-  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -74,43 +72,18 @@ export default function ExperiencesPage() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo" aria-label="Voltar ao portal">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Experiências compartilhadas pela rede</div>
-            </div>
+      {/* Acoes da pagina (header global fica acima) */}
+      <nav className="subnav" aria-label="Ações de experiências">
+        {isAuthenticated ? (
+          <Link className="nb nb-cta" href="/experiences/new">
+            + Cadastrar experiência
           </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/">
-              Habilidades e planos
-            </Link>
-            {isAuthenticated ? (
-              <>
-                <span className="nb user-pill">Logado: {user?.user_metadata?.name || user?.email}</span>
-                <Link className="nb nb-cta" href="/experiences/new">
-                  Cadastrar experiência
-                </Link>
-                <button
-                  className="nb"
-                  onClick={async () => {
-                    await signOut()
-                    router.push('/')
-                  }}
-                >
-                  Sair
-                </button>
-              </>
-            ) : (
-              <Link className="nb nb-cta" href="/auth/login">
-                Login para cadastrar
-              </Link>
-            )}
-          </nav>
-        </div>
-      </header>
+        ) : (
+          <a className="nb nb-cta" href="/auth/login">
+            Entrar para cadastrar
+          </a>
+        )}
+      </nav>
 
       <section className="pg">
         <div className="saved-head">

@@ -3,10 +3,8 @@
 import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useState } from 'react'
-import Link from '@/lib/m-link'
 import { Search, Plus, BookOpen, FileText, Trash2, Download } from 'lucide-react'
 import { municipalSchools, schoolsFor } from '@/lib/education-options'
-import { useAuth } from '@/hooks/useAuth'
 import { useMunicipality } from '@/lib/municipality-context'
 
 
@@ -30,11 +28,7 @@ interface Plan {
 }
 
 export default function PortalPage() {
-  const { user, signOut } = useAuth()
   const { municipality } = useMunicipality()
-  const muniName = municipality?.name || 'Município'
-  const muniUf = municipality?.state || ''
-  const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
   const schools = schoolsFor(municipality)
   const [view, setView] = useState<'skills' | 'plan' | 'saved'>('skills')
   const [skills, setSkills] = useState<Skill[]>([])
@@ -170,41 +164,18 @@ ${formData.methodology || '(Não preenchido)'}
 
   return (
     <main>
-      {/* Header */}
-      <header id="hdr">
-        <div className="hdr-in">
-          <div className="logo">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Secretaria Municipal de Educação · {muniLabel}</div>
-            </div>
-          </div>
-          <nav className="hdr-nav" aria-label="Navegação principal">
-            <button className={`nb ${view === 'skills' ? 'on' : ''}`} onClick={() => setView('skills')}>
-              Habilidades
-            </button>
-            <button className={`nb ${view === 'plan' ? 'on' : ''}`} onClick={() => setView('plan')}>
-              Criar Plano <span className="nbadge">{selectedSkills.length}</span>
-            </button>
-            <button className={`nb ${view === 'saved' ? 'on' : ''}`} onClick={() => setView('saved')}>
-              Meus Planos <span className="nbadge">{savedPlans.length}</span>
-            </button>
-            {user ? (
-              <>
-                <span className="nb user-pill">Logado: {user.user_metadata?.name || user.email}</span>
-                <button className="nb" onClick={() => void signOut()}>
-                  Sair
-                </button>
-              </>
-            ) : (
-              <Link className="nb" href="/auth/login">
-                Login
-              </Link>
-            )}
-          </nav>
-        </div>
-      </header>
+      {/* Abas da pagina (o header global fica acima) */}
+      <nav className="subnav" aria-label="Seções do portal">
+        <button className={`nb ${view === 'skills' ? 'on' : ''}`} onClick={() => setView('skills')}>
+          Habilidades
+        </button>
+        <button className={`nb ${view === 'plan' ? 'on' : ''}`} onClick={() => setView('plan')}>
+          Criar Plano <span className="nbadge">{selectedSkills.length}</span>
+        </button>
+        <button className={`nb ${view === 'saved' ? 'on' : ''}`} onClick={() => setView('saved')}>
+          Meus Planos <span className="nbadge">{savedPlans.length}</span>
+        </button>
+      </nav>
 
       {/* Main Content */}
       <section className="pg">

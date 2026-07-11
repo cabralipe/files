@@ -97,7 +97,7 @@ function AnalyticsSection({
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { user, loading: authLoading, isAuthenticated, signOut } = useAuth()
+  const { user, loading: authLoading, isAuthenticated } = useAuth()
   const { municipality } = useMunicipality()
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
@@ -529,32 +529,6 @@ export default function AdminDashboard() {
   // ─── Main render ───
   return (
     <main>
-      {/* ══════ HEADER ══════ */}
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Painel do Superusuário</div>
-              <div className="logo-s">Gerenciamento Global</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Navegação admin">
-            <Link className="nb" href="/">
-              Portal
-            </Link>
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
 
       <section className="pg">
         {/* ══════ PAGE TITLE ══════ */}

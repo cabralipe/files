@@ -3,7 +3,6 @@
 import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from '@/lib/m-link'
 import { useRouter } from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
 import PeiReviewQueue from '@/components/PeiReviewQueue'
@@ -34,7 +33,7 @@ async function getAccessToken() {
 
 export default function CoordinatorDashboard() {
   const router = useRouter()
-  const { user, loading: authLoading, isAuthenticated, signOut } = useAuth()
+  const { user, loading: authLoading, isAuthenticated } = useAuth()
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [note, setNote] = useState('')
@@ -44,7 +43,6 @@ export default function CoordinatorDashboard() {
   const [message, setMessage] = useState('')
 
   const isCoordinator = user?.user_metadata?.role === 'coordinator'
-  const school = String(user?.user_metadata?.school || '')
 
   const stats = useMemo(() => {
     const reviewed = plans.filter((plan) => plan.coordinator_viewed_at).length
@@ -144,31 +142,6 @@ export default function CoordinatorDashboard() {
 
   return (
     <main>
-      <header id="hdr">
-        <div className="hdr-in">
-          <Link href="/" className="logo">
-            <div className="logo-ic">BN</div>
-            <div>
-              <div className="logo-t">Dashboard do coordenador</div>
-              <div className="logo-s">{school || 'Escola nao vinculada'}</div>
-            </div>
-          </Link>
-          <nav className="hdr-nav" aria-label="Acessos">
-            <Link className="nb" href="/">
-              Portal
-            </Link>
-            <button
-              className="nb"
-              onClick={async () => {
-                await signOut()
-                router.push('/')
-              }}
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
 
       <section className="pg">
         <div className="saved-head">
