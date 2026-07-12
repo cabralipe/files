@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
 import { rateLimitShared, getClientIp } from '@/lib/rate-limit'
+import { generatePlanFromPrompt } from '@/lib/public-backend'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -33,46 +34,13 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   mista: 'progressiva (do mais fácil ao mais difícil)',
 }
 
-function envNumber(key: string, fallback: number) {
-  const v = process.env[key]
-  const n = v ? Number(v) : NaN
-  return isNaN(n) ? fallback : n
-}
-
-async function callOpenAi(prompt: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY || ''
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-  const timeoutMs = envNumber('OPENAI_TIMEOUT_MS', 30000)
-  const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 4200)
-
-  if (!apiKey) throw new Error('OpenAI não configurado')
-
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-  try {
-    const res = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model,
-        input: prompt,
-        max_output_tokens: maxTokens,
-      }),
-    })
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '')
-      throw new Error(`OpenAI error ${res.status}: ${errText.slice(0, 200)}`)
-    }
-    const data = await res.json() as { output?: Array<{ content?: Array<{ text?: string }> }> }
-    const text = data?.output?.[0]?.content?.[0]?.text || ''
-    if (!text.trim()) throw new Error('Resposta vazia da OpenAI')
-    return text
-  } finally {
-    clearTimeout(timer)
-  }
-}
+// A chamada à OpenAI usa o mesmo helper do gerador de planos público
+// (lib/public-backend.ts): ele envia `reasoning: { effort }` e faz o parsing
+// correto da Responses API — filtrando o item `type: 'message'` em vez de
+// assumir que `output[0]` é a mensagem (com modelos de reasoning como o
+// gpt-5-nano, `output[0]` é o item de reasoning e vinha vazio, forçando o
+// fallback local mesmo com a IA respondendo 200).
+const callOpenAi = generatePlanFromPrompt
 
 type MunicipalityInfo = { name: string; state: string }
 
