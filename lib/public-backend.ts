@@ -35,6 +35,9 @@ export type PublicPlan = {
   coordinator_viewed_at?: string
   coordinator_name?: string
   coordinator_note?: string
+  // Justificativa do professor AEE ao devolver o PEI (campo próprio, para não
+  // se confundir com a ressalva da coordenação).
+  aee_return_note?: string
   is_published?: boolean
   plan_status?: 'rascunho' | 'aguardando_aee' | 'aguardando_familia' | 'vigente' | 'arquivado' | 'substituido'
   // Tipo de documento gerado: plano de aula, lista de exercicios ou atividade avaliativa.
@@ -123,6 +126,7 @@ const planSchemaBase = {
   content: z.string().trim().optional().default(''),
   is_published: z.boolean().optional().default(false),
   plan_status: z.enum(['rascunho', 'aguardando_aee', 'aguardando_familia', 'vigente', 'arquivado', 'substituido']).optional().default('rascunho'),
+  aee_return_note: z.string().trim().optional().default(''),
   kind: z.enum(['plano', 'exercicios', 'avaliacao']).optional().default('plano'),
   is_pei: z.boolean().optional().default(false),
   is_paee: z.boolean().optional().default(false),
@@ -731,6 +735,118 @@ export type PlanTransition = 'submit_aee' | 'submit_familia' | 'approve_aee' | '
 // Maquina de estados do PEI: rascunho -> aguardando_aee -> aguardando_familia -> vigente.
 // Maquina de estados do PAEE (autor ja e o AEE, nao passa pela validacao AEE):
 // rascunho -> aguardando_familia -> vigente.
+// ── Notificações do fluxo PEI/PAEE ────────────────────────────────────────────
+// Fire-and-forget: falha em notificar NUNCA derruba a transição de status.
+
+async function insertNotifications(
+  rows: Array<{ user_id: string; title: string; message: string; type: string; related_item_id: string; related_item_type: string; municipality_id: string | null }>,
+) {
+  if (!rows.length) return
+  const supabase = getSupabaseAdmin()
+  const { error } = await supabase.from('notifications').insert(rows)
+  if (error) safeError('[notifications] falha ao inserir', error)
+}
+
+async function notifyPlanTransition(
+  action: PlanTransition,
+  plan: PublicPlan,
+  current: Record<string, any>,
+  payload: { note?: string },
+) {
+  try {
+    const supabase = getSupabaseAdmin()
+    const docLabel = plan.is_paee ? 'PAEE' : 'PEI'
+    const studentName = String((plan.pei_snapshot as any)?.student?.full_name || '')
+    const ref = studentName ? `${docLabel} de ${studentName}` : `${docLabel} "${plan.title}"`
+    const municipalityId = (current.municipality_id as string | null) || null
+    const base = {
+      related_item_id: String(current.id),
+      related_item_type: plan.is_paee ? 'paee' : 'pei',
+      municipality_id: municipalityId,
+    }
+
+    // Professores AEE da escola (fallback: do município) — para novos envios.
+    async function aeeTeacherIds(): Promise<string[]> {
+      let q = supabase.from('users').select('id').eq('role', 'aee_teacher').limit(20)
+      if (municipalityId) q = q.eq('municipality_id', municipalityId)
+      if (plan.school) {
+        const { data: bySchool } = await q.eq('school_name', plan.school)
+        if (bySchool?.length) return bySchool.map((u) => u.id)
+      }
+      let q2 = supabase.from('users').select('id').eq('role', 'aee_teacher').limit(20)
+      if (municipalityId) q2 = q2.eq('municipality_id', municipalityId)
+      const { data } = await q2
+      return (data || []).map((u) => u.id)
+    }
+
+    // Responsáveis vinculados ao aluno.
+    async function familyIds(): Promise<string[]> {
+      if (!plan.student_id) return []
+      const { data } = await supabase
+        .from('family_student_links')
+        .select('family_user_id')
+        .eq('student_id', plan.student_id)
+        .limit(20)
+      return (data || []).map((l) => l.family_user_id).filter(Boolean)
+    }
+
+    const ownerId = String(current.user_id || '')
+    const rows: Parameters<typeof insertNotifications>[0] = []
+
+    if (action === 'submit_aee') {
+      for (const id of await aeeTeacherIds()) {
+        rows.push({ ...base, user_id: id, type: 'pei_submitted', title: `${ref} aguardando sua validação`, message: 'Um professor regente enviou um PEI para a validação do AEE. Acesse o painel AEE, aba "Validar PEIs".' })
+      }
+    } else if (action === 'approve_aee') {
+      if (ownerId) rows.push({ ...base, user_id: ownerId, type: 'pei_approved', title: `${ref} aprovado pelo AEE`, message: 'O documento seguiu para a ciência da família/responsável.' })
+      for (const id of await familyIds()) {
+        rows.push({ ...base, user_id: id, type: 'pei_family', title: `${ref} aguardando sua ciência`, message: 'Acesse o painel da família para ler o documento e registrar sua ciência.' })
+      }
+    } else if (action === 'reject_aee') {
+      if (ownerId) rows.push({ ...base, user_id: ownerId, type: 'pei_returned', title: `${ref} devolvido pelo AEE`, message: payload.note ? `Justificativa: ${payload.note}` : 'Revise o documento e envie novamente.' })
+    } else if (action === 'submit_familia') {
+      for (const id of await familyIds()) {
+        rows.push({ ...base, user_id: id, type: 'pei_family', title: `${ref} aguardando sua ciência`, message: 'Acesse o painel da família para ler o documento e registrar sua ciência.' })
+      }
+    } else if (action === 'family_consent') {
+      if (ownerId) rows.push({ ...base, user_id: ownerId, type: 'pei_active', title: `${ref} está vigente`, message: 'A família registrou ciência e o documento passou a valer.' })
+      for (const id of await aeeTeacherIds()) {
+        rows.push({ ...base, user_id: id, type: 'pei_active', title: `${ref} está vigente`, message: 'A família registrou ciência e o documento passou a valer.' })
+      }
+    }
+
+    // Sem duplicar destinatário.
+    const seen = new Set<string>()
+    await insertNotifications(rows.filter((r) => r.user_id && !seen.has(r.user_id) && seen.add(r.user_id) !== undefined))
+  } catch (error) {
+    safeError('[notifications] falha ao notificar transicao', error)
+  }
+}
+
+// Ao entrar um novo documento vigente, versões vigentes anteriores do mesmo
+// aluno e tipo passam a "substituido" (ciclo de revisão bimestral).
+async function supersedeOldVersions(plan: PublicPlan, currentId: string) {
+  try {
+    if (!plan.student_id) return
+    const supabase = getSupabaseAdmin()
+    const { data: rows } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('student_id', plan.student_id)
+      .neq('id', currentId)
+      .limit(50)
+    for (const row of rows || []) {
+      const other = mapPlanRow(row as Record<string, any>)
+      const sameType = Boolean(other.is_paee) === Boolean(plan.is_paee) && Boolean(other.is_pei) === Boolean(plan.is_pei)
+      if (!sameType || other.plan_status !== 'vigente') continue
+      const next: PublicPlan = { ...other, plan_status: 'substituido', is_published: false, updated_at: new Date().toISOString() }
+      await planUpdateById(String(row.id), toPlanRow(next, row.user_id))
+    }
+  } catch (error) {
+    safeError('[pei] falha ao substituir versoes anteriores', error)
+  }
+}
+
 export async function transitionPlanStatus(
   id: string,
   action: PlanTransition,
@@ -771,8 +887,12 @@ export async function transitionPlanStatus(
         .maybeSingle()
       if (!link) throw new Error('SCOPE_FORBIDDEN')
     } else if (!managers.includes(actor.role)) {
-      // teacher / aee_teacher / coordinator: restritos a propria escola.
+      // teacher / aee_teacher / coordinator: restritos a propria escola E ao
+      // proprio municipio (nomes de escola se repetem entre redes).
       if (!actor.school || !plan.school || actor.school !== plan.school) {
+        throw new Error('SCOPE_FORBIDDEN')
+      }
+      if (actor.municipalityId && current.municipality_id && current.municipality_id !== actor.municipalityId) {
         throw new Error('SCOPE_FORBIDDEN')
       }
     }
@@ -806,7 +926,8 @@ export async function transitionPlanStatus(
   } else if (action === 'reject_aee') {
     if (status !== 'aguardando_aee') throw new Error('TRANSITION_INVALID')
     next.plan_status = 'rascunho'
-    next.coordinator_note = payload.note || plan.coordinator_note || ''
+    // Campo proprio da devolucao do AEE (coordinator_note e da coordenacao).
+    next.aee_return_note = payload.note || plan.aee_return_note || ''
   } else if (action === 'family_consent') {
     if (status !== 'aguardando_familia') throw new Error('TRANSITION_INVALID')
     next.plan_status = 'vigente'
@@ -827,6 +948,14 @@ export async function transitionPlanStatus(
 
   const { error: upErr } = await planUpdateById(id, toPlanRow(next, current.user_id))
   if (upErr) throw upErr
+
+  // Efeitos pós-transição (não bloqueiam a resposta em caso de falha):
+  // versões antigas viram "substituido" e os envolvidos são notificados.
+  if (action === 'family_consent') {
+    await supersedeOldVersions(next, id)
+  }
+  await notifyPlanTransition(action, next, current as Record<string, any>, { note: payload.note })
+
   return next
 }
 

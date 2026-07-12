@@ -142,7 +142,7 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
       try {
         setCheckingDocs(true)
         const token = await getAccessToken()
-        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
         const [peiRes, paeeRes] = await Promise.all([
           fetch(`/api/peis/by-student?student_id=${encodeURIComponent(studentId)}`, { headers }),
           fetch(`/api/paees/by-student?student_id=${encodeURIComponent(studentId)}`, { headers }),

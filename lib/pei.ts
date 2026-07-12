@@ -64,7 +64,7 @@ export const createStudentWithProfileSchema = z.object({
 
 export const generatePeiSchema = z.object({
   student_id: z.string().uuid('Selecione um aluno cadastrado'),
-  portal: z.enum(['computacao', 'anos_iniciais', 'bncc_nacional']).default('computacao'),
+  portal: z.enum(['computacao', 'anos_iniciais', 'anos_finais', 'bncc_nacional']).default('computacao'),
   plan: z.record(z.unknown()),
   skills_context: z.string().trim().optional().default(''),
   // Quando true, a IA combina o PEI ja cadastrado pelo professor AEE com o

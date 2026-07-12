@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
-import { municipalSchools, schoolsFor } from '@/lib/education-options'
+import { schoolsFor } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
@@ -619,6 +619,29 @@ export default function Home() {
     }
   }
 
+  // Caminho padrão de governança do PEI: envia o rascunho salvo para a fila de
+  // validação do professor AEE (mesmo fluxo dos portais dos referenciais).
+  async function submitForAee() {
+    if (!editingPlanId) { showToast('Salve o rascunho antes de enviar para o AEE.'); return }
+    try {
+      const token = await getAccessToken()
+      const res = await fetch(`/api/plans/${editingPlanId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: 'submit_aee' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao enviar')
+      showToast('PEI enviado para validação do professor AEE.')
+      await loadPlans()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao enviar para o AEE')
+    }
+  }
+
   async function deleteSavedPlan(id: string) {
     const token = await getAccessToken()
     const response = await fetch(`/api/plans/${id}`, {
@@ -1153,6 +1176,26 @@ export default function Home() {
                   </section>
                   <section className="pei-block">
                     <div className="bnac-form-section">Passo 4 - Revisao colaborativa (AEE)</div>
+                    <div className="pei-next" style={{ marginBottom: 12, padding: '12px 14px', border: '2px solid var(--blue)', background: 'var(--blue-wash)' }}>
+                      <p className="pei-note" style={{ margin: 0 }}>
+                        <strong>Caminho recomendado:</strong> salve o rascunho e{' '}
+                        <strong>envie para a validação do professor AEE</strong> — ele registra a própria
+                        colaboração no painel dele e o documento segue para a família. Preencha os campos
+                        abaixo manualmente <strong>apenas como exceção</strong>, quando a colaboração já
+                        aconteceu presencialmente (ex.: reunião registrada em ata).
+                      </p>
+                      <div className="brow" style={{ marginTop: 10 }}>
+                        <button
+                          type="button"
+                          className="btn btn-pri"
+                          disabled={!editingPlanId}
+                          title={editingPlanId ? '' : 'Salve o rascunho primeiro'}
+                          onClick={() => void submitForAee()}
+                        >
+                          Enviar para validação do AEE →
+                        </button>
+                      </div>
+                    </div>
                     <label className="pei-check">
                       <input type="checkbox" checked={revisaoRegente} onChange={(event) => setRevisaoRegente(event.target.checked)} />
                       Professor regente revisou as secoes do PEI
@@ -1187,7 +1230,10 @@ export default function Home() {
                   <section className="pei-block">
                     <div className="bnac-form-section">Passo 5 - Consulta e aprovacao da familia</div>
                     <p className="pei-note" style={{ marginBottom: 12 }}>
-                      A participacao da familia e prevista na Lei Brasileira de Inclusao. Registre a consulta mesmo que seja informal (telefone, WhatsApp).
+                      A participacao da familia e prevista na Lei Brasileira de Inclusao. <strong>Caminho
+                      recomendado:</strong> a familia registra a propria ciencia no painel dela (o AEE cria o
+                      acesso na aba &quot;Família&quot; do painel AEE). Preencha abaixo apenas como excecao,
+                      quando a consulta ja aconteceu de forma presencial ou informal (telefone, WhatsApp).
                     </p>
                     <div className="fg">
                       <Field label="Responsavel consultado">

@@ -123,7 +123,7 @@ export default function PeiControls({
       try {
         setLoadingExisting(true)
         const token = await getAccessToken()
-        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
         const [res, paeeRes] = await Promise.all([
           fetch(`/api/peis/by-student?student_id=${encodeURIComponent(selectedStudentId)}`, { headers }),
           fetch(`/api/paees/by-student?student_id=${encodeURIComponent(selectedStudentId)}`, { headers }),

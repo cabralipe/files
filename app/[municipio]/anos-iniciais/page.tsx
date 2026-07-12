@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase-client'
 import { useState, useMemo, useEffect } from 'react'
 import Link from '@/lib/m-link'
 import { useAuth } from '@/hooks/useAuth'
-import { municipalSchools, schoolsFor } from '@/lib/education-options'
+import { schoolsFor } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
 import PeiControls, { type PeiStudent, type PlanKind, type PeiSource, type ExistingPei } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
@@ -248,7 +248,7 @@ export default function AnosIniciaisPage() {
 
   // saved plans (localStorage for normal plans, server for PEI)
   const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string; kind?: DocFormat }>>([])
-  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string; coordinator_note?: string }>>([])
+  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string; aee_return_note?: string; coordinator_note?: string }>>([])
   const [loadingServerPlans, setLoadingServerPlans] = useState(false)
 
   // Set today's date after mount to avoid SSR/client timezone mismatch
@@ -1076,9 +1076,9 @@ export default function AnosIniciaisPage() {
                           {peiStatusLabel(plan.plan_status)}
                         </span>
                       </div>
-                      {plan.plan_status === 'rascunho' && plan.coordinator_note?.trim() && (
+                      {plan.plan_status === 'rascunho' && (plan.aee_return_note || plan.coordinator_note)?.trim() && (
                         <div className="al-error" style={{ marginBottom: 8, fontSize: 13 }}>
-                          <strong>Devolvido pelo AEE:</strong> {plan.coordinator_note}
+                          <strong>Devolvido pelo AEE:</strong> {plan.aee_return_note || plan.coordinator_note}
                         </div>
                       )}
                       <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
@@ -1090,6 +1090,17 @@ export default function AnosIniciaisPage() {
                           setView('plan')
                           showToast('PEI carregado para edicao.')
                         }}>Editar</button>
+                        {plan.plan_status === 'vigente' && (
+                          <button className="btn btn-out" onClick={() => {
+                            // Revisão bimestral: nova versão; a vigente passa a
+                            // "Substituído" quando esta ficar vigente.
+                            setEditingPlanId(null)
+                            setGenerated(plan.content)
+                            setPlanKind('pei')
+                            setView('plan')
+                            showToast('Revisão iniciada: ao salvar, cria-se uma nova versão do PEI.')
+                          }}>Revisar (nova versão)</button>
+                        )}
                       </div>
                     </article>
                   ))}

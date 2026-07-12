@@ -117,6 +117,186 @@ async function getAccessToken() {
   return data.session?.access_token
 }
 
+// ── Acesso da família: cria a conta do responsável e o vínculo com o aluno ───
+
+type StudentOption = { id: string; full_name: string; school_name?: string; grade_level?: string }
+type FamilyLink = { id: string; name: string; email: string; relationship: string; created_at: string }
+
+function FamilyLinksPanel() {
+  const [students, setStudents] = useState<StudentOption[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
+  const [studentId, setStudentId] = useState('')
+  const [links, setLinks] = useState<FamilyLink[]>([])
+  const [loadingLinks, setLoadingLinks] = useState(false)
+  const [form, setForm] = useState({ name: '', email: '', relationship: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ email: string; temp_password: string | null; already_linked: boolean } | null>(null)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const token = await getAccessToken()
+        const res = await fetch('/api/students', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        const payload = await res.json()
+        if (active && res.ok) setStudents(payload.data || [])
+      } catch { /* lista vazia */ } finally {
+        if (active) setLoadingStudents(false)
+      }
+    })()
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!studentId) { setLinks([]); return }
+    let active = true
+    ;(async () => {
+      setLoadingLinks(true)
+      try {
+        const token = await getAccessToken()
+        const res = await fetch(`/api/family/links?student_id=${encodeURIComponent(studentId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        const payload = await res.json()
+        if (active && res.ok) setLinks(payload.data || [])
+      } catch { /* mantém lista */ } finally {
+        if (active) setLoadingLinks(false)
+      }
+    })()
+    return () => { active = false }
+  }, [studentId])
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setResult(null)
+    if (!studentId) { setError('Selecione o aluno.'); return }
+    if (!form.name.trim() || !form.email.trim() || !form.relationship.trim()) {
+      setError('Preencha nome, email e parentesco do responsável.')
+      return
+    }
+    setSaving(true)
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/family/links', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ student_id: studentId, ...form, email: form.email.trim().toLowerCase() }),
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao vincular responsável')
+      setResult(payload.data)
+      setForm({ name: '', email: '', relationship: '' })
+      // Recarrega vínculos do aluno.
+      const linksRes = await fetch(`/api/family/links?student_id=${encodeURIComponent(studentId)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      const linksPayload = await linksRes.json()
+      if (linksRes.ok) setLinks(linksPayload.data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao vincular responsável')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeLink(linkId: string) {
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/family/links', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ link_id: linkId }),
+      })
+      if (res.ok) setLinks((prev) => prev.filter((l) => l.id !== linkId))
+    } catch { /* mantém */ }
+  }
+
+  return (
+    <div className="pc">
+      {error && <div className="al-error" style={{ marginBottom: 14 }}>{error}</div>}
+      {result && (
+        <div className="al-ok" style={{ marginBottom: 14 }}>
+          {result.already_linked ? (
+            <>Este responsável já estava vinculado ao aluno.</>
+          ) : result.temp_password ? (
+            <>
+              Acesso criado para <strong>{result.email}</strong>.<br />
+              Senha provisória: <strong style={{ fontFamily: 'var(--font-mono)', fontSize: 15 }}>{result.temp_password}</strong><br />
+              Anote e entregue em mãos — ela não será exibida novamente. O responsável pode trocá-la
+              em &quot;Esqueceu a senha?&quot; na tela de login.
+            </>
+          ) : (
+            <>Responsável <strong>{result.email}</strong> vinculado ao aluno (a conta já existia).</>
+          )}
+        </div>
+      )}
+
+      <div className="fg">
+        <Field label="Aluno" wide hint="O responsável só enxerga os documentos dos alunos vinculados a ele.">
+          <select value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={loadingStudents}>
+            <option value="">{loadingStudents ? 'Carregando alunos…' : 'Selecione o aluno'}</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.full_name}{s.grade_level ? ` — ${s.grade_level}` : ''}{s.school_name ? ` (${s.school_name})` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      {studentId && (
+        <>
+          <div style={{ margin: '14px 0 8px', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--ink-muted)' }}>
+            Responsáveis vinculados
+          </div>
+          {loadingLinks ? (
+            <div className="est">Carregando…</div>
+          ) : links.length === 0 ? (
+            <div className="est">Nenhum responsável vinculado ainda.</div>
+          ) : (
+            <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+              {links.map((l) => (
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '2px solid var(--ink)', background: 'var(--paper-soft)', padding: '10px 12px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong>{l.name || l.email}</strong>
+                    <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}> · {l.relationship || 'responsável'} · {l.email}</span>
+                  </div>
+                  <button type="button" className="btn btn-gh" onClick={() => void removeLink(l.id)}>Remover</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={submit}>
+            <div className="fg">
+              <Field label="Nome do responsável" hint="Como aparece no documento de ciência." example="Ex.: Maria José da Silva">
+                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome completo" />
+              </Field>
+              <Field label="Email do responsável" hint="Será o login da família. Use um email pessoal do responsável.">
+                <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="responsavel@email.com" />
+              </Field>
+              <Field label="Parentesco" hint="Relação com o aluno." example="Ex.: mãe · pai · avó · tutor legal">
+                <input value={form.relationship} onChange={(e) => setForm((f) => ({ ...f, relationship: e.target.value }))} placeholder="mãe" />
+              </Field>
+            </div>
+            <button type="submit" className="btn btn-pri" disabled={saving} style={{ marginTop: 12 }}>
+              {saving ? 'Vinculando…' : '+ Criar acesso e vincular'}
+            </button>
+          </form>
+        </>
+      )}
+    </div>
+  )
+}
+
 const AEE_STEPS = [
   { n: 1, label: 'Identificação' },
   { n: 2, label: 'Perfil e necessidades' },
@@ -124,13 +304,14 @@ const AEE_STEPS = [
   { n: 4, label: 'Família e saúde' },
 ]
 
-type AeeView = 'cadastro' | 'paee' | 'paees' | 'peis'
+type AeeView = 'cadastro' | 'paee' | 'paees' | 'peis' | 'familia'
 
 const AEE_TABS: Array<{ key: AeeView; kicker: string; title: string; desc: string }> = [
   { key: 'cadastro', kicker: '01 · Base', title: 'Cadastro do aluno', desc: 'Identificação e ficha AEE do estudante' },
   { key: 'paee', kicker: '02 · Sala de recursos', title: 'Elaborar PAEE', desc: 'Plano de atendimento especializado, articulado ao PEI' },
   { key: 'paees', kicker: '03 · Acompanhar', title: 'PAEEs da escola', desc: 'Em elaboração, com a família e vigentes' },
   { key: 'peis', kicker: '04 · Validar', title: 'PEIs dos professores', desc: 'Aprovação dos PEIs enviados pelos regentes' },
+  { key: 'familia', kicker: '05 · Família', title: 'Acesso da família', desc: 'Crie o acesso do responsável e vincule ao aluno' },
 ]
 
 const AEE_TUTORIAL = [
@@ -581,6 +762,21 @@ export default function AeePage() {
                   </div>
                 </div>
                 <PeiReviewQueue mode="aee" />
+              </>
+            )}
+
+            {view === 'familia' && (
+              <>
+                <div className="saved-head">
+                  <div>
+                    <h1>Acesso da família</h1>
+                    <p>
+                      Cadastre o responsável e vincule ao aluno. Ele acessa o painel da família para
+                      ler o PEI/PAEE e registrar a ciência — sem depender da coordenação.
+                    </p>
+                  </div>
+                </div>
+                <FamilyLinksPanel />
               </>
             )}
           </>
