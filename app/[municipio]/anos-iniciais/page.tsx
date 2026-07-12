@@ -375,7 +375,12 @@ export default function AnosIniciaisPage() {
   ]
 
   async function generatePlan() {
-    if (!user) { showToast('Faça login para gerar.'); return }
+    // Exercicios e avaliacoes nao exigem login; plano de aula e PEI sim.
+    const requiresLogin = planKind === 'pei' || docFormat === 'plano'
+    if (requiresLogin && !user) {
+      showToast(planKind === 'pei' ? 'Faça login para gerar o PEI.' : 'Faça login para gerar planos de aula.')
+      return
+    }
 
     // Modo "usar o PEI do AEE": carrega o conteudo existente como BASE, sem IA e
     // sem exigir tema/habilidades. NAO reaproveita o id do documento original:
@@ -868,6 +873,11 @@ export default function AnosIniciaisPage() {
                       </button>
                     ))}
                   </div>
+                  {!user && (
+                    <p className="doc-format-note">
+                      <strong>Exercícios e avaliações não exigem login.</strong> Planos de aula e PEIs precisam de conta.
+                    </p>
+                  )}
                   {docFormat !== 'plano' && (
                     <div className="fg" style={{ marginTop: 12 }}>
                       <Field label="Quantidade de questões" hint="Quantas questões o documento deve ter (1 a 30).">

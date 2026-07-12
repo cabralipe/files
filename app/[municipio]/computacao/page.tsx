@@ -438,10 +438,7 @@ export default function Home() {
       return
     }
 
-    if (useGenAi && !user) {
-      showToast('Faça login para gerar exercícios e avaliações.')
-      return
-    }
+    // Exercicios e avaliacoes nao exigem login (a rota generate-ai aceita anonimo).
 
     if (planKind === 'pei' && !selectedStudentId) {
       showToast('Selecione o aluno para gerar o PEI.')
@@ -1025,6 +1022,11 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
+                  {!user && (
+                    <p className="doc-format-note">
+                      <strong>Exercícios e avaliações não exigem login.</strong> Planos de aula e PEIs precisam de conta.
+                    </p>
+                  )}
                   {docFormat !== 'plano' && (
                     <div className="fg" style={{ marginTop: 12 }}>
                       <Field label="Quantidade de questões" hint="Quantas questões o documento deve ter (1 a 30).">

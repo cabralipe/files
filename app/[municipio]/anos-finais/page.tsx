@@ -321,7 +321,8 @@ export default function AnosFinaisPage() {
   ]
 
   async function generatePlan() {
-    if (!user) { showToast('Faça login para gerar.'); return }
+    // Exercicios e avaliacoes nao exigem login; plano de aula sim.
+    if (docFormat === 'plano' && !user) { showToast('Faça login para gerar planos de aula.'); return }
     const docLabel = DOC_LABELS[docFormat].label
     if (!form.title.trim()) { showToast(docFormat === 'plano' ? 'Informe o tema do plano.' : 'Informe o tema/assunto.'); return }
     if (!form.grade_level.trim()) { showToast('Informe o ano/turma.'); return }
@@ -687,6 +688,11 @@ export default function AnosFinaisPage() {
                     </button>
                   ))}
                 </div>
+                {!user && (
+                  <p className="doc-format-note">
+                    <strong>Exercícios e avaliações não exigem login.</strong> Planos de aula precisam de conta.
+                  </p>
+                )}
                 {docFormat !== 'plano' && (
                   <div className="fg" style={{ marginTop: 12 }}>
                     <Field label="Quantidade de questões">

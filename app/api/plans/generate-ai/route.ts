@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
-import { rateLimitShared } from '@/lib/rate-limit'
+import { rateLimitShared, getClientIp } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -348,10 +348,21 @@ function buildFallback(input: z.infer<typeof schema>, muni: MunicipalityInfo): s
 
 export async function POST(request: Request) {
   try {
-    // Exige login: evita que terceiros consumam a cota da OpenAI anonimamente.
-    const user = await requireAuthenticatedUser(request)
+    const body = await request.json()
+    const values = schema.parse(body)
 
-    const limit = await rateLimitShared(`plan-ai:${user.id}`, 10, 60_000)
+    // Exercicios e atividades avaliativas podem ser gerados SEM login (com rate
+    // limit por IP). Plano de aula continua exigindo login para conter o custo
+    // de IA — que costuma ser a geração mais pesada e reaproveitável.
+    const publicKind = values.kind === 'exercicios' || values.kind === 'avaliacao'
+    const user = await getAuthenticatedUser(request)
+    if (!user && !publicKind) {
+      return NextResponse.json({ error: 'Login obrigatorio para gerar plano' }, { status: 401 })
+    }
+
+    const limit = user
+      ? await rateLimitShared(`plan-ai:${user.id}`, 10, 60_000)
+      : await rateLimitShared(`plan-ai-public:${getClientIp(request)}`, 5, 60_000)
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Muitas gerações em pouco tempo. Aguarde um instante e tente novamente.' },
@@ -364,8 +375,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Municipio nao identificado' }, { status: 400 })
     }
 
-    const body = await request.json()
-    const values = schema.parse(body)
     const muni = { name: municipality.name, state: municipality.state }
     const prompt = buildPrompt(values, muni)
 

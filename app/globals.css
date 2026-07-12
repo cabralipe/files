@@ -315,6 +315,14 @@ body {
   gap: 8px;
 }
 .doc-format-seg .btn { flex: 1 1 auto; justify-content: center; min-width: 140px; }
+.doc-format-note {
+  margin: 10px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.doc-format-note strong { color: var(--ink); }
 .pi-kind {
   display: inline-block;
   font-family: var(--font-mono);
