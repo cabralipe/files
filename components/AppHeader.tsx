@@ -30,6 +30,8 @@ export default function AppHeader() {
   const uf = municipality?.state ? `/${municipality.state}` : ''
   const role = String(user?.user_metadata?.role || 'teacher')
   const displayName = user?.user_metadata?.name || user?.email || ''
+  // Slug da rede da conta (metadado; suficiente para detectar troca de portal).
+  const accountSlug = String(user?.user_metadata?.municipality_slug || '')
 
   // Caminho relativo ao municipio, para destacar a secao ativa.
   const rel = slug && pathname?.startsWith(`/${slug}`) ? pathname.slice(slug.length + 1) || '/' : pathname || '/'
@@ -107,13 +109,25 @@ export default function AppHeader() {
                 </button>
               </span>
             ) : (
-              <a href="/auth/login" className="nb nb-cta">
+              <a
+                href={`/auth/login?next=${encodeURIComponent(pathname || '/')}`}
+                className="nb nb-cta"
+              >
                 Entrar
               </a>
             )
           )}
         </nav>
       </div>
+
+      {/* Conta de outra rede: avisa e oferece o caminho certo. */}
+      {user && accountSlug && slug && accountSlug !== slug && (
+        <div className="app-hdr-tenant-warn" role="status">
+          Sua conta pertence à rede <strong>{accountSlug}</strong>, mas você está no portal de{' '}
+          <strong>{name}</strong>.{' '}
+          <a href={`/${accountSlug}`}>Ir para a minha rede →</a>
+        </div>
+      )}
 
       <style>{`
         .app-hdr-burger {
@@ -145,6 +159,17 @@ export default function AppHeader() {
           padding-left: 10px;
           border-left: 2px dashed var(--ink-faint);
         }
+        .app-hdr-tenant-warn {
+          background: var(--mustard-wash);
+          border-top: 2px solid var(--ink);
+          padding: 8px 18px;
+          font-family: var(--font-mono);
+          font-size: 12px;
+          color: var(--ink-soft);
+          text-align: center;
+        }
+        .app-hdr-tenant-warn strong { color: var(--ink); }
+        .app-hdr-tenant-warn a { color: var(--ink); font-weight: 700; }
         .app-hdr-name {
           font-family: var(--font-mono);
           font-size: 12px;

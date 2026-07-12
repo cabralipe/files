@@ -1,9 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase-client'
+
+// Aceita apenas caminhos internos ("/algo"), nunca URLs externas ("//x", "http:").
+function sanitizeNext(raw: string | null): string {
+  if (!raw) return ''
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/auth')) return ''
+  return raw
+}
+
+// Papel -> painel inicial dentro do município.
+function roleDest(role: string): string {
+  return role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
+}
 
 export default function Login() {
   const router = useRouter()
@@ -18,6 +31,32 @@ export default function Login() {
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotMessage, setForgotMessage] = useState('')
   const [forgotSending, setForgotSending] = useState(false)
+
+  // Contexto de origem: ?next=/<municipio>/... mantém o professor na rede dele.
+  const [nextPath, setNextPath] = useState('')
+  const [tenantLabel, setTenantLabel] = useState('')
+
+  useEffect(() => {
+    // Lido no cliente (evita Suspense de useSearchParams no build).
+    const params = new URLSearchParams(window.location.search)
+    const next = sanitizeNext(params.get('next'))
+    setNextPath(next)
+
+    const slug = next.split('/').filter(Boolean)[0] || ''
+    if (!slug) return
+    let active = true
+    fetch('/api/municipalities')
+      .then((r) => r.json())
+      .then((payload) => {
+        if (!active) return
+        const m = (payload?.data || []).find((x: { slug?: string }) => x.slug === slug)
+        if (m?.name) setTenantLabel(`Rede de ${m.name}${m.state ? '/' + m.state : ''}`)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -38,10 +77,35 @@ export default function Login() {
 
     try {
       const data = await signIn(formData.email, formData.password)
+
+      // Se o professor veio de uma página específica (?next=), volta para ela.
+      if (nextPath) {
+        router.push(nextPath)
+        return
+      }
+
+      // Destino pela tabela `users` (fonte de verdade de papel/município);
+      // user_metadata fica apenas como fallback para contas antigas.
+      let role = ''
+      let slug = ''
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess.session?.access_token
+        const res = await fetch('/api/auth/whoami', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (res.ok) {
+          const who = await res.json()
+          role = String(who.role || '')
+          slug = String(who.municipality_slug || '')
+        }
+      } catch { /* segue no fallback */ }
+
       const meta = data.user?.user_metadata
-      const role = meta?.role
-      const slug = meta?.municipality_slug
-      const dest = role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
+      if (!role) role = String(meta?.role || '')
+      if (!slug) slug = String(meta?.municipality_slug || '')
+
+      const dest = roleDest(role)
       // Rotas por papel vivem sob /[municipio]; sem o slug elas dao 404.
       router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/')
     } catch (err: any) {
@@ -74,21 +138,21 @@ export default function Login() {
     <div className="auth-shell">
       <div className="auth-box">
         <div className="auth-head">
-          <Link href="/" className="logo">
+          <Link href={nextPath || '/'} className="logo">
             <div className="logo-ic">BN</div>
             <div style={{ textAlign: 'left' }}>
-              <div className="logo-t">Portal BNCC Computação</div>
-              <div className="logo-s">Plataforma BNCC · Referencial Curricular Municipal</div>
+              <div className="logo-t">Portal BNCC</div>
+              <div className="logo-s">Referencial Curricular Municipal</div>
             </div>
           </Link>
-          <span className="auth-eyebrow">Área do professor</span>
+          <span className="auth-eyebrow">{tenantLabel || 'Acesso à plataforma'}</span>
           <h1 className="auth-title">
-            {showForgotPassword ? <>Redefinir <em>senha</em></> : <>Acesso à <em>plataforma</em></>}
+            {showForgotPassword ? <>Redefinir <em>senha</em></> : <>Entrar na sua <em>rede de ensino</em></>}
           </h1>
           <p className="auth-sub">
             {showForgotPassword
               ? 'Digite o email cadastrado e enviaremos um link para você criar uma nova senha.'
-              : 'Faça login para criar planos, PEIs e PAEEs, e acompanhar suas turmas.'}
+              : 'Use a conta criada com o email da sua rede. Depois de entrar, você volta para onde estava.'}
           </p>
         </div>
 
@@ -200,7 +264,9 @@ export default function Login() {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <Link href="/" className="auth-back">← Voltar aos portais</Link>
+          <Link href={nextPath || '/'} className="auth-back">
+            {nextPath ? '← Voltar para onde eu estava' : '← Voltar aos portais'}
+          </Link>
         </div>
       </div>
     </div>
