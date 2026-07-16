@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase-client'
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { municipalSchools } from '@/lib/education-options'
 import PeiReviewQueue from '@/components/PeiReviewQueue'
 import PaeeBuilder from '@/components/PaeeBuilder'
 
@@ -13,6 +12,7 @@ type StudentForm = {
   full_name: string
   birth_date: string
   school_name: string
+  school_id: string
   grade_level: string
   class_name: string
   shift: 'manha' | 'tarde' | 'noite' | 'integral'
@@ -48,6 +48,7 @@ const emptyStudent: StudentForm = {
   full_name: '',
   birth_date: '',
   school_name: '',
+  school_id: '',
   grade_level: '',
   class_name: '',
   shift: 'manha',
@@ -354,7 +355,7 @@ const AEE_TUTORIAL = [
 ]
 
 export default function AeePage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, profile: authProfile, loading: authLoading } = useAuth()
   const [student, setStudent] = useState<StudentForm>(emptyStudent)
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile)
   const [saving, setSaving] = useState(false)
@@ -364,6 +365,18 @@ export default function AeePage() {
   const [view, setView] = useState<AeeView>('cadastro')
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
+  const [schoolOptions, setSchoolOptions] = useState<Array<{ id: string; name: string }>>([])
+
+  useEffect(() => {
+    if (!user || !authProfile?.permissions.manageAeeStudents) return
+    let active = true
+    void getAccessToken().then(async (token) => {
+      const response = await fetch('/api/schools', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      const payload = await response.json()
+      if (active && response.ok) setSchoolOptions(payload.data || [])
+    })
+    return () => { active = false }
+  }, [user, authProfile?.permissions.manageAeeStudents])
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem('bncc_aee_tutorial_seen')) {
@@ -379,9 +392,7 @@ export default function AeePage() {
     }
   }
 
-  const role = String(user?.user_metadata?.role || '')
-  const isAdminByEmail = user?.email === 'admin@bncc.local'
-  const canManage = isAdminByEmail || ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
+  const canManage = authProfile?.permissions.manageAeeStudents === true
 
   function updateStudent<K extends keyof StudentForm>(field: K, value: StudentForm[K]) {
     setStudent((current) => ({ ...current, [field]: value }))
@@ -555,9 +566,12 @@ export default function AeePage() {
                           <input type="date" value={student.birth_date} onChange={(event) => updateStudent('birth_date', event.target.value)} />
                         </Field>
                         <Field label="Escola" hint="Escola onde o aluno está matriculado. Selecione na lista.">
-                          <select value={student.school_name} onChange={(event) => updateStudent('school_name', event.target.value)}>
+                          <select value={student.school_id} onChange={(event) => {
+                            const school = schoolOptions.find((option) => option.id === event.target.value)
+                            setStudent((current) => ({ ...current, school_id: event.target.value, school_name: school?.name || '' }))
+                          }}>
                             <option value="">Selecione a escola</option>
-                            {municipalSchools.map((school) => <option key={school} value={school}>{school}</option>)}
+                            {schoolOptions.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
                           </select>
                         </Field>
                         <Field label="Ano/Turma" hint="Ano escolar que o aluno cursa atualmente." example="Ex.: 3º Ano">
@@ -784,8 +798,9 @@ export default function AeePage() {
       </section>
 
       {user && canManage && (
-        <button className="tut-open" type="button" onClick={() => { setTutorialStep(0); setShowTutorial(true) }}>
-          ? Como preencher
+        <button className="tut-open tut-open-standalone" type="button" onClick={() => { setTutorialStep(0); setShowTutorial(true) }}>
+          <span className="tut-open-mark" aria-hidden="true">?</span>
+          <span className="tut-open-label">Como preencher</span>
         </button>
       )}
 

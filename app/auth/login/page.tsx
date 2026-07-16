@@ -4,18 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { supabase } from '@/lib/supabase-client'
+import { postLoginPath } from '@/lib/auth-navigation'
 
 // Aceita apenas caminhos internos ("/algo"), nunca URLs externas ("//x", "http:").
 function sanitizeNext(raw: string | null): string {
   if (!raw) return ''
   if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/auth')) return ''
   return raw
-}
-
-// Papel -> painel inicial dentro do município.
-function roleDest(role: string): string {
-  return role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
 }
 
 export default function Login() {
@@ -77,37 +72,11 @@ export default function Login() {
 
     try {
       const data = await signIn(formData.email, formData.password)
-
-      // Se o professor veio de uma página específica (?next=), volta para ela.
-      if (nextPath) {
-        router.push(nextPath)
+      if (data.profile.mustChangePassword) {
+        router.push('/auth/reset-password?first=1')
         return
       }
-
-      // Destino pela tabela `users` (fonte de verdade de papel/município);
-      // user_metadata fica apenas como fallback para contas antigas.
-      let role = ''
-      let slug = ''
-      try {
-        const { data: sess } = await supabase.auth.getSession()
-        const token = sess.session?.access_token
-        const res = await fetch('/api/auth/whoami', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-        if (res.ok) {
-          const who = await res.json()
-          role = String(who.role || '')
-          slug = String(who.municipality_slug || '')
-        }
-      } catch { /* segue no fallback */ }
-
-      const meta = data.user?.user_metadata
-      if (!role) role = String(meta?.role || '')
-      if (!slug) slug = String(meta?.municipality_slug || '')
-
-      const dest = roleDest(role)
-      // Rotas por papel vivem sob /[municipio]; sem o slug elas dao 404.
-      router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/')
+      router.push(postLoginPath(data.profile, nextPath))
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login')
     }

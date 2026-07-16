@@ -40,7 +40,7 @@ async function loadScopedStudent(request: Request, studentId: string) {
   const supabase = getSupabaseAdmin()
   const { data: student, error } = await supabase
     .from('students')
-    .select('id, full_name, school_name, municipality_id')
+    .select('id, full_name, school_id, school_name, municipality_id')
     .eq('id', studentId)
     .maybeSingle()
   if (error) throw error
@@ -52,6 +52,12 @@ async function loadScopedStudent(request: Request, studentId: string) {
   }
   if (ctx.role !== 'super_admin' && student.municipality_id !== municipalityId) {
     throw new Error('FORBIDDEN')
+  }
+  if (['aee_teacher', 'coordinator'].includes(ctx.role)) {
+    const sameSchool = ctx.schoolId && student.school_id
+      ? ctx.schoolId === student.school_id
+      : Boolean(ctx.school && student.school_name && ctx.school.trim().toLowerCase() === student.school_name.trim().toLowerCase())
+    if (!sameSchool) throw new Error('FORBIDDEN')
   }
 
   return { ctx, student, supabase }
@@ -100,9 +106,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let createdFamilyUserId: string | null = null
   try {
     const body = createSchema.parse(await request.json())
-    const { student, supabase } = await loadScopedStudent(request, body.student_id)
+    const { ctx, student, supabase } = await loadScopedStudent(request, body.student_id)
 
     // 1) Conta do responsável: reutiliza se o email já existir; senão cria.
     let familyUserId = ''
@@ -128,17 +135,46 @@ export async function POST(request: Request) {
         email: body.email,
         password: temp,
         email_confirm: true,
-        user_metadata: { name: body.name, role: 'family' },
+        user_metadata: { name: body.name },
+        app_metadata: {
+          role: 'family',
+          municipality_id: student.municipality_id,
+          school_id: student.school_id,
+          must_change_password: true,
+        },
       })
       if (createError || !created.user) {
         throw createError || new Error('Erro ao criar a conta do responsável')
       }
       familyUserId = created.user.id
+      createdFamilyUserId = created.user.id
       // Linha na tabela users (fonte de verdade) com papel family.
       await ensureUserProfile(created.user, student.municipality_id, {
         role: 'family',
         school: student.school_name || undefined,
+        schoolId: student.school_id || undefined,
+        mustChangePassword: true,
       })
+    }
+
+    const { error: municipalityLinkError } = await supabase.from('user_municipalities').upsert(
+      { user_id: familyUserId, municipality_id: student.municipality_id, role: 'family' },
+      { onConflict: 'user_id,municipality_id' },
+    )
+    if (municipalityLinkError) throw municipalityLinkError
+
+    if (temp) {
+      const { error: auditError } = await supabase.from('user_role_audit').insert({
+        target_user_id: familyUserId,
+        actor_user_id: ctx.userId,
+        municipality_id: student.municipality_id,
+        previous_role: null,
+        new_role: 'family',
+        previous_school_id: null,
+        new_school_id: student.school_id,
+        action: 'created',
+      })
+      if (auditError) throw auditError
     }
 
     // 2) Vínculo (idempotente: não duplica).
@@ -172,6 +208,9 @@ export async function POST(request: Request) {
       { status: dup ? 200 : 201 },
     )
   } catch (error) {
+    if (createdFamilyUserId) {
+      await getSupabaseAdmin().auth.admin.deleteUser(createdFamilyUserId)
+    }
     return handleError(error, 'Erro ao vincular responsável')
   }
 }
@@ -196,11 +235,17 @@ export async function DELETE(request: Request) {
     if (ctx.role !== 'super_admin') {
       const { data: student } = await supabase
         .from('students')
-        .select('municipality_id')
+        .select('municipality_id, school_id, school_name')
         .eq('id', link.student_id)
         .maybeSingle()
       if (!student || student.municipality_id !== ctx.municipalityId) {
         return NextResponse.json({ error: 'Ação não permitida para o seu perfil' }, { status: 403 })
+      }
+      if (['aee_teacher', 'coordinator'].includes(ctx.role)) {
+        const sameSchool = ctx.schoolId && student.school_id
+          ? ctx.schoolId === student.school_id
+          : Boolean(ctx.school && student.school_name && ctx.school.trim().toLowerCase() === student.school_name.trim().toLowerCase())
+        if (!sameSchool) return NextResponse.json({ error: 'Ação não permitida para o seu perfil' }, { status: 403 })
       }
     }
 

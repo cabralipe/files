@@ -212,7 +212,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 ]
 
 export default function Home() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { municipality } = useMunicipality()
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
@@ -295,17 +295,17 @@ export default function Home() {
 
     setForm((current) => ({
       ...current,
-      teacher: current.teacher || String(user.user_metadata?.name || user.user_metadata?.full_name || ''),
+      teacher: current.teacher || profile?.fullName || '',
       school:
         current.school === emptyForm.school
-          ? String(user.user_metadata?.school || current.school)
+          ? String(profile?.school?.name || current.school)
           : current.school,
       subject:
         current.subject === emptyForm.subject
           ? String(user.user_metadata?.subject || current.subject).replace(/^.*: /, '')
           : current.subject,
     }))
-  }, [user])
+  }, [user, profile])
 
   async function loadSkills() {
     const response = await fetch('/api/skills')
@@ -796,7 +796,8 @@ export default function Home() {
           aria-label="Abrir tutorial de uso"
           title="Como usar o portal"
         >
-          ? Tutorial
+          <span className="tut-open-mark" aria-hidden="true">?</span>
+          <span className="tut-open-label">Tutorial</span>
         </button>
       </nav>
 
@@ -1047,7 +1048,7 @@ export default function Home() {
                   </div>
                   {!user && (
                     <p className="doc-format-note">
-                      <strong>Exercícios e avaliações não exigem login.</strong> Planos de aula e PEIs precisam de conta.
+                      <strong>Geração liberada sem login.</strong> Entre apenas para salvar o documento na sua conta. PEIs continuam restritos.
                     </p>
                   )}
                   {docFormat !== 'plano' && (

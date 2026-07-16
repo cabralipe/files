@@ -774,7 +774,10 @@ export default function BnccNacionalPage() {
                 <button className="nb" onClick={() => setNivel(null)} title="Trocar etapa de ensino">
                   {cfg!.icon} Trocar etapa
                 </button>
-                <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">?</button>
+                <button className="nb tut-open" onClick={openTutorial} aria-label="Abrir tutorial de uso" title="Como usar o portal">
+                  <span className="tut-open-mark" aria-hidden="true">?</span>
+                  <span className="tut-open-label">Tutorial</span>
+                </button>
               </nav>
             </div>
           </header>

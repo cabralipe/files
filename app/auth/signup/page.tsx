@@ -12,6 +12,7 @@ type MunicipalityOption = {
   name: string
   state: string
   schools?: string[]
+  school_options?: { id: string; name: string }[]
 }
 
 const BRAZIL_STATES = [
@@ -56,10 +57,9 @@ export default function SignUp() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'teacher',
     state: '',
     municipality_id: '',
-    school: '',
+    school_id: '',
     subject: '',
   })
   const [error, setError] = useState('')
@@ -97,16 +97,15 @@ export default function SignUp() {
     [municipalities, formData.municipality_id],
   )
 
-  const schoolOptions = selectedMunicipality?.schools?.filter(Boolean) || []
+  const schoolOptions = selectedMunicipality?.school_options || []
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'state' ? { municipality_id: '', school: '' } : {}),
-      ...(name === 'municipality_id' ? { school: '' } : {}),
-      ...(name === 'role' && value !== 'teacher' ? { subject: '' } : {}),
+      ...(name === 'state' ? { municipality_id: '', school_id: '' } : {}),
+      ...(name === 'municipality_id' ? { school_id: '' } : {}),
     }))
   }
 
@@ -125,12 +124,12 @@ export default function SignUp() {
       return
     }
 
-    if (!formData.name || !formData.email || !formData.password || !formData.school) {
+    if (!formData.name || !formData.email || !formData.password || !formData.school_id) {
       setError('Todos os campos sao obrigatorios')
       return
     }
 
-    if (formData.role === 'teacher' && !formData.subject) {
+    if (!formData.subject) {
       setError('Informe a disciplina que voce leciona')
       return
     }
@@ -150,18 +149,14 @@ export default function SignUp() {
         formData.email,
         formData.password,
         formData.name,
-        formData.role as 'teacher' | 'aee_teacher' | 'coordinator' | 'family',
-        formData.school,
+        formData.school_id,
         formData.subject,
         formData.municipality_id,
       )
       setSuccess('Cadastro realizado com sucesso.')
       setTimeout(() => {
-        const meta = data.user?.user_metadata
-        const role = meta?.role || formData.role
-        const slug = data.municipality?.slug || meta?.municipality_slug || selectedMunicipality.slug
-        const dest = role === 'coordinator' ? 'coordinator' : role === 'aee_teacher' ? 'aee' : role === 'family' ? 'family' : ''
-        router.push(slug ? `/${slug}${dest ? `/${dest}` : ''}` : '/bncc-nacional')
+        const slug = data.municipality?.slug || selectedMunicipality.slug
+        router.push(slug ? `/${slug}` : '/bncc-nacional')
       }, 800)
     } catch (err: any) {
       setError(err.message || 'Erro ao cadastrar')
@@ -249,54 +244,39 @@ export default function SignUp() {
               />
             </label>
 
-            <label className="fgr">
-              <span className="fl">Tipo de acesso</span>
-              <select name="role" value={formData.role} onChange={handleChange}>
-                <option value="teacher">Professor(a)</option>
-                <option value="aee_teacher">Professor(a) AEE / sala especial</option>
-                <option value="coordinator">Coordenador(a)</option>
-              </select>
-              <span className="fex">
-                O acesso de familia/responsavel e criado pela coordenacao da escola.
-              </span>
-            </label>
+            <div className="al-info" style={{ marginBottom: 14 }}>
+              O cadastro público cria uma conta de professor. Acesso AEE e coordenação são concedidos pela administração da rede.
+            </div>
 
             <label className="fgr">
               <span className="fl">Escola</span>
               {schoolOptions.length ? (
-                <select name="school" value={formData.school} onChange={handleChange} disabled={!selectedMunicipality}>
+                <select name="school_id" value={formData.school_id} onChange={handleChange} disabled={!selectedMunicipality}>
                   <option value="">Selecione a escola</option>
                   {schoolOptions.map((school) => (
-                    <option key={school} value={school}>
-                      {school}
+                    <option key={school.id} value={school.id}>
+                      {school.name}
                     </option>
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
-                  name="school"
-                  value={formData.school}
-                  onChange={handleChange}
-                  disabled={!selectedMunicipality}
-                  placeholder={selectedMunicipality ? 'Informe o nome da escola' : 'Selecione o municipio primeiro'}
-                />
+                <span className="fex">
+                  {selectedMunicipality
+                    ? 'Nenhuma escola cadastrada nesta rede. Procure a Secretaria de Educação para liberar o cadastro.'
+                    : 'Selecione o município primeiro.'}
+                </span>
               )}
             </label>
 
-            {formData.role === 'teacher' && (
-              <label className="fgr">
-                <span className="fl">Disciplina que leciona</span>
-                <select name="subject" value={formData.subject} onChange={handleChange}>
-                  <option value="">Selecione a disciplina</option>
-                  {teacherSubjectOptions.map((subject) => (
-                    <option key={subject} value={subject}>
-                      {subject}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label className="fgr">
+              <span className="fl">Disciplina que leciona</span>
+              <select name="subject" value={formData.subject} onChange={handleChange}>
+                <option value="">Selecione a disciplina</option>
+                {teacherSubjectOptions.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+            </label>
 
             <label className="fgr">
               <span className="fl">Email</span>
@@ -333,7 +313,7 @@ export default function SignUp() {
 
             <button
               type="submit"
-              disabled={loading || loadingMunicipalities || !municipalities.length}
+              disabled={loading || loadingMunicipalities || !municipalities.length || !schoolOptions.length}
               className="btn btn-pri btn-lg"
               style={{ width: '100%', marginTop: 8 }}
             >

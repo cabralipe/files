@@ -22,6 +22,7 @@ export type PublicPlan = {
   title: string
   teacher: string
   school: string
+  school_id?: string
   grade_level: string
   subject: string
   date: string
@@ -95,6 +96,7 @@ export type PublicExperience = {
   title: string
   teacher: string
   school: string
+  school_id?: string
   subject: string
   grade_level: string
   description: string
@@ -197,6 +199,7 @@ export const createExperienceSchema = z.object(experienceSchemaBase)
 export type ExperienceOwner = {
   user_id: string
   teacher?: string
+  school_id?: string | null
 }
 
 type SkillSeedShape = {
@@ -286,7 +289,7 @@ function parseDurationMinutes(duration: string) {
 // Colunas ESPELHO adicionadas em supabase-migration-plans-columns.sql. Se a
 // migração ainda não foi aplicada, o PostgREST devolve PGRST204 e os helpers
 // de escrita (planInsert/planUpdateById) reenviam sem estas colunas.
-const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'workflow_status', 'kind'] as const
+const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'school_id', 'workflow_status', 'kind'] as const
 
 function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
   const row: Record<string, unknown> = {
@@ -305,6 +308,7 @@ function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
     // Espelhos para filtro/índice em SQL (sincronizados com o JSON).
     is_paee: Boolean(plan.is_paee),
     school_name: plan.school || null,
+    school_id: plan.school_id || null,
     workflow_status: plan.plan_status || (plan.is_published ? 'vigente' : 'rascunho'),
     student_id: plan.student_id || null,
     pei_snapshot: plan.pei_snapshot || {},
@@ -402,6 +406,7 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
     return {
       ...parsed.plan,
       id: row.id,
+      school_id: parsed.plan.school_id || row.school_id || undefined,
       coordinator_viewed_at: parsed.plan.coordinator_viewed_at || row.coordinator_viewed_at || '',
       coordinator_name: parsed.plan.coordinator_name || '',
       coordinator_note: parsed.plan.coordinator_note || row.coordinator_note || '',
@@ -425,6 +430,7 @@ function mapPlanRow(row: Record<string, any>): PublicPlan {
     title: String(row.title || ''),
     teacher: 'Professor(a)',
     school: 'Escola Municipal',
+    school_id: row.school_id || undefined,
     grade_level: String(row.grade_level || ''),
     subject: String(row.subject || ''),
     date: String(row.created_at || '').slice(0, 10),
@@ -546,6 +552,7 @@ export async function createPlan(
   input: z.infer<typeof createPlanSchema>,
   ownerUserId?: string,
   municipalityId?: string,
+  schoolId?: string | null,
 ) {
   const planUserId = ownerUserId || (await ensurePublicPlanUser())
   const values = createPlanSchema.parse(input)
@@ -553,6 +560,7 @@ export async function createPlan(
   const plan: PublicPlan = {
     id: randomUUID(),
     ...values,
+    school_id: schoolId || undefined,
     date: values.date || now.slice(0, 10),
     content: values.content || (await generatePlanText(values)),
     coordinator_viewed_at: '',
@@ -625,13 +633,13 @@ export async function updatePlan(id: string, input: z.infer<typeof updatePlanSch
 // Dados mínimos de um plano para decisões de autorização (dono, município,
 // escola e se é documento sensível PEI/PAEE), sem carregar toda a lista.
 export async function getPlanOwnership(id: string): Promise<
-  | { userId: string; municipalityId: string | null; school: string; isPei: boolean; isPaee: boolean }
+  | { userId: string; municipalityId: string | null; school: string; schoolId: string | null; isPei: boolean; isPaee: boolean }
   | null
 > {
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase
     .from('plans')
-    .select('user_id, municipality_id, content, is_pei')
+    .select('user_id, municipality_id, school_id, content, is_pei')
     .eq('id', id)
     .maybeSingle()
 
@@ -643,6 +651,7 @@ export async function getPlanOwnership(id: string): Promise<
     userId: String(data.user_id),
     municipalityId: (data.municipality_id as string | null) ?? null,
     school: plan.school,
+    schoolId: data.school_id || plan.school_id || null,
     isPei: Boolean(plan.is_pei),
     isPaee: Boolean(plan.is_paee),
   }
@@ -664,8 +673,10 @@ export async function deletePlan(id: string) {
 export async function listPlansBySchool(
   school: string,
   municipalityId?: string,
+  schoolId?: string | null,
 ): Promise<PublicPlan[]> {
   const plans = await listPlans(undefined, municipalityId)
+  if (schoolId) return plans.filter((plan) => plan.school_id === schoolId)
   const normalizedSchool = school.trim().toLowerCase()
   return plans.filter((plan) => plan.school.trim().toLowerCase() === normalizedSchool)
 }
@@ -674,11 +685,14 @@ export async function listPlansBySchool(
 export async function listPeisForReview(opts: {
   municipalityId?: string
   school?: string
+  schoolId?: string
   status?: PublicPlan['plan_status']
 }): Promise<PublicPlan[]> {
   // is_pei + municipality vão no SQL; escola/status (JSON) filtram o subconjunto.
   let plans = await queryPlans({ municipalityId: opts.municipalityId, isPei: true })
-  if (opts.school) {
+  if (opts.schoolId) {
+    plans = plans.filter((plan) => plan.school_id === opts.schoolId)
+  } else if (opts.school) {
     const s = opts.school.trim().toLowerCase()
     plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
   }
@@ -703,12 +717,15 @@ export async function getLatestPeiForStudent(
 export async function listPaeesForReview(opts: {
   municipalityId?: string
   school?: string
+  schoolId?: string
   status?: PublicPlan['plan_status']
 }): Promise<PublicPlan[]> {
   // is_paee vive no JSON; filtra em memória sobre o conjunto do município (SQL).
   let plans = await queryPlans({ municipalityId: opts.municipalityId })
   plans = plans.filter((plan) => plan.is_paee)
-  if (opts.school) {
+  if (opts.schoolId) {
+    plans = plans.filter((plan) => plan.school_id === opts.schoolId)
+  } else if (opts.school) {
     const s = opts.school.trim().toLowerCase()
     plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
   }
@@ -857,7 +874,7 @@ export async function transitionPlanStatus(
     note?: string
     // Identidade de quem executa a acao, para validar o escopo (escola/municipio
     // ou vinculo familiar) e evitar que um usuario atue sobre documentos alheios.
-    actor?: { role?: string; userId?: string; school?: string; municipalityId?: string }
+    actor?: { role?: string; userId?: string; school?: string; schoolId?: string; municipalityId?: string }
   } = {},
 ): Promise<PublicPlan | null> {
   const supabase = getSupabaseAdmin()
@@ -889,7 +906,10 @@ export async function transitionPlanStatus(
     } else if (!managers.includes(actor.role)) {
       // teacher / aee_teacher / coordinator: restritos a propria escola E ao
       // proprio municipio (nomes de escola se repetem entre redes).
-      if (!actor.school || !plan.school || actor.school !== plan.school) {
+      const sameSchool = actor.schoolId && plan.school_id
+        ? actor.schoolId === plan.school_id
+        : Boolean(actor.school && plan.school && actor.school === plan.school)
+      if (!sameSchool) {
         throw new Error('SCOPE_FORBIDDEN')
       }
       if (actor.municipalityId && current.municipality_id && current.municipality_id !== actor.municipalityId) {
@@ -1041,6 +1061,7 @@ export async function listExperiences(
       title: row.title,
       teacher: metadata.teacher || 'Professor(a)',
       school: metadata.school || 'Escola Municipal',
+      school_id: row.school_id || metadata.school_id || undefined,
       subject: metadata.subject || row.category || 'Computação',
       grade_level: metadata.grade_level || '',
       description: row.description || '',
@@ -1090,6 +1111,7 @@ export async function createExperience(
     updated_at: now,
   }
   if (municipalityId) row.municipality_id = municipalityId
+  if (owner.school_id) row.school_id = owner.school_id
 
   const { data, error } = await supabase
     .from('successful_experiences')

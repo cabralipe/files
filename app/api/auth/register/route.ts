@@ -8,21 +8,11 @@ const registerSchema = z.object({
   email: z.string().email('Email invalido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
   name: z.string().trim().min(2, 'Informe o nome'),
-  role: z.enum(['teacher', 'aee_teacher', 'coordinator', 'family']).default('teacher'),
-  school: z.string().trim().optional().default(''),
+  school_id: z.string().uuid('Selecione uma escola cadastrada'),
   subject: z.string().trim().optional().default(''),
   municipality_id: z.string().trim().uuid('Selecione o municipio').optional().or(z.literal('')).default(''),
 }).superRefine((values, ctx) => {
-  // Lista de escolas é por município; aqui só rejeita string vazia.
-  if (!values.school || values.school.trim().length < 2) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Informe a escola',
-      path: ['school'],
-    })
-  }
-
-  if (values.role === 'teacher' && (!values.subject || values.subject.trim().length < 2)) {
+  if (!values.subject || values.subject.trim().length < 2) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Informe a disciplina que leciona',
@@ -43,11 +33,23 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+    const admin = getSupabaseAdmin()
+    const { data: school, error: schoolError } = await admin
+      .from('schools')
+      .select('id, name, municipality_id')
+      .eq('id', values.school_id)
+      .eq('municipality_id', municipality.id)
+      .maybeSingle()
+    if (schoolError) throw schoolError
+    if (!school) {
+      return NextResponse.json({ error: 'Selecione uma escola válida do município.' }, { status: 400 })
+    }
+    const role = 'teacher' as const
     const metadata = {
       name: values.name,
-      role: values.role,
-      school: values.school,
-      subject: values.role === 'teacher' ? values.subject : '',
+      school: school.name,
+      school_id: school.id,
+      subject: values.subject,
       municipality_id: municipality.id,
       municipality_slug: municipality.slug,
       municipality_name: municipality.name,
@@ -61,14 +63,13 @@ export async function POST(request: Request) {
     let user: User | null = null
 
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const admin = getSupabaseAdmin()
-
       // Try to create the user; if already registered, update instead
       const { data: created, error: createError } = await admin.auth.admin.createUser({
         email: values.email,
         password: values.password,
         email_confirm: true,
         user_metadata: metadata,
+        app_metadata: { role, municipality_id: municipality.id, school_id: school.id, must_change_password: false },
       })
 
       if (createError) {
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
       try {
         // Semeia papel e escola na tabela users (fonte de verdade de autorização),
         // a partir dos dados validados do formulário — não de user_metadata.
-        await ensureUserProfile(user, municipality.id, { role: values.role, school: values.school })
+        await ensureUserProfile(user, municipality.id, { role, school: school.name, schoolId: school.id })
       } catch (profileError) {
         console.error('[register] ensureUserProfile failed:', profileError)
       }
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
         await admin
           .from('user_municipalities')
           .upsert(
-            { user_id: user.id, municipality_id: municipality.id, role: values.role },
+            { user_id: user.id, municipality_id: municipality.id, role },
             { onConflict: 'user_id,municipality_id' },
           )
       } catch (linkError) {

@@ -15,10 +15,13 @@ type AdminUser = {
   email: string
   name?: string
   role?: string
+  school_id?: string | null
   school?: string
   blocked?: boolean
   created_at?: string
 }
+
+type SchoolOption = { id: string; name: string }
 
 type Experience = {
   id: string
@@ -97,7 +100,7 @@ function AnalyticsSection({
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
+  const { profile, loading: authLoading, isAuthenticated } = useAuth()
   const { municipality } = useMunicipality()
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
@@ -105,11 +108,17 @@ export default function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState<'users' | 'schools' | 'coordinators' | 'experiences' | 'analytics' | 'municipalities'>('users')
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [schools, setSchools] = useState<SchoolOption[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [search, setSearch] = useState('')
+  const [showUnassignedOnly, setShowUnassignedOnly] = useState(false)
+  const [showAeeForm, setShowAeeForm] = useState(false)
+  const [creatingAee, setCreatingAee] = useState(false)
+  const [aeeCredentials, setAeeCredentials] = useState<{ email: string; password: string } | null>(null)
+  const [aeeForm, setAeeForm] = useState({ name: '', email: '', school_id: '' })
   const [analytics, setAnalytics] = useState<{
     computacao: {
       visits: { total: number; today: number; last7d: number; last30d: number }
@@ -147,21 +156,13 @@ export default function AdminDashboard() {
     email: '',
     password: '',
     role: 'teacher',
-    school: '',
+    school_id: '',
     blocked: false,
+    backfill_legacy_plans: true,
   })
 
-  const isSuperAdmin =
-    user?.user_metadata?.role === 'super_admin' ||
-    (typeof process !== 'undefined' &&
-      !!process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL &&
-      user?.email === process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL)
-
-  const isAdmin =
-    user?.user_metadata?.role === 'admin' ||
-    user?.user_metadata?.role === 'municipality_admin' ||
-    isSuperAdmin ||
-    user?.email === 'admin@bncc.local'
+  const isSuperAdmin = profile?.permissions.managePlatform === true
+  const isAdmin = profile?.permissions.manageMunicipality === true
 
   // Auto-dismiss messages
   useEffect(() => {
@@ -182,14 +183,20 @@ export default function AdminDashboard() {
   }, [users, experiences])
 
   const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users
+    const scoped = showUnassignedOnly ? users.filter((user) => !user.school_id && user.role !== 'super_admin') : users
+    if (!search.trim()) return scoped
     const q = search.toLowerCase()
-    return users.filter(
+    return scoped.filter(
       (u) =>
         (u.name || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q),
     )
-  }, [users, search])
+  }, [users, search, showUnassignedOnly])
+
+  const unassignedUsers = useMemo(
+    () => users.filter((user) => !user.school_id && user.role !== 'super_admin').length,
+    [users],
+  )
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -216,6 +223,18 @@ export default function AdminDashboard() {
       setExperiences(payload.data || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar experiências')
+    }
+  }, [])
+
+  const fetchSchools = useCallback(async () => {
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/admin/schools', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao carregar escolas')
+      setSchools(payload.data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar escolas')
     }
   }, [])
 
@@ -270,14 +289,14 @@ export default function AdminDashboard() {
       setLoading(true)
       setError('')
       try {
-        const tasks: Promise<unknown>[] = [fetchUsers(), fetchExperiences()]
+        const tasks: Promise<unknown>[] = [fetchUsers(), fetchExperiences(), fetchSchools()]
         if (isSuperAdmin) tasks.push(fetchMunicipalities())
         await Promise.all(tasks)
       } finally {
         setLoading(false)
       }
     })()
-  }, [authLoading, isAuthenticated, isAdmin, isSuperAdmin, router, fetchUsers, fetchExperiences, fetchMunicipalities])
+  }, [authLoading, isAuthenticated, isAdmin, isSuperAdmin, router, fetchUsers, fetchExperiences, fetchSchools, fetchMunicipalities])
 
   // Load analytics lazily when tab is first opened
   useEffect(() => {
@@ -359,8 +378,9 @@ export default function AdminDashboard() {
       email: u.email || '',
       password: '',
       role: u.role || 'teacher',
-      school: u.school || '',
+      school_id: u.school_id || '',
       blocked: !!u.blocked,
+      backfill_legacy_plans: true,
     })
   }
 
@@ -371,10 +391,11 @@ export default function AdminDashboard() {
       const body: Record<string, unknown> = {
         userId: editingUser.id,
         email: editForm.email,
-        role: editForm.role,
-        school: editForm.school,
         blocked: editForm.blocked,
+        backfill_legacy_plans: editForm.backfill_legacy_plans,
       }
+      if (editForm.role !== editingUser.role) body.role = editForm.role
+      if (editForm.school_id && editForm.school_id !== editingUser.school_id) body.school_id = editForm.school_id
       if (editForm.password.trim()) body.password = editForm.password
       const res = await fetch('/api/admin/users', {
         method: 'PUT',
@@ -391,6 +412,31 @@ export default function AdminDashboard() {
       await fetchUsers()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
+    }
+  }
+
+  async function createAeeTeacher(event: React.FormEvent) {
+    event.preventDefault()
+    setCreatingAee(true)
+    setError('')
+    setAeeCredentials(null)
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(aeeForm),
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao criar professor AEE')
+      setAeeCredentials({ email: aeeForm.email, password: payload.temporary_password })
+      setAeeForm({ name: '', email: '', school_id: '' })
+      setMessage('Professor AEE criado e vinculado à escola.')
+      await fetchUsers()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar professor AEE')
+    } finally {
+      setCreatingAee(false)
     }
   }
 
@@ -717,8 +763,12 @@ CREATE POLICY "analytics_insert_anon" ON analytics_events
   FOR INSERT WITH CHECK (true);
 CREATE POLICY "analytics_select_admin" ON analytics_events
   FOR SELECT USING (
-    auth.jwt() ->> 'email' = 'admin@bncc.local'
-    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role IN ('admin', 'municipality_admin', 'super_admin')
+        AND u.blocked = false
+    )
   );`}</pre>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-muted)', margin: '10px 0 0' }}>
                   O arquivo completo está em <code>supabase-analytics-migration.sql</code> no repositório.
@@ -792,6 +842,48 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
         {/* ══════ USERS TAB ══════ */}
         {activeTab === 'users' && (
           <>
+            {unassignedUsers > 0 && (
+              <div className="al-error" style={{ marginBottom: 14 }}>
+                Há {unassignedUsers} usuário(s) sem escola oficial. Atribua uma escola para concluir o saneamento dos dados legados.
+                <button className="btn btn-out" type="button" style={{ marginLeft: 12 }} onClick={() => setShowUnassignedOnly((value) => !value)}>
+                  {showUnassignedOnly ? 'Mostrar todos' : 'Mostrar pendentes'}
+                </button>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+              <button className="btn btn-pri" type="button" onClick={() => setShowAeeForm((value) => !value)}>
+                {showAeeForm ? 'Fechar cadastro AEE' : '+ Novo professor AEE'}
+              </button>
+            </div>
+
+            {showAeeForm && (
+              <form onSubmit={createAeeTeacher} className="card" style={{ padding: 18, marginBottom: 18 }}>
+                <h3 style={{ marginTop: 0 }}>Cadastrar professor AEE</h3>
+                <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
+                  A conta será criada pela administração e receberá acesso somente à escola selecionada.
+                </p>
+                <div className="fg">
+                  <label className="fgr"><span className="fl">Nome completo</span><input value={aeeForm.name} onChange={(e) => setAeeForm((form) => ({ ...form, name: e.target.value }))} required /></label>
+                  <label className="fgr"><span className="fl">Email</span><input type="email" value={aeeForm.email} onChange={(e) => setAeeForm((form) => ({ ...form, email: e.target.value }))} required /></label>
+                  <label className="fgr"><span className="fl">Escola</span>
+                    <select value={aeeForm.school_id} onChange={(e) => setAeeForm((form) => ({ ...form, school_id: e.target.value }))} required>
+                      <option value="">Selecione a escola</option>
+                      {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <button className="btn btn-pri" disabled={creatingAee || !schools.length}>
+                  {creatingAee ? 'Criando...' : 'Criar acesso AEE'}
+                </button>
+                {!schools.length && <p className="al-error">Cadastre ao menos uma escola antes de criar o acesso AEE.</p>}
+                {aeeCredentials && (
+                  <div className="al-ok" style={{ marginTop: 14 }}>
+                    Entregue estas credenciais uma única vez ao professor: <strong>{aeeCredentials.email}</strong> · senha temporária <strong>{aeeCredentials.password}</strong>. Oriente a redefinição da senha no primeiro acesso.
+                  </div>
+                )}
+              </form>
+            )}
+
             {/* Search */}
             <div className="fbar" style={{ marginBottom: 20 }}>
               <div className="sw">
@@ -1617,6 +1709,7 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
                   </label>
                   <select
                     value={editForm.role}
+                    disabled={editingUser.role === 'family'}
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                     style={{
                       background: 'var(--paper)',
@@ -1636,11 +1729,13 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
                       backgroundSize: 11,
                     }}
                   >
+                    {editingUser.role === 'family' && <option value="family">Família/responsável (gerenciado pelo vínculo do aluno)</option>}
                     <option value="teacher">Professor</option>
                     <option value="aee_teacher">Professor AEE</option>
                     <option value="coordinator">Coordenador</option>
-                    <option value="family">Familia/responsavel</option>
-                    <option value="admin">Admin</option>
+                    {isSuperAdmin && <option value="admin">Administrador</option>}
+                    {isSuperAdmin && <option value="municipality_admin">Administrador municipal</option>}
+                    {isSuperAdmin && <option value="super_admin">Superadministrador</option>}
                   </select>
                 </div>
 
@@ -1656,10 +1751,9 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
                   }}>
                     Escola
                   </label>
-                  <input
-                    type="text"
-                    value={editForm.school}
-                    onChange={(e) => setEditForm({ ...editForm, school: e.target.value })}
+                  <select
+                    value={editForm.school_id}
+                    onChange={(e) => setEditForm({ ...editForm, school_id: e.target.value })}
                     style={{
                       background: 'var(--paper)',
                       border: '2px solid var(--ink)',
@@ -1671,9 +1765,23 @@ CREATE POLICY "analytics_select_admin" ON analytics_events
                       outline: 'none',
                       minHeight: 42,
                     }}
-                  />
+                  >
+                    <option value="">Selecione a escola</option>
+                    {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+                  </select>
                 </div>
               </div>
+
+              {!editingUser.school_id && editForm.school_id && (
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.backfill_legacy_plans}
+                    onChange={(e) => setEditForm({ ...editForm, backfill_legacy_plans: e.target.checked })}
+                  />
+                  Atualizar também os planos e experiências antigas deste usuário que ainda estejam sem escola.
+                </label>
+              )}
 
               {/* Blocked toggle */}
               <label style={{

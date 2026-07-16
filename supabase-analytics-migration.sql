@@ -25,6 +25,10 @@ CREATE POLICY "analytics_insert_anon" ON analytics_events
 -- Only admins can read (service role bypasses RLS automatically)
 CREATE POLICY "analytics_select_admin" ON analytics_events
   FOR SELECT USING (
-    auth.jwt() ->> 'email' = 'admin@bncc.local'
-    OR (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    EXISTS (
+      SELECT 1 FROM public.users u
+      WHERE u.id = auth.uid()
+        AND u.role IN ('admin', 'municipality_admin', 'super_admin')
+        AND u.blocked = false
+    )
   );

@@ -319,14 +319,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const values = schema.parse(body)
 
-    // Exercicios e atividades avaliativas podem ser gerados SEM login (com rate
-    // limit por IP). Plano de aula continua exigindo login para conter o custo
-    // de IA — que costuma ser a geração mais pesada e reaproveitável.
-    const publicKind = values.kind === 'exercicios' || values.kind === 'avaliacao'
+    // Todos os documentos pedagogicos podem ser gerados sem login. Visitantes
+    // continuam protegidos pelo rate limit por IP; login e exigido apenas para
+    // salvar o documento na conta do professor.
     const user = await getAuthenticatedUser(request)
-    if (!user && !publicKind) {
-      return NextResponse.json({ error: 'Login obrigatorio para gerar plano' }, { status: 401 })
-    }
 
     const limit = user
       ? await rateLimitShared(`plan-ai:${user.id}`, 10, 60_000)
@@ -368,9 +364,6 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Login obrigatorio para gerar plano' }, { status: 401 })
-    }
     if (error instanceof Error && error.message === 'BLOCKED') {
       return NextResponse.json({ error: 'Conta bloqueada' }, { status: 403 })
     }

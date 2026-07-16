@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { createExperience, listExperiences } from '@/lib/public-backend'
-import { requireAuthenticatedUser, getAuthenticatedUser, ensureUserProfile, getSupabaseAdmin } from '@/lib/supabase-server'
+import { requireAuthenticatedUser, requireUserContext, getAuthenticatedUser, ensureUserProfile, getSupabaseAdmin } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
@@ -67,19 +67,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuthenticatedUser(request)
-    await ensureUserProfile(user)
+    const ctx = await requireUserContext(request)
     const body = await request.json()
     const teacher = {
-      user_id: user.id,
-      teacher:
-        (user.user_metadata?.name as string | undefined) ||
-        (user.user_metadata?.full_name as string | undefined) ||
-        user.email ||
-        'Professor(a)',
+      user_id: ctx.userId,
+      teacher: ctx.fullName,
+      school_id: ctx.schoolId,
     }
-    const municipality = await resolveMunicipality(request)
-    const experience = await createExperience(body, teacher, municipality?.id)
+    const municipalityId = ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId
+    const experience = await createExperience(body, teacher, municipalityId || undefined)
 
     return NextResponse.json({ success: true, data: experience, experience }, { status: 201 })
   } catch (error) {

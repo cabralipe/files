@@ -33,7 +33,7 @@ async function getAccessToken() {
 
 export default function CoordinatorDashboard() {
   const router = useRouter()
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
+  const { profile, loading: authLoading, isAuthenticated } = useAuth()
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [note, setNote] = useState('')
@@ -42,7 +42,7 @@ export default function CoordinatorDashboard() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  const isCoordinator = user?.user_metadata?.role === 'coordinator'
+  const isCoordinator = profile?.role === 'coordinator'
 
   const stats = useMemo(() => {
     const reviewed = plans.filter((plan) => plan.coordinator_viewed_at).length

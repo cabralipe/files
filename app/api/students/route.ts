@@ -61,10 +61,10 @@ export async function GET(request: Request) {
 
     // Não-gestores ficam restritos à PRÓPRIA escola (do contexto, não do cliente).
     if (!isManager) {
-      if (!ctx.school) {
+      if (!ctx.schoolId && !ctx.school) {
         return NextResponse.json({ success: true, data: [] })
       }
-      query = query.eq('school_name', ctx.school)
+      query = ctx.schoolId ? query.eq('school_id', ctx.schoolId) : query.eq('school_name', ctx.school)
     }
 
     const { data, error } = await query
@@ -79,7 +79,8 @@ export async function GET(request: Request) {
           .eq('active', true)
           .order('full_name', { ascending: true })
         if (municipalityId) fb = fb.eq('municipality_id', municipalityId)
-        if (!isManager && ctx.school) fb = fb.eq('school_name', ctx.school)
+        if (!isManager && ctx.schoolId) fb = fb.eq('school_id', ctx.schoolId)
+        else if (!isManager && ctx.school) fb = fb.eq('school_name', ctx.school)
         const { data: fallback, error: fallbackError } = await fb
         if (fallbackError) throw fallbackError
         const withEmpty = (fallback || []).map((s) => ({ ...s, student_aee_profiles: [] }))
@@ -117,15 +118,32 @@ export async function POST(request: Request) {
     const supabase = getSupabaseAdmin()
     const now = new Date().toISOString()
 
+    if (!values.student.school_id) {
+      return NextResponse.json({ error: 'Selecione uma escola cadastrada' }, { status: 400 })
+    }
+    const { data: selectedSchool, error: schoolError } = await supabase
+      .from('schools')
+      .select('id, name, municipality_id')
+      .eq('id', values.student.school_id)
+      .maybeSingle()
+    if (schoolError) throw schoolError
+    if (!selectedSchool || selectedSchool.municipality_id !== municipalityId) {
+      return NextResponse.json({ error: 'Escola fora do município selecionado' }, { status: 403 })
+    }
+
     // Não-gestores só cadastram/editam alunos da própria escola.
-    if (!MANAGER_ROLES.includes(ctx.role) && ctx.school && values.student.school_name !== ctx.school) {
+    if (!MANAGER_ROLES.includes(ctx.role) && ctx.schoolId && values.student.school_id !== ctx.schoolId) {
+      return NextResponse.json({ error: 'Voce so pode cadastrar alunos da sua escola' }, { status: 403 })
+    }
+    if (!MANAGER_ROLES.includes(ctx.role) && !ctx.schoolId && ctx.school && values.student.school_name !== ctx.school) {
       return NextResponse.json({ error: 'Voce so pode cadastrar alunos da sua escola' }, { status: 403 })
     }
 
     const { school_id, ...studentFields } = values.student
     const studentRow: Record<string, unknown> = {
       ...studentFields,
-      ...(school_id ? { school_id } : {}),
+      school_id,
+      school_name: selectedSchool.name,
       municipality_id: municipalityId,
       created_by: ctx.userId,
       updated_at: now,

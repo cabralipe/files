@@ -42,6 +42,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         role,
         userId: ctx.userId,
         school: ctx.school || '',
+        schoolId: ctx.schoolId || undefined,
         municipalityId: ctx.municipalityId || undefined,
       },
     })

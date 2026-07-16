@@ -1,8 +1,22 @@
 import { NextResponse } from 'next/server'
-import { requireAdminUser, getSupabaseAdmin } from '@/lib/supabase-server'
+import { requireAdminUser, getSupabaseAdmin, ensureUserProfile } from '@/lib/supabase-server'
 import { canAssignRole, isValidRole } from '@/lib/authz-rules'
+import { z, ZodError } from 'zod'
 
 export const dynamic = 'force-dynamic'
+
+const createAeeSchema = z.object({
+  name: z.string().trim().min(2, 'Informe o nome'),
+  email: z.string().trim().toLowerCase().email('Informe um email válido'),
+  school_id: z.string().uuid('Selecione uma escola'),
+})
+
+function temporaryPassword() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  const bytes = new Uint8Array(14)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => alphabet[value % alphabet.length]).join('')
+}
 
 export async function GET(request: Request) {
   try {
@@ -55,13 +69,86 @@ export async function GET(request: Request) {
   }
 }
 
+export async function POST(request: Request) {
+  try {
+    const ctx = await requireAdminUser(request)
+    const values = createAeeSchema.parse(await request.json())
+    if (!ctx.municipalityId && ctx.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Município não identificado' }, { status: 400 })
+    }
+
+    const supabase = getSupabaseAdmin()
+    const { data: school, error: schoolError } = await supabase
+      .from('schools')
+      .select('id, name, municipality_id')
+      .eq('id', values.school_id)
+      .maybeSingle()
+    if (schoolError) throw schoolError
+    if (!school || (ctx.role !== 'super_admin' && school.municipality_id !== ctx.municipalityId)) {
+      return NextResponse.json({ error: 'Escola fora do seu município' }, { status: 403 })
+    }
+
+    const password = temporaryPassword()
+    const role = 'aee_teacher' as const
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email: values.email,
+      password,
+      email_confirm: true,
+      user_metadata: { name: values.name, school: school.name },
+      app_metadata: { role, municipality_id: school.municipality_id, school_id: school.id, must_change_password: true },
+    })
+    if (createError || !created.user) {
+      if (createError?.message?.toLowerCase().includes('already')) {
+        return NextResponse.json({ error: 'Este email já possui cadastro.' }, { status: 409 })
+      }
+      throw createError || new Error('Erro ao criar professor AEE')
+    }
+
+    try {
+      await ensureUserProfile(created.user, school.municipality_id, {
+        role,
+        school: school.name,
+        schoolId: school.id,
+        mustChangePassword: true,
+      })
+      const { error: linkError } = await supabase.from('user_municipalities').upsert(
+        { user_id: created.user.id, municipality_id: school.municipality_id, role },
+        { onConflict: 'user_id,municipality_id' },
+      )
+      if (linkError) throw linkError
+      const { error: auditError } = await supabase.from('user_role_audit').insert({
+        target_user_id: created.user.id,
+        actor_user_id: ctx.userId,
+        municipality_id: school.municipality_id,
+        previous_role: null,
+        new_role: role,
+        previous_school_id: null,
+        new_school_id: school.id,
+        action: 'created',
+      })
+      if (auditError) throw auditError
+    } catch (profileError) {
+      await supabase.auth.admin.deleteUser(created.user.id)
+      throw profileError
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: { id: created.user.id, email: values.email, name: values.name, role, school_id: school.id, school: school.name },
+      temporary_password: password,
+    }, { status: 201 })
+  } catch (error) {
+    return handleAdminUsersError(error, 'Erro ao criar professor AEE')
+  }
+}
+
 export async function PUT(request: Request) {
   try {
     const ctx = await requireAdminUser(request)
     const supabase = getSupabaseAdmin()
 
     const body = await request.json()
-    const { userId, email, password, role, blocked, school } = body
+    const { userId, email, password, role, blocked, school_id, backfill_legacy_plans } = body
 
     if (!userId) {
       return NextResponse.json({ error: 'userId é obrigatório' }, { status: 400 })
@@ -70,7 +157,7 @@ export async function PUT(request: Request) {
     // Carrega o alvo pela tabela de perfis (fonte de verdade).
     const { data: target } = await supabase
       .from('users')
-      .select('id, role, municipality_id')
+      .select('id, role, municipality_id, school_id, blocked')
       .eq('id', userId)
       .maybeSingle()
 
@@ -85,14 +172,40 @@ export async function PUT(request: Request) {
 
     // Ninguém abaixo de super_admin pode alterar (senha/papel/bloqueio) um super_admin ou admin.
     const targetRole = String(target.role || 'teacher')
-    if (ctx.role !== 'super_admin' && (targetRole === 'super_admin' || targetRole === 'admin')) {
+    if (ctx.role !== 'super_admin' && ['super_admin', 'admin', 'municipality_admin'].includes(targetRole)) {
       return NextResponse.json({ error: 'Sem permissão sobre este usuário' }, { status: 403 })
     }
 
+    if (targetRole === 'family' && role !== undefined && role !== 'family') {
+      return NextResponse.json({ error: 'O perfil Família é gerenciado exclusivamente pelo vínculo com o aluno' }, { status: 409 })
+    }
+
     // Atribuição de papel: municipality_admin não pode promover a admin/super_admin.
-    if (role !== undefined && !canAssignRole(ctx.role, role)) {
+    if (role !== undefined && role !== targetRole && !canAssignRole(ctx.role, role)) {
       return NextResponse.json({ error: 'Você não pode atribuir esse papel' }, { status: 403 })
     }
+
+    let schoolName: string | undefined
+    if (school_id !== undefined) {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('id, name, municipality_id')
+        .eq('id', school_id)
+        .maybeSingle()
+      if (!school || (ctx.role !== 'super_admin' && school.municipality_id !== ctx.municipalityId)) {
+        return NextResponse.json({ error: 'Escola fora do seu município' }, { status: 403 })
+      }
+      schoolName = school.name
+    }
+
+    const effectiveRole = role !== undefined ? role : targetRole
+    const effectiveSchoolId = school_id !== undefined ? school_id : target.school_id
+    if (['teacher', 'aee_teacher', 'coordinator'].includes(effectiveRole) && !effectiveSchoolId) {
+      return NextResponse.json({ error: 'Selecione uma escola para este perfil' }, { status: 400 })
+    }
+
+    const { data: authTarget, error: authTargetError } = await supabase.auth.admin.getUserById(userId)
+    if (authTargetError) throw authTargetError
 
     const updatePayload: Record<string, unknown> = {}
     if (email) updatePayload.email = email
@@ -100,11 +213,19 @@ export async function PUT(request: Request) {
 
     // Espelha em user_metadata (exibição legada), mas a AUTORIDADE é users.
     const metadataUpdate: Record<string, unknown> = {}
-    if (role !== undefined) metadataUpdate.role = role
-    if (blocked !== undefined) metadataUpdate.blocked = blocked
-    if (school !== undefined) metadataUpdate.school = school
+    if (schoolName !== undefined) metadataUpdate.school = schoolName
     if (Object.keys(metadataUpdate).length > 0) {
-      updatePayload.user_metadata = metadataUpdate
+      updatePayload.user_metadata = { ...(authTarget.user.user_metadata || {}), ...metadataUpdate }
+    }
+    if (role !== undefined || school_id !== undefined || blocked !== undefined || password) {
+      updatePayload.app_metadata = {
+        ...(authTarget.user.app_metadata || {}),
+        role: role !== undefined ? role : targetRole,
+        municipality_id: target.municipality_id,
+        school_id: school_id !== undefined ? school_id : target.school_id,
+        blocked: blocked !== undefined ? blocked === true : target.blocked === true,
+        must_change_password: password ? true : authTarget.user.app_metadata?.must_change_password === true,
+      }
     }
 
     if (Object.keys(updatePayload).length > 0) {
@@ -114,12 +235,58 @@ export async function PUT(request: Request) {
 
     // Fonte de verdade: tabela users.
     const dbUpdate: Record<string, unknown> = {}
+    if (email) dbUpdate.email = email
     if (role !== undefined && isValidRole(role)) dbUpdate.role = role
     if (blocked !== undefined) dbUpdate.blocked = blocked === true
-    if (school !== undefined) dbUpdate.school_name = school
+    if (school_id !== undefined) dbUpdate.school_id = school_id
+    if (schoolName !== undefined) dbUpdate.school_name = schoolName
+    if (password) dbUpdate.must_change_password = true
     if (Object.keys(dbUpdate).length > 0) {
       const { error: dbUpdateError } = await supabase.from('users').update(dbUpdate).eq('id', userId)
       if (dbUpdateError) throw dbUpdateError
+    }
+
+    if (role !== undefined && role !== targetRole) {
+      const { error: municipalityRoleError } = await supabase.from('user_municipalities').upsert(
+        { user_id: userId, municipality_id: target.municipality_id, role },
+        { onConflict: 'user_id,municipality_id' },
+      )
+      if (municipalityRoleError) throw municipalityRoleError
+    }
+
+    if (backfill_legacy_plans === true && school_id && !target.school_id) {
+      const { error: plansError } = await supabase
+        .from('plans')
+        .update({ school_id, school: schoolName })
+        .eq('user_id', userId)
+        .is('school_id', null)
+      if (plansError) throw plansError
+      const { error: experienceError } = await supabase
+        .from('successful_experiences')
+        .update({ school_id })
+        .eq('user_id', userId)
+        .is('school_id', null)
+      if (experienceError) throw experienceError
+    }
+
+    const auditRows: Record<string, unknown>[] = []
+    const auditBase = {
+      target_user_id: userId,
+      actor_user_id: ctx.userId,
+      municipality_id: target.municipality_id,
+      previous_role: targetRole,
+      new_role: role !== undefined ? role : targetRole,
+      previous_school_id: target.school_id,
+      new_school_id: school_id !== undefined ? school_id : target.school_id,
+    }
+    if (role !== undefined && role !== targetRole) auditRows.push({ ...auditBase, action: 'role_changed' })
+    if (school_id !== undefined && school_id !== target.school_id) auditRows.push({ ...auditBase, action: 'school_changed' })
+    if (blocked !== undefined && (blocked === true) !== (target.blocked === true)) {
+      auditRows.push({ ...auditBase, action: blocked ? 'blocked' : 'unblocked' })
+    }
+    if (auditRows.length) {
+      const { error: auditError } = await supabase.from('user_role_audit').insert(auditRows)
+      if (auditError) throw auditError
     }
 
     return NextResponse.json({ success: true })
@@ -156,7 +323,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Usuário fora do seu município' }, { status: 403 })
     }
     const targetRole = String(target.role || 'teacher')
-    if (ctx.role !== 'super_admin' && (targetRole === 'super_admin' || targetRole === 'admin')) {
+    if (ctx.role !== 'super_admin' && ['super_admin', 'admin', 'municipality_admin'].includes(targetRole)) {
       return NextResponse.json({ error: 'Sem permissão sobre este usuário' }, { status: 403 })
     }
 
@@ -170,6 +337,9 @@ export async function DELETE(request: Request) {
 }
 
 function handleAdminUsersError(error: unknown, fallback: string) {
+  if (error instanceof ZodError) {
+    return NextResponse.json({ error: error.issues[0]?.message || 'Dados inválidos' }, { status: 400 })
+  }
   if (error instanceof Error && error.message === 'UNAUTHORIZED') {
     return NextResponse.json({ error: 'Login obrigatório' }, { status: 401 })
   }

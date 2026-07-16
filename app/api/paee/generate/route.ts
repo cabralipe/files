@@ -47,7 +47,10 @@ export async function POST(request: Request) {
     if (ctx.role !== 'super_admin' && student.municipality_id !== ctx.municipalityId) {
       return NextResponse.json({ error: 'Aluno nao pertence ao seu municipio' }, { status: 403 })
     }
-    if (!isManager && (!ctx.school || student.school_name !== ctx.school)) {
+    const sameSchool = ctx.schoolId && student.school_id
+      ? ctx.schoolId === student.school_id
+      : Boolean(ctx.school && student.school_name === ctx.school)
+    if (!isManager && !sameSchool) {
       return NextResponse.json({ error: 'Aluno nao pertence a escola do usuario' }, { status: 403 })
     }
 

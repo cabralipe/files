@@ -36,7 +36,7 @@ function slugify(name: string) {
 }
 
 export default function SuperAdminPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { profile, loading: authLoading } = useAuth()
   const [list, setList] = useState<Muni[]>([])
   const [stats, setStats] = useState<Stats>({})
   const [loading, setLoading] = useState(true)
@@ -55,8 +55,7 @@ export default function SuperAdminPage() {
     admin_password: '',
   })
 
-  const isSuper =
-    user?.user_metadata?.role === 'super_admin' || user?.email === process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL
+  const isSuper = profile?.permissions.managePlatform === true
 
   const load = useCallback(async () => {
     try {
@@ -159,7 +158,7 @@ export default function SuperAdminPage() {
         <h1>Acesso restrito</h1>
         <p>Sua conta não tem permissão de super admin.</p>
         <p style={{ fontSize: 13, color: '#777' }}>
-          Configure user_metadata.role = "super_admin" no Supabase Auth ou defina SUPER_ADMIN_EMAIL.
+          Solicite a concessão do papel de super administrador na gestão central da plataforma.
         </p>
       </main>
     )

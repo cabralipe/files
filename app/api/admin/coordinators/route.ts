@@ -101,12 +101,17 @@ export async function POST(request: Request) {
         email_confirm: true,
         user_metadata: {
           name: values.name,
-          role: "coordinator",
-          blocked: values.blocked,
           municipality_id: municipalityId,
           municipality_slug: municipality.slug,
           school_id: values.school_id,
           school: school.name,
+        },
+        app_metadata: {
+          role: "coordinator",
+          municipality_id: municipalityId,
+          school_id: values.school_id,
+          blocked: values.blocked === true,
+          must_change_password: true,
         },
       });
     if (createError || !created.user)
@@ -115,6 +120,8 @@ export async function POST(request: Request) {
     await ensureUserProfile(created.user, municipalityId, {
       role: "coordinator",
       school: school.name,
+      schoolId: values.school_id,
+      mustChangePassword: true,
     });
     const { error: profileError } = await supabase
       .from("users")
@@ -124,9 +131,27 @@ export async function POST(request: Request) {
         school_id: values.school_id,
         school_name: school.name,
         blocked: values.blocked === true,
+        must_change_password: true,
       })
       .eq("id", created.user.id);
     if (profileError) throw profileError;
+
+    const { error: linkError } = await supabase.from("user_municipalities").upsert(
+      { user_id: created.user.id, municipality_id: municipalityId, role: "coordinator" },
+      { onConflict: "user_id,municipality_id" },
+    );
+    if (linkError) throw linkError;
+    const { error: auditError } = await supabase.from("user_role_audit").insert({
+      target_user_id: created.user.id,
+      actor_user_id: ctx.userId,
+      municipality_id: municipalityId,
+      previous_role: null,
+      new_role: "coordinator",
+      previous_school_id: null,
+      new_school_id: values.school_id,
+      action: "created",
+    });
+    if (auditError) throw auditError;
 
     return NextResponse.json(
       { success: true, data: { id: created.user.id } },
@@ -161,7 +186,7 @@ export async function PUT(request: Request) {
     const supabase = getSupabaseAdmin();
     const { data: profile } = await supabase
       .from("users")
-      .select("id")
+      .select("id, school_id, blocked")
       .eq("id", values.id)
       .eq("municipality_id", municipalityId)
       .eq("role", "coordinator")
@@ -172,16 +197,27 @@ export async function PUT(request: Request) {
         { status: 404 },
       );
 
+    const { data: authProfile, error: authProfileError } = await supabase.auth.admin.getUserById(values.id);
+    if (authProfileError) throw authProfileError;
     const authChanges: Record<string, unknown> = {
       email: values.email,
       user_metadata: {
+        ...(authProfile.user.user_metadata || {}),
         name: values.name,
-        role: "coordinator",
-        blocked: values.blocked,
         municipality_id: municipalityId,
         municipality_slug: municipality.slug,
         school_id: values.school_id,
         school: school.name,
+      },
+      app_metadata: {
+        ...(authProfile.user.app_metadata || {}),
+        role: "coordinator",
+        municipality_id: municipalityId,
+        school_id: values.school_id,
+        blocked: values.blocked === true,
+        must_change_password: values.password
+          ? true
+          : authProfile.user.app_metadata?.must_change_password === true,
       },
     };
     if (values.password) authChanges.password = values.password;
@@ -200,9 +236,34 @@ export async function PUT(request: Request) {
         school_id: values.school_id,
         school_name: school.name,
         blocked: values.blocked === true,
+        ...(values.password ? { must_change_password: true } : {}),
       })
       .eq("id", values.id);
     if (profileError) throw profileError;
+    const { error: linkError } = await supabase.from("user_municipalities").upsert(
+      { user_id: values.id, municipality_id: municipalityId, role: "coordinator" },
+      { onConflict: "user_id,municipality_id" },
+    );
+    if (linkError) throw linkError;
+
+    const auditRows: Record<string, unknown>[] = [];
+    const auditBase = {
+      target_user_id: values.id,
+      actor_user_id: ctx.userId,
+      municipality_id: municipalityId,
+      previous_role: "coordinator",
+      new_role: "coordinator",
+      previous_school_id: profile.school_id,
+      new_school_id: values.school_id,
+    };
+    if (profile.school_id !== values.school_id) auditRows.push({ ...auditBase, action: "school_changed" });
+    if ((profile.blocked === true) !== (values.blocked === true)) {
+      auditRows.push({ ...auditBase, action: values.blocked ? "blocked" : "unblocked" });
+    }
+    if (auditRows.length) {
+      const { error: auditError } = await supabase.from("user_role_audit").insert(auditRows);
+      if (auditError) throw auditError;
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     return apiError(error, "Erro ao atualizar coordenador");

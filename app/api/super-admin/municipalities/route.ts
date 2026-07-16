@@ -98,13 +98,17 @@ export async function POST(request: Request) {
         email_confirm: true,
         user_metadata: {
           name: body.admin_name,
-          role: 'municipality_admin',
           municipality_id: created.id,
           municipality_slug: created.slug,
         },
+        app_metadata: {
+          role: 'municipality_admin',
+          municipality_id: created.id,
+          must_change_password: true,
+        },
       })
       if (!createErr && created2.user) {
-        await ensureUserProfile(created2.user, created.id, { role: 'municipality_admin' })
+        await ensureUserProfile(created2.user, created.id, { role: 'municipality_admin', mustChangePassword: true })
         await supabase
           .from('user_municipalities')
           .upsert(

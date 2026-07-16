@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from '@/lib/m-link'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase-client'
+import { useAuth } from '@/hooks/useAuth'
 
 export type PlanKind = 'plano' | 'pei'
 export type PeiSource = 'create' | 'use'
@@ -62,6 +63,7 @@ export default function PeiControls({
   onPeiSourceChange,
   onExistingPeiChange,
 }: PeiControlsProps) {
+  const { profile } = useAuth()
   const [students, setStudents] = useState<PeiStudent[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -69,11 +71,10 @@ export default function PeiControls({
   const [existingPaee, setExistingPaee] = useState<ExistingPei | null>(null)
   const [loadingExisting, setLoadingExisting] = useState(false)
 
-  const role = String(user?.user_metadata?.role || '')
-  const canManageAee = ['aee_teacher', 'coordinator', 'admin', 'municipality_admin', 'super_admin'].includes(role)
-  const isAdminRole = ['admin', 'municipality_admin', 'super_admin'].includes(role)
+  const canManageAee = profile?.permissions.manageAeeStudents === true
+  const isAdminRole = profile?.permissions.manageMunicipality === true
   // PEI é exclusivo de perfis pedagógicos logados (espelha canGeneratePei do backend).
-  const canUsePei = Boolean(user) && role !== 'family'
+  const canUsePei = Boolean(user) && profile?.permissions.generatePei === true
   const [lockNotice, setLockNotice] = useState(false)
 
   // Se a sessão expira (ou o usuário sai) com o modo PEI ativo, volta para Plano.

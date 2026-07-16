@@ -352,10 +352,10 @@ export default function AnosFinaisPage() {
   ]
 
   async function generatePlan() {
-    // Exercicios e avaliacoes nao exigem login; plano de aula e PEI sim.
-    const requiresLogin = planKind === 'pei' || docFormat === 'plano'
-    if (requiresLogin && !user) {
-      showToast(planKind === 'pei' ? 'Faça login para gerar o PEI.' : 'Faça login para gerar planos de aula.')
+    // Documentos pedagogicos sao publicos; PEI continua restrito por conter
+    // dados individualizados do estudante.
+    if (planKind === 'pei' && !user) {
+      showToast('Faça login para gerar o PEI.')
       return
     }
     const docLabel = planKind === 'pei' ? 'PEI' : DOC_LABELS[docFormat].label
@@ -607,7 +607,8 @@ export default function AnosFinaisPage() {
           aria-label="Abrir tutorial de uso"
           title="Como usar o portal"
         >
-          ? Tutorial
+          <span className="tut-open-mark" aria-hidden="true">?</span>
+          <span className="tut-open-label">Tutorial</span>
         </button>
       </nav>
 
@@ -851,7 +852,7 @@ export default function AnosFinaisPage() {
                 </div>
                 {!user && (
                   <p className="doc-format-note">
-                    <strong>Exercícios e avaliações não exigem login.</strong> Planos de aula precisam de conta.
+                    <strong>Geração liberada sem login.</strong> Entre apenas para salvar o documento na sua conta.
                   </p>
                 )}
                 {docFormat !== 'plano' && (

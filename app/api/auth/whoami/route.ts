@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireUserContext } from '@/lib/supabase-server'
 import { getMunicipalityById } from '@/lib/municipality'
+import { getRolePermissions } from '@/lib/authz-rules'
+import { getSupabaseAdmin } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +16,35 @@ export async function GET(request: Request) {
     const ctx = await requireUserContext(request)
     const municipality = ctx.municipalityId ? await getMunicipalityById(ctx.municipalityId) : null
 
+    let schoolName = ctx.school
+    if (ctx.schoolId) {
+      const { data: school } = await getSupabaseAdmin()
+        .from('schools')
+        .select('name')
+        .eq('id', ctx.schoolId)
+        .maybeSingle()
+      schoolName = school?.name || schoolName
+    }
+
     return NextResponse.json({
+      id: ctx.userId,
+      email: ctx.email,
+      fullName: ctx.fullName,
       role: ctx.role,
+      blocked: ctx.blocked,
+      mustChangePassword: ctx.mustChangePassword,
+      municipality: municipality ? {
+        id: municipality.id,
+        slug: municipality.slug,
+        name: municipality.name,
+        state: municipality.state,
+      } : null,
+      school: ctx.schoolId ? { id: ctx.schoolId, name: schoolName || 'Escola' } : null,
+      permissions: getRolePermissions(ctx.role),
+      // Compatibilidade temporária com o redirecionamento antigo.
       municipality_slug: municipality?.slug || null,
       municipality_name: municipality?.name || null,
-    })
+    }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Login obrigatorio' }, { status: 401 })

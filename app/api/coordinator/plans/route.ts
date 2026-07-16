@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     }
 
     // Escopo por município + escola (do contexto, não do cliente).
-    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined)
+    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined, ctx.schoolId)
 
     return NextResponse.json({
       success: true,

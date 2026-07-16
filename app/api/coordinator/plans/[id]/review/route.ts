@@ -23,7 +23,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     // Só pode revisar planos da própria escola/município.
-    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined)
+    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined, ctx.schoolId)
     const canReview = plans.some((plan) => plan.id === params.id)
 
     if (!canReview) {

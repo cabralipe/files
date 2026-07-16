@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase-client'
 import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
+import { useAuth } from '@/hooks/useAuth'
 
 // Construtor do PAEE — Plano de Atendimento Educacional Especializado.
 // Elaborado pelo professor AEE a partir da ficha AEE do aluno, articulado com
@@ -78,6 +79,7 @@ function Field({ label, children, wide, hint }: { label: string; children: React
 }
 
 export default function PaeeBuilder({ user }: { user: User | null }) {
+  const { profile } = useAuth()
   const [students, setStudents] = useState<PaeeStudent[]>([])
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [studentId, setStudentId] = useState('')
@@ -97,9 +99,8 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
-  const role = String(user?.user_metadata?.role || '')
-  const isAdminRole = ['admin', 'municipality_admin', 'super_admin'].includes(role)
-  const school = String(user?.user_metadata?.school || '')
+  const isAdminRole = profile?.permissions.manageMunicipality === true
+  const school = profile?.school?.name || ''
   const student = students.find((item) => item.id === studentId) || null
 
   useEffect(() => {

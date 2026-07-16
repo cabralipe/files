@@ -228,7 +228,7 @@ export default function MunicipioHome() {
               Você seleciona as habilidades, informa tema, turma e objetivos, e a IA monta um plano completo
               (objetivos, metodologia, desenvolvimento da aula, avaliação) alinhado ao referencial. O plano é
               <strong> totalmente editável</strong> antes de salvar ou baixar em PDF. Para gerar e salvar planos,
-              basta fazer login com sua conta de professor da rede.
+              basta fazer login com sua conta de professor da rede para salvar.
             </p>
           </details>
         </div>

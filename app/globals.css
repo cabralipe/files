@@ -2333,23 +2333,46 @@ input:focus, select:focus, textarea:focus {
   text-underline-offset: 3px;
 }
 
-/* Help "?" button in the top nav */
+/* Botao de tutorial compartilhado por headers, subnavs e telas de gestao. */
 .tut-open {
   border: 2px solid var(--ink);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 16px;
-  display: grid;
-  place-items: center;
+  border-radius: 0;
+  width: auto;
+  min-height: 34px;
+  padding: 5px 10px 5px 6px;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   flex-shrink: 0;
   background: var(--paper);
-  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
   transition: transform .12s, box-shadow .12s, background .15s;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.tut-open-mark {
+  width: 21px;
+  height: 21px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 21px;
+  background: var(--mustard);
+  border: 1.5px solid var(--ink);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.tut-open-standalone {
+  margin: 0 18px 28px;
 }
 
 .tut-open:hover {
@@ -2361,6 +2384,17 @@ input:focus, select:focus, textarea:focus {
 .tut-open:active {
   transform: translate(1px, 1px);
   box-shadow: 1px 1px 0 var(--ink);
+}
+
+@media (max-width: 760px) {
+  .hdr-nav .tut-open {
+    width: 34px;
+    padding: 5px;
+  }
+
+  .hdr-nav .tut-open-label {
+    display: none;
+  }
 }
 
 /* Mobile - tighter padding, smaller icon/title */

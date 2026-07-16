@@ -14,6 +14,17 @@ export const ALL_ROLES = [
   'super_admin',
 ] as const
 
+export type AppRole = typeof ALL_ROLES[number]
+
+export type RolePermissions = {
+  manageAeeStudents: boolean
+  generatePei: boolean
+  generatePaee: boolean
+  reviewSchoolPlans: boolean
+  manageMunicipality: boolean
+  managePlatform: boolean
+}
+
 export const ADMIN_ROLES = ['admin', 'municipality_admin', 'super_admin']
 
 // Papéis que podem ver a ficha AEE completa (diagnóstico/CID/barreiras).
@@ -30,8 +41,6 @@ const MUNICIPALITY_ADMIN_ASSIGNABLE = [
   'teacher',
   'aee_teacher',
   'coordinator',
-  'family',
-  'municipality_admin',
 ]
 
 export function isValidRole(role: string): boolean {
@@ -42,12 +51,25 @@ export function isAdminRole(role: Role): boolean {
   return ADMIN_ROLES.includes(role)
 }
 
+export function getRolePermissions(role: Role): RolePermissions {
+  const manager = isAdminRole(role)
+  return {
+    manageAeeStudents: ['aee_teacher', 'coordinator'].includes(role) || manager,
+    generatePei: ['teacher', 'aee_teacher', 'coordinator'].includes(role) || manager,
+    generatePaee: ['aee_teacher', 'coordinator'].includes(role) || manager,
+    reviewSchoolPlans: role === 'coordinator' || manager,
+    manageMunicipality: manager,
+    managePlatform: role === 'super_admin',
+  }
+}
+
 export function canSeeSensitiveStudentData(role: Role): boolean {
   return SENSITIVE_STUDENT_ROLES.includes(role)
 }
 
 /** Quem executa `actorRole` pode atribuir `targetRole`? */
 export function canAssignRole(actorRole: Role, targetRole: string): boolean {
+  if (targetRole === 'family') return false
   if (actorRole === 'super_admin') return isValidRole(targetRole)
   if (actorRole === 'admin' || actorRole === 'municipality_admin') {
     return MUNICIPALITY_ADMIN_ASSIGNABLE.includes(targetRole)
@@ -75,12 +97,14 @@ export type PlanActor = {
   userId: string
   municipalityId: string | null
   school: string | null
+  schoolId?: string | null
 }
 
 export type PlanInfo = {
   userId: string
   municipalityId: string | null
   school: string
+  schoolId?: string | null
   isPei: boolean
   isPaee: boolean
 }
@@ -89,7 +113,7 @@ export type PlanInfo = {
 export function canEditPlan(ctx: PlanActor, plan: PlanInfo): boolean {
   if (!isSameTenant(plan.municipalityId, ctx)) return false
   if (plan.userId === ctx.userId) return true
-  if ((ctx.role === 'coordinator' || ctx.role === 'aee_teacher') && sameSchool(ctx.school, plan.school)) {
+  if ((ctx.role === 'coordinator' || ctx.role === 'aee_teacher') && sameSchoolScope(ctx, plan)) {
     return true
   }
   return isAdminRole(ctx.role)
@@ -104,10 +128,15 @@ export function canDeletePlan(ctx: PlanActor, plan: PlanInfo): boolean {
   if (plan.isPei || plan.isPaee) {
     return (
       isAdminRole(ctx.role) ||
-      ((ctx.role === 'coordinator' || ctx.role === 'aee_teacher') && sameSchool(ctx.school, plan.school))
+      ((ctx.role === 'coordinator' || ctx.role === 'aee_teacher') && sameSchoolScope(ctx, plan))
     )
   }
   if (plan.userId === ctx.userId) return true
-  if (ctx.role === 'coordinator' && sameSchool(ctx.school, plan.school)) return true
+  if (ctx.role === 'coordinator' && sameSchoolScope(ctx, plan)) return true
   return isAdminRole(ctx.role)
+}
+
+function sameSchoolScope(ctx: PlanActor, plan: PlanInfo) {
+  if (ctx.schoolId && plan.schoolId) return ctx.schoolId === plan.schoolId
+  return sameSchool(ctx.school, plan.school)
 }

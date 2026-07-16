@@ -20,7 +20,7 @@ const ROLE_LINKS: Record<string, NavItem> = {
 }
 
 export default function AppHeader() {
-  const { user, signOut, loading } = useAuth()
+  const { user, profile, signOut, loading } = useAuth()
   const { municipality, slug } = useMunicipality()
   const router = useRouter()
   const pathname = usePathname()
@@ -28,10 +28,9 @@ export default function AppHeader() {
 
   const name = municipality?.name || 'Município'
   const uf = municipality?.state ? `/${municipality.state}` : ''
-  const role = String(user?.user_metadata?.role || 'teacher')
-  const displayName = user?.user_metadata?.name || user?.email || ''
-  // Slug da rede da conta (metadado; suficiente para detectar troca de portal).
-  const accountSlug = String(user?.user_metadata?.municipality_slug || '')
+  const role = profile?.role || 'teacher'
+  const displayName = profile?.fullName || user?.email || ''
+  const accountSlug = profile?.municipality?.slug || ''
 
   // Caminho relativo ao municipio, para destacar a secao ativa.
   const rel = slug && pathname?.startsWith(`/${slug}`) ? pathname.slice(slug.length + 1) || '/' : pathname || '/'

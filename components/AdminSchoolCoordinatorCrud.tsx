@@ -368,7 +368,7 @@ export default function AdminSchoolCoordinatorCrud({
                 />
               </Field>
               <Field
-                label={coordinatorForm.id ? "Nova senha (opcional)" : "Senha"}
+                label={coordinatorForm.id ? "Nova senha provisória (opcional)" : "Senha provisória"}
               >
                 <input
                   required={!coordinatorForm.id}
@@ -384,6 +384,7 @@ export default function AdminSchoolCoordinatorCrud({
                   }
                 />
               </Field>
+              <small>Ao receber uma senha definida pela gestão, o coordenador deverá criar uma senha pessoal no próximo acesso.</small>
               <Field label="Escola">
                 <select
                   required

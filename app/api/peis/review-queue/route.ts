@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     const plans = await listPeisForReview({
       municipalityId: municipalityId ?? undefined,
       school,
+      schoolId: isManager ? undefined : ctx.schoolId || undefined,
       status: status as PublicPlan['plan_status'] | undefined,
     })
 

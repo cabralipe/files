@@ -77,6 +77,13 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) throw error;
+    const propagation = await Promise.all([
+      supabase.from("users").update({ school_name: data.name }).eq("school_id", id),
+      supabase.from("students").update({ school_name: data.name }).eq("school_id", id),
+      supabase.from("plans").update({ school: data.name }).eq("school_id", id),
+    ]);
+    const propagationError = propagation.find((result) => result.error)?.error;
+    if (propagationError) throw propagationError;
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return apiError(error, "Erro ao atualizar escola");

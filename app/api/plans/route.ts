@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const municipalityId =
       ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
     const body = await request.json()
-    const plan = await createPlan(body, ctx.userId, municipalityId ?? undefined)
+    const plan = await createPlan(body, ctx.userId, municipalityId ?? undefined, ctx.schoolId)
 
     return NextResponse.json({ success: true, data: plan, plan }, { status: 201 })
   } catch (error) {

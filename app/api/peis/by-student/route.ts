@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const supabase = getSupabaseAdmin()
     const { data: student, error: studentError } = await supabase
       .from('students')
-      .select('id, school_name, municipality_id')
+      .select('id, school_id, school_name, municipality_id')
       .eq('id', studentId)
       .maybeSingle()
 
@@ -45,7 +45,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Aluno nao pertence ao seu municipio' }, { status: 403 })
     }
 
-    if (!isManager && (!ctx.school || student.school_name !== ctx.school)) {
+    const sameSchool = ctx.schoolId && student.school_id
+      ? ctx.schoolId === student.school_id
+      : Boolean(ctx.school && student.school_name === ctx.school)
+    if (!isManager && !sameSchool) {
       return NextResponse.json({ error: 'Aluno nao pertence a escola do usuario' }, { status: 403 })
     }
 

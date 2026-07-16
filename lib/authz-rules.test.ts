@@ -10,6 +10,7 @@ import {
   isAdminRole,
   isSameTenant,
   sameSchool,
+  getRolePermissions,
   type PlanActor,
   type PlanInfo,
 } from './authz-rules.ts'
@@ -62,6 +63,14 @@ test('papel não-admin não pode atribuir papéis', () => {
   assert.equal(canAssignRole('coordinator', 'teacher'), false)
 })
 
+test('família só é criada pelo vínculo com aluno e gestão municipal não cria outros gestores', () => {
+  assert.equal(canAssignRole('super_admin', 'family'), false)
+  assert.equal(canAssignRole('municipality_admin', 'family'), false)
+  assert.equal(canAssignRole('municipality_admin', 'municipality_admin'), false)
+  assert.equal(canAssignRole('admin', 'admin'), false)
+  assert.equal(canAssignRole('admin', 'coordinator'), true)
+})
+
 // ── Isolamento por município (tenant) ────────────────────────
 test('isSameTenant bloqueia municípios diferentes e libera super_admin', () => {
   assert.equal(isSameTenant(MUNI_A, { role: 'teacher', municipalityId: MUNI_A }), true)
@@ -112,4 +121,19 @@ test('sameSchool ignora caixa/espaços e trata nulos', () => {
   assert.equal(sameSchool(' Escola X ', 'escola x'), true)
   assert.equal(sameSchool('Escola X', 'Escola Y'), false)
   assert.equal(sameSchool(null, 'Escola X'), false)
+})
+
+test('permissoes derivadas nao concedem gestao a professor comum', () => {
+  assert.equal(getRolePermissions('teacher').manageAeeStudents, false)
+  assert.equal(getRolePermissions('teacher').generatePei, true)
+  assert.equal(getRolePermissions('aee_teacher').generatePaee, true)
+  assert.equal(getRolePermissions('municipality_admin').manageMunicipality, true)
+  assert.equal(getRolePermissions('super_admin').managePlatform, true)
+})
+
+test('school_id prevalece sobre nomes iguais na autorizacao de planos', () => {
+  const scopedActor = actor({ role: 'coordinator', userId: 'coord', schoolId: 'school-a' })
+  const scopedPlan = plan({ userId: 'teacher', schoolId: 'school-b' })
+  assert.equal(canEditPlan(scopedActor, scopedPlan), false)
+  assert.equal(canDeletePlan(scopedActor, scopedPlan), false)
 })

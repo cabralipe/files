@@ -39,6 +39,7 @@ export type UserContext = {
   email: string
   role: AppRole
   blocked: boolean
+  mustChangePassword: boolean
   municipalityId: string | null
   schoolId: string | null
   /** Nome da escola (texto) — ponte com plans.school / students.school_name. */
@@ -96,6 +97,8 @@ export async function getAuthenticatedUser(request: Request): Promise<User | nul
 type ProfileSeed = {
   role?: string
   school?: string
+  schoolId?: string
+  mustChangePassword?: boolean
 }
 
 export async function ensureUserProfile(
@@ -110,8 +113,7 @@ export async function ensureUserProfile(
     user.email ||
     'Professor(a)'
 
-  const resolvedMuni =
-    municipalityId || (user.user_metadata?.municipality_id as string | undefined)
+  const resolvedMuni = municipalityId
 
   // O papel só é semeado a partir de uma fonte CONFIÁVEL (rota de cadastro
   // ou de criação por admin, validada no servidor). Nunca de user_metadata
@@ -119,6 +121,8 @@ export async function ensureUserProfile(
   const seededRole =
     seed?.role && VALID_ROLES.includes(seed.role as AppRole) ? seed.role : undefined
   const seededSchool = seed?.school?.trim() || undefined
+  const seededSchoolId = seed?.schoolId || undefined
+  const seededMustChangePassword = seed?.mustChangePassword
 
   const { data: existingProfile, error: selectError } = await supabase
     .from('users')
@@ -135,6 +139,8 @@ export async function ensureUserProfile(
     const patch: Record<string, unknown> = {}
     if (resolvedMuni && !existingProfile.municipality_id) patch.municipality_id = resolvedMuni
     if (seededSchool && !existingProfile.school_name) patch.school_name = seededSchool
+    if (seededSchoolId && !existingProfile.school_id) patch.school_id = seededSchoolId
+    if (seededMustChangePassword !== undefined) patch.must_change_password = seededMustChangePassword
     if (Object.keys(patch).length > 0) {
       await supabase.from('users').update(patch).eq('id', user.id)
       return { ...existingProfile, ...patch }
@@ -149,6 +155,8 @@ export async function ensureUserProfile(
   const row: Record<string, unknown> = { id: user.id, email, full_name: fullName, avatar_url: avatarUrl }
   if (seededRole) row.role = seededRole
   if (seededSchool) row.school_name = seededSchool
+  if (seededSchoolId) row.school_id = seededSchoolId
+  if (seededMustChangePassword !== undefined) row.must_change_password = seededMustChangePassword
   if (resolvedMuni) row.municipality_id = resolvedMuni
 
   const first = await supabase.from('users').insert(row).select().single()
@@ -205,6 +213,7 @@ async function loadContext(request: Request): Promise<{ user: User; ctx: UserCon
     email,
     role,
     blocked,
+    mustChangePassword: profile.must_change_password === true,
     municipalityId: (profile.municipality_id as string | null) || null,
     schoolId: (profile.school_id as string | null) || null,
     school: (profile.school_name as string | null) || null,

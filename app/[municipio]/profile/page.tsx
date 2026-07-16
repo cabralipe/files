@@ -137,6 +137,10 @@ export default function Profile() {
             </div>
           </div>
 
+          <div className="brow" style={{ marginBottom: 18 }}>
+            <a className="btn btn-out" href="/auth/reset-password">Alterar senha</a>
+          </div>
+
           {editing ? (
             <div className="fg">
               <label className="fgr s2">

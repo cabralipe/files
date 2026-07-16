@@ -14,7 +14,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
     }
 
-    const planInfo: PlanInfo = { userId: info.userId, municipalityId: info.municipalityId, school: info.school, isPei: info.isPei, isPaee: info.isPaee }
+    const planInfo: PlanInfo = { userId: info.userId, municipalityId: info.municipalityId, school: info.school, schoolId: info.schoolId, isPei: info.isPei, isPaee: info.isPaee }
     if (!canEditPlan(ctx, planInfo)) {
       return NextResponse.json({ error: 'Sem permissao para editar este plano' }, { status: 403 })
     }
@@ -40,7 +40,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Plano nao encontrado' }, { status: 404 })
     }
 
-    const planInfo: PlanInfo = { userId: info.userId, municipalityId: info.municipalityId, school: info.school, isPei: info.isPei, isPaee: info.isPaee }
+    const planInfo: PlanInfo = { userId: info.userId, municipalityId: info.municipalityId, school: info.school, schoolId: info.schoolId, isPei: info.isPei, isPaee: info.isPaee }
     if (!canDeletePlan(ctx, planInfo)) {
       const msg = info.isPei || info.isPaee ? 'Sem permissao para excluir este documento' : 'Sem permissao para excluir este plano'
       return NextResponse.json({ error: msg }, { status: 403 })

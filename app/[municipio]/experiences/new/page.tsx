@@ -45,7 +45,7 @@ const emptyForm: ExperienceForm = {
 
 export default function NewExperiencePage() {
   const router = useRouter()
-  const { isAuthenticated, loading: authLoading, user } = useAuth()
+  const { isAuthenticated, loading: authLoading, user, profile } = useAuth()
   const { uploadExperienceImageBlob } = useStorage()
   const [skills, setSkills] = useState<Skill[]>([])
   const [form, setForm] = useState<ExperienceForm>(emptyForm)
@@ -67,10 +67,10 @@ export default function NewExperiencePage() {
 
     setForm((current) => ({
       ...current,
-      teacher: current.teacher || user?.user_metadata?.name || user?.email || '',
+      teacher: current.teacher || profile?.fullName || user?.email || '',
       school:
         current.school === emptyForm.school
-          ? String(user?.user_metadata?.school || current.school)
+          ? String(profile?.school?.name || current.school)
           : current.school,
       subject:
         current.subject === emptyForm.subject
@@ -78,7 +78,7 @@ export default function NewExperiencePage() {
           : current.subject,
     }))
     void loadSkills()
-  }, [authLoading, isAuthenticated, router, user])
+  }, [authLoading, isAuthenticated, router, user, profile])
 
   async function loadSkills() {
     const response = await fetch('/api/skills')
