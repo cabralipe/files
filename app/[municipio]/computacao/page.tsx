@@ -387,6 +387,18 @@ export default function Home() {
   }
 
   function toggleSkill(id: string) {
+    const isAdding = !selected.includes(id)
+    const skill = isAdding ? skills.find((item) => item.id === id) : undefined
+
+    if (skill) {
+      setForm((current) => ({
+        ...current,
+        title: current.title || skill.name,
+        subject: skill.subject,
+        grade_level: skill.grade_level,
+      }))
+    }
+
     setSelected((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     )
