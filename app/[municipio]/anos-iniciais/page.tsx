@@ -10,6 +10,8 @@ import { useMunicipality } from '@/lib/municipality-context'
 import PeiControls, { type PeiStudent, type PlanKind, type PeiSource, type ExistingPei } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
 import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
+import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
+import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -237,6 +239,7 @@ export default function AnosIniciaisPage() {
   const [peiSource, setPeiSource] = useState<PeiSource>('create')
   const [existingPei, setExistingPei] = useState<ExistingPei | null>(null)
   const [generated, setGenerated] = useState('')
+  const [hideAnswerKey, setHideAnswerKey] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
   const [phrase, setPhrase] = useState('')
@@ -468,7 +471,7 @@ export default function AnosIniciaisPage() {
   // ── PDF download ───────────────────────────────────────────────────────────
 
   async function downloadPdf() {
-    const text = sanitizePdfText(generated)
+    const text = sanitizePdfText(hideAnswerKey && docFormat !== 'plano' ? withoutAnswerKey(generated) : generated)
     if (!text.trim()) { showToast(planKind === 'pei' ? 'Gere o PEI antes de baixar em PDF.' : 'Gere o plano antes de baixar em PDF.'); return }
     const isPei = planKind === 'pei'
     const title = sanitizePdfText(form.title || (isPei && selectedStudent ? selectedStudent.full_name : 'plano'))
@@ -599,6 +602,8 @@ export default function AnosIniciaisPage() {
 
   function loadSaved(plan: typeof saved[number]) {
     setGenerated(plan.content)
+    setDocFormat(plan.kind || 'plano')
+    setHideAnswerKey(false)
     setView('plan')
     showToast('Plano carregado para edição.')
   }
@@ -989,10 +994,19 @@ export default function AnosIniciaisPage() {
                 </div>
               )}
 
+              {planKind !== 'pei' && docFormat !== 'plano' && (
+                <AnswerKeyVisibility
+                  hidden={hideAnswerKey}
+                  available={hasAnswerKey(generated)}
+                  onChange={setHideAnswerKey}
+                />
+              )}
+
               <textarea
                 id="ai-plan-ta"
-                value={generated}
+                value={hideAnswerKey && docFormat !== 'plano' ? withoutAnswerKey(generated) : generated}
                 onChange={e => setGenerated(e.target.value)}
+                readOnly={hideAnswerKey && docFormat !== 'plano'}
                 placeholder="O documento gerado aparecerá aqui. Você pode editar antes de salvar ou baixar."
               />
 
@@ -1054,7 +1068,7 @@ export default function AnosIniciaisPage() {
               <h1>Planos salvos</h1>
               <p>Organizados por categoria e por data de criação.</p>
             </div>
-            <button className="btn btn-pri" onClick={() => { setEditingPlanId(null); setGenerated(''); setView('plan') }}>+ Criar novo plano</button>
+            <button className="btn btn-pri" onClick={() => { setEditingPlanId(null); setGenerated(''); setHideAnswerKey(false); setView('plan') }}>+ Criar novo plano</button>
           </div>
 
           {user && (

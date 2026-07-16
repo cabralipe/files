@@ -10,6 +10,8 @@ import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
 import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } from '@/components/PortalTutorial'
 import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
+import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
+import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
 
 
 type Skill = {
@@ -241,6 +243,7 @@ export default function Home() {
   const [aee, setAee] = useState<AeeCollaboration>(emptyAeeCollaboration)
   const [family, setFamily] = useState<FamilyConsultation>(emptyFamilyConsultation)
   const [generated, setGenerated] = useState('')
+  const [hideAnswerKey, setHideAnswerKey] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [activeSkill, setActiveSkill] = useState<Skill | null>(null)
@@ -672,6 +675,8 @@ export default function Home() {
     setSelected(plan.skill_ids)
     setGenerated(plan.content)
     setPlanKind(plan.is_pei ? 'pei' : 'plano')
+    setDocFormat(plan.kind || 'plano')
+    setHideAnswerKey(false)
     setSelectedStudentId(plan.student_id || '')
     setSelectedStudent((plan.pei_snapshot?.student as PeiStudent | undefined) || null)
     setRevisaoRegente(Boolean(plan.revisao_regente))
@@ -691,6 +696,7 @@ export default function Home() {
     }))
     setSelected([])
     setGenerated('')
+    setHideAnswerKey(false)
     setPlanKind('plano')
     setSelectedStudentId('')
     setSelectedStudent(null)
@@ -702,7 +708,8 @@ export default function Home() {
 
   async function downloadPlanPdf(plan?: Plan) {
     const title = sanitizePdfText(plan?.title || form.title || 'plano')
-    const text = sanitizePdfText(plan?.content || generated)
+    const sourceText = plan?.content || generated
+    const text = sanitizePdfText(!plan && hideAnswerKey && docFormat !== 'plano' ? withoutAnswerKey(sourceText) : sourceText)
     if (!text.trim()) {
       showToast('Gere o plano antes de baixar em PDF.')
       return
@@ -1154,10 +1161,18 @@ export default function Home() {
                   </div>
                 </div>
               )}
+              {planKind !== 'pei' && docFormat !== 'plano' && (
+                <AnswerKeyVisibility
+                  hidden={hideAnswerKey}
+                  available={hasAnswerKey(generated)}
+                  onChange={setHideAnswerKey}
+                />
+              )}
               <textarea
                 id="po"
-                value={generated}
+                value={hideAnswerKey && docFormat !== 'plano' ? withoutAnswerKey(generated) : generated}
                 onChange={(event) => setGenerated(event.target.value)}
+                readOnly={hideAnswerKey && docFormat !== 'plano'}
                 placeholder="O documento gerado aparecerá aqui. Você pode editar o texto antes de salvar."
               />
               {planKind === 'pei' && (
