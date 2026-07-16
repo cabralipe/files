@@ -12,6 +12,7 @@ import { PortalTutorial, SkillsHowTo, usePortalTutorial, type TutorialStep } fro
 import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
 import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
 import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
+import SamQuestionIntegration from '@/components/SamQuestionIntegration'
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1009,6 +1010,17 @@ export default function AnosIniciaisPage() {
                 readOnly={hideAnswerKey && docFormat !== 'plano'}
                 placeholder="O documento gerado aparecerá aqui. Você pode editar antes de salvar ou baixar."
               />
+
+              {planKind !== 'pei' && docFormat !== 'plano' && generated && (
+                <SamQuestionIntegration
+                  content={generated}
+                  subject={form.subject}
+                  gradeLevel={form.grade_level}
+                  bnccCodes={selected.map((skill) => skill.code)}
+                  count={numQuestions}
+                  sourceRef={form.title}
+                />
+              )}
 
               {planKind === 'pei' && generated && (
                 <div className="pei-next" style={{ marginTop: 12, padding: '14px 16px', border: '2px solid var(--blue)', background: 'var(--blue-wash)' }}>
