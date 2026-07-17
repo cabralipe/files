@@ -36,7 +36,7 @@ function slugify(name: string) {
 }
 
 export default function SuperAdminPage() {
-  const { profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
   const [list, setList] = useState<Muni[]>([])
   const [stats, setStats] = useState<Stats>({})
   const [loading, setLoading] = useState(true)
