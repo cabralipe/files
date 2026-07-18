@@ -9,7 +9,7 @@ import { roleHomePath } from '@/lib/auth-navigation'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
-  const { profile, refreshProfile } = useAuth()
+  const { profile, loading: authLoading, refreshProfile } = useAuth()
   const [ready, setReady] = useState<boolean | null>(null)
   const [firstAccess, setFirstAccess] = useState(false)
   const [password, setPassword] = useState('')
@@ -26,6 +26,12 @@ export default function ResetPasswordPage() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!authLoading && firstAccess && profile && !profile.mustChangePassword) {
+      router.replace(roleHomePath(profile))
+    }
+  }, [authLoading, firstAccess, profile, router])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
