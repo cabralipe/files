@@ -287,9 +287,13 @@ function parseDurationMinutes(duration: string) {
 }
 
 // Colunas ESPELHO adicionadas em supabase-migration-plans-columns.sql. Se a
-// migração ainda não foi aplicada, o PostgREST devolve PGRST204 e os helpers
-// de escrita (planInsert/planUpdateById) reenviam sem estas colunas.
+// migração ainda não foi aplicada, o PostgREST pode devolver PGRST204 ou o
+// PostgreSQL pode devolver 42703. Os helpers de escrita reenviam sem elas.
 const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'school_id', 'workflow_status', 'kind'] as const
+
+function isMissingPlanColumnError(error: { code?: string } | null) {
+  return error?.code === 'PGRST204' || error?.code === '42703'
+}
 
 function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
   const row: Record<string, unknown> = {
@@ -324,11 +328,11 @@ function stripMirrorCols(row: Record<string, unknown>) {
   return clone
 }
 
-// INSERT resiliente: se as colunas espelho não existem (PGRST204), reenvia sem elas.
+// INSERT resiliente: se as colunas espelho não existem, reenvia sem elas.
 async function planInsert(row: Record<string, unknown>) {
   const supabase = getSupabaseAdmin()
   let res = await supabase.from('plans').insert(row).select().single()
-  if (res.error?.code === 'PGRST204') {
+  if (isMissingPlanColumnError(res.error)) {
     res = await supabase.from('plans').insert(stripMirrorCols(row)).select().single()
   }
   return res
@@ -346,7 +350,7 @@ async function planUpdateById(
     return opts.select ? q.select().maybeSingle() : q
   }
   let res = await run(row)
-  if (res.error?.code === 'PGRST204') {
+  if (isMissingPlanColumnError(res.error)) {
     res = await run(stripMirrorCols(row))
   }
   return res
@@ -1125,8 +1129,29 @@ export async function createExperience(
 
   experience.id = data.id
 
+  if (experience.skill_ids.length > 0) {
+    const { error: skillLinkError } = await supabase.from('experience_skills').insert(
+      experience.skill_ids.map((skillCode) => ({
+        experience_id: experience.id,
+        skill_code: skillCode,
+      })),
+    )
+
+    // O JSON continua sendo a fonte retrocompativel. Uma falha na tabela de
+    // vinculos nao pode transformar uma experiencia ja salva em falso erro 500.
+    if (skillLinkError) {
+      safeError('[experiences] falha ao vincular habilidades', skillLinkError)
+    }
+  }
+
   // Idempotente: pontua a publicação uma única vez por experiência.
-  await awardPointsOnce(owner.user_id, 'experiencia_publicada', experience.id, 10)
+  try {
+    await awardPointsOnce(owner.user_id, 'experiencia_publicada', experience.id, 10)
+  } catch (pointsError) {
+    // A pontuacao e secundaria: a API deve confirmar a experiencia que ja foi
+    // gravada, mesmo se o schema de pontos ainda estiver desatualizado.
+    safeError('[experiences] falha ao creditar pontos', pointsError)
+  }
 
   return experience
 }

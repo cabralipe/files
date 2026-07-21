@@ -18,7 +18,7 @@ export async function addPoints(
     return
   }
 
-  if (error.code !== 'PGRST204') {
+  if (!['PGRST204', '42703'].includes(error.code || '')) {
     throw error
   }
 

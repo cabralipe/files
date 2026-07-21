@@ -201,7 +201,7 @@ export default function PeiControls({
 
       {planKind === 'pei' && (
         <div className="pei-student-box">
-          <div className="pei-tutorial" style={{ padding: '12px 14px', border: '2px solid var(--blue)', background: 'var(--blue-wash)', marginBottom: 4 }}>
+          <div className="pei-tutorial pei-mode-info">
             <div className="pei-tutorial-title" style={{ marginBottom: 6 }}>O que e o modo PEI?</div>
             <p className="pei-note">
               No modo PEI, a IA usa a ficha AEE do aluno para gerar um Plano Educacional Individualizado completo,

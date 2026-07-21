@@ -54,6 +54,7 @@ export default function NewExperiencePage() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (authLoading) {
@@ -101,10 +102,12 @@ export default function NewExperiencePage() {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  function toggleSkill(id: string) {
+  function toggleSkill(skill: Skill) {
+    const isRemoving = selectedSkills.includes(skill.id)
     setSelectedSkills((current) =>
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+      current.includes(skill.id) ? current.filter((item) => item !== skill.id) : [...current, skill.id],
     )
+    showToast(isRemoving ? `${skill.code} removida.` : `${skill.code} vinculada com sucesso.`)
   }
 
   function showToast(text: string) {
@@ -140,6 +143,7 @@ export default function NewExperiencePage() {
 
   async function saveExperience(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setSaved(false)
     setLoading(true)
 
     try {
@@ -161,8 +165,9 @@ export default function NewExperiencePage() {
         throw new Error(payload.error || 'Erro ao cadastrar experiência')
       }
 
-      showToast('Experiência cadastrada.')
-      window.setTimeout(() => router.push('/experiences'), 700)
+      setSaved(true)
+      showToast('Experiência cadastrada com sucesso.')
+      window.setTimeout(() => router.push('/experiences'), 1600)
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao cadastrar experiência')
     } finally {
@@ -252,27 +257,44 @@ export default function NewExperiencePage() {
               <span className="fl">Vincular habilidades BNCC</span>
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Pesquisar habilidade para vincular" />
             </label>
+            <div className={`exp-skill-summary${selectedSkills.length ? ' has-selection' : ''}`} role="status" aria-live="polite">
+              {selectedSkills.length
+                ? `${selectedSkills.length} habilidade${selectedSkills.length > 1 ? 's' : ''} vinculada${selectedSkills.length > 1 ? 's' : ''}.`
+                : 'Nenhuma habilidade vinculada ainda.'}
+            </div>
             <div className="mini-skill-list">
-              {filteredSkills.map((skill) => (
-                <button
-                  className={`mini-skill ${selectedSkills.includes(skill.id) ? 'selected' : ''}`}
-                  key={skill.id}
-                  type="button"
-                  onClick={() => toggleSkill(skill.id)}
-                >
-                  <strong>{skill.code}</strong>
-                  <span>{skill.name}</span>
-                </button>
-              ))}
+              {filteredSkills.map((skill) => {
+                const isSelected = selectedSkills.includes(skill.id)
+                return (
+                  <button
+                    className={`mini-skill ${isSelected ? 'selected' : ''}`}
+                    key={skill.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => toggleSkill(skill)}
+                  >
+                    <strong>{skill.code}</strong>
+                    <span>{skill.name}</span>
+                    <span className="mini-skill-state">{isSelected ? '✓ Vinculada' : '+ Vincular'}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
+
+          {saved && (
+            <div className="experience-save-success" role="status">
+              <strong>Experiência cadastrada com sucesso.</strong>
+              <span>Redirecionando para a lista de experiências...</span>
+            </div>
+          )}
 
           <div className="brow">
             <Link className="btn btn-out" href="/experiences">
               Cancelar
             </Link>
-            <button className="btn btn-pri" disabled={loading || uploading} type="submit">
-              {loading || uploading ? 'Salvando...' : 'Cadastrar experiência'}
+            <button className="btn btn-pri" disabled={loading || uploading || saved} type="submit">
+              {saved ? 'Cadastrada ✓' : loading || uploading ? 'Salvando...' : 'Cadastrar experiência'}
             </button>
           </div>
         </form>
