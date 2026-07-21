@@ -286,10 +286,18 @@ function parseDurationMinutes(duration: string) {
   return match ? Number(match[0]) : 50
 }
 
-// Colunas ESPELHO adicionadas em supabase-migration-plans-columns.sql. Se a
-// migração ainda não foi aplicada, o PostgREST pode devolver PGRST204 ou o
-// PostgreSQL pode devolver 42703. Os helpers de escrita reenviam sem elas.
-const MIRROR_PLAN_COLS = ['is_paee', 'school_name', 'school_id', 'workflow_status', 'kind'] as const
+// Colunas opcionais que variam entre as versoes do schema em producao. O plano
+// completo continua preservado no JSON de `content`, entao a escrita pode ser
+// repetida sem elas quando o PostgREST devolver PGRST204/42703.
+const OPTIONAL_PLAN_COLS = [
+  'is_paee',
+  'school_name',
+  'school_id',
+  'workflow_status',
+  'kind',
+  'materials',
+  'objectives',
+] as const
 
 function isMissingPlanColumnError(error: { code?: string } | null) {
   return error?.code === 'PGRST204' || error?.code === '42703'
@@ -322,9 +330,9 @@ function toPlanRow(plan: PublicPlan, userId: string, municipalityId?: string) {
   return row
 }
 
-function stripMirrorCols(row: Record<string, unknown>) {
+function stripOptionalPlanCols(row: Record<string, unknown>) {
   const clone = { ...row }
-  for (const col of MIRROR_PLAN_COLS) delete clone[col]
+  for (const col of OPTIONAL_PLAN_COLS) delete clone[col]
   return clone
 }
 
@@ -333,7 +341,7 @@ async function planInsert(row: Record<string, unknown>) {
   const supabase = getSupabaseAdmin()
   let res = await supabase.from('plans').insert(row).select().single()
   if (isMissingPlanColumnError(res.error)) {
-    res = await supabase.from('plans').insert(stripMirrorCols(row)).select().single()
+    res = await supabase.from('plans').insert(stripOptionalPlanCols(row)).select().single()
   }
   return res
 }
@@ -351,7 +359,7 @@ async function planUpdateById(
   }
   let res = await run(row)
   if (isMissingPlanColumnError(res.error)) {
-    res = await run(stripMirrorCols(row))
+    res = await run(stripOptionalPlanCols(row))
   }
   return res
 }
