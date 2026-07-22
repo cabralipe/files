@@ -36,6 +36,9 @@ export const teacherSubjects = [
   { area: 'Ciências Humanas', subject: 'Geografia' },
   { area: 'Ensino Religioso', subject: 'Ensino Religioso' },
   { area: 'Tecnologia', subject: 'Monitor do Tempo Integral de Tecnologia' },
+  { area: 'Função', subject: 'Professor(a) de 1º ao 5º' },
+  { area: 'Função', subject: 'Pedagogo(a)' },
+  { area: 'Função', subject: 'Professor(a) de Creche' },
   { area: 'Disciplina', subject: 'Educação Infantil' },
   { area: 'Disciplina', subject: 'EJA' },
 ]
