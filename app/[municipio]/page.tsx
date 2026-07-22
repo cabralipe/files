@@ -234,7 +234,7 @@ export default function MunicipioHome() {
         </div>
       </section>
 
-      <style>{`
+      <style suppressHydrationWarning>{`
         .portal-sel-pg { min-height: calc(100vh - 74px); display: flex; flex-direction: column; justify-content: center; }
         .portal-sel-hero { text-align: center; margin-bottom: 40px; }
         .portal-sel-eyebrow { font-family: var(--font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--ink-muted); margin-bottom: 12px; }

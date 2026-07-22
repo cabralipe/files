@@ -257,22 +257,32 @@ export async function listSkills(municipalityId?: string | null): Promise<Public
   const supabase = getSupabase()
 
   if (supabase) {
-    let query = supabase
-      .from('skills')
-      .select('*')
-      .order('grade_level', { ascending: true })
-      .order('code', { ascending: true })
+    const pageSize = 1000
+    const rows: Record<string, unknown>[] = []
 
-    // Isolamento por tenant: quando o município é conhecido, retorna só o
-    // currículo dele. Sem município, mantém o comportamento global anterior.
-    if (municipalityId) {
-      query = query.eq('municipality_id', municipalityId)
+    for (let from = 0; ; from += pageSize) {
+      let query = supabase
+        .from('skills')
+        .select('*')
+        .order('grade_level', { ascending: true })
+        .order('code', { ascending: true })
+        .range(from, from + pageSize - 1)
+
+      // Isolamento por tenant: quando o município é conhecido, retorna só o
+      // currículo dele. Sem município, mantém o comportamento global anterior.
+      if (municipalityId) {
+        query = query.eq('municipality_id', municipalityId)
+      }
+
+      const { data, error } = await query
+      if (error) break
+
+      rows.push(...(data || []))
+      if (!data || data.length < pageSize) break
     }
 
-    const { data, error } = await query
-
-    if (!error && data?.length) {
-      return data.map((skill, index) => normalizeSkill(skill, index))
+    if (rows.length) {
+      return rows.map((skill, index) => normalizeSkill(skill, index))
     }
   }
 
@@ -1164,8 +1174,35 @@ export async function createExperience(
   return experience
 }
 
-export async function buildPlanPrompt(input: z.infer<typeof createPlanSchema>): Promise<string> {
-  const skills = await listSkills()
+type PlanGenerationContext = {
+  municipalityId?: string | null
+  municipalityName?: string
+  municipalityState?: string
+}
+
+function planReferenceLabel(input: z.infer<typeof createPlanSchema>) {
+  if (input.subject === 'Educação Infantil' || /Bebês|Crianças/i.test(input.grade_level)) {
+    return 'Referencial Curricular da Educação Infantil'
+  }
+  if (input.subject.startsWith('EJA') || input.grade_level.includes('Etapa')) {
+    return 'Referencial Curricular da Educação de Jovens e Adultos'
+  }
+  if (input.subject === 'Computação') return 'BNCC Computação'
+  return 'Referencial Curricular Municipal'
+}
+
+function planMunicipalityLabel(context: PlanGenerationContext) {
+  if (!context.municipalityName) return 'rede municipal'
+  return context.municipalityState
+    ? `${context.municipalityName}/${context.municipalityState}`
+    : context.municipalityName
+}
+
+export async function buildPlanPrompt(
+  input: z.infer<typeof createPlanSchema>,
+  context: PlanGenerationContext = {},
+): Promise<string> {
+  const skills = await listSkills(context.municipalityId)
   const selected = skills.filter((skill) => input.skill_ids.includes(skill.id) || input.skill_ids.includes(skill.code))
   const skillBlock = selected
     .map((skill) => `[${skill.code}] ${skill.name}\n${skill.description}\nEixo: ${skill.axis}`)
@@ -1180,12 +1217,14 @@ export async function buildPlanPrompt(input: z.infer<typeof createPlanSchema>): 
   const methodologyBlock = teacherMethodology
     ? teacherMethodology
     : '[Sugestao da IA - ajuste conforme sua intencao pedagogica] Propor metodologia ativa simples e viavel para a turma.'
+  const referenceLabel = planReferenceLabel(input)
+  const municipalityLabel = planMunicipalityLabel(context)
 
-  return `Voce e especialista em educacao basica, BNCC Computacao e tecnologia educacional. Gere um plano de aula pronto para uso por professores da rede municipal.
+  return `Voce e especialista em educacao basica e no ${referenceLabel}. Gere um plano de aula pronto para uso por professores da rede municipal.
 
 DADOS DO PLANO:
 - Professor(a): ${input.teacher || 'Nao informado'}
-- Escola: ${input.school || 'Nao informada'} | Municipio: rede municipal
+- Escola: ${input.school || 'Nao informada'} | Municipio: ${municipalityLabel}
 - Ano/Turma: ${input.grade_level}
 - Componente Curricular: ${input.subject}
 - Data: ${date}
@@ -1200,7 +1239,7 @@ ${objectivesBlock}
 METODOLOGIA INFORMADA:
 ${methodologyBlock}
 
-HABILIDADES DA BNCC COMPUTACAO (${selected.length} selecionadas):
+HABILIDADES DO ${referenceLabel.toUpperCase()} (${selected.length} selecionadas):
 ${skillBlock || 'Nenhuma habilidade encontrada.'}
 
 Escreva em portugues do Brasil, com linguagem clara, direta e pratica. O plano deve ser completo e moderadamente detalhado: entre 750 e 1100 palavras. Evite introducoes longas, decoracao visual e repeticoes.
@@ -1216,7 +1255,7 @@ Professor(a), escola, municipio, ano/turma, componente, data, duracao e tema.
 Objetivo geral em uma frase com verbo de acao.
 Tres objetivos especificos mensuraveis.
 
-3. HABILIDADES BNCC
+3. HABILIDADES DO REFERENCIAL CURRICULAR
 Liste as habilidades selecionadas com codigo e aplicacao na aula.
 
 4. CONTEUDOS
@@ -1225,7 +1264,7 @@ Liste as habilidades selecionadas com codigo e aplicacao na aula.
 - Atitudinais: 1 item.
 
 5. METODOLOGIA
-Dois paragrafos explicando como a metodologia sera aplicada, incluindo organizacao da turma, pensamento computacional e conexao com o municipio.
+Dois paragrafos explicando como a metodologia sera aplicada, incluindo organizacao da turma, estrategias adequadas a faixa etaria e conexao com o municipio.
 
 6. DESENVOLVIMENTO DA AULA
 - Momento inicial: tempo, acao do professor, pergunta disparadora e como ativar conhecimentos previos.
@@ -1241,7 +1280,7 @@ Avaliacao formativa, produto/evidencia final, 4 criterios observaveis e uma suge
 9. REFERENCIAS
 BNCC e uma referencia complementar adequada.
 
-Feche com: Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao.`
+Feche com: Plano elaborado com base no ${referenceLabel} - Secretaria Municipal de Educacao de ${municipalityLabel}.`
 }
 
 type OpenAiResponseContent = {
@@ -1359,8 +1398,9 @@ export type PlanGenerationSource = 'ai' | 'fallback'
 /** Retorna o plano E a origem (IA ou template local), para o front sinalizar. */
 export async function generatePlanWithSource(
   input: z.infer<typeof createPlanSchema>,
+  context: PlanGenerationContext = {},
 ): Promise<{ content: string; source: PlanGenerationSource }> {
-  const prompt = await buildPlanPrompt(input)
+  const prompt = await buildPlanPrompt(input, context)
   const totalStartTime = Date.now()
   const apiKey = process.env.OPENAI_API_KEY || ''
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
@@ -1368,7 +1408,7 @@ export async function generatePlanWithSource(
   const maxTokens = envNumber('OPENAI_MAX_OUTPUT_TOKENS', 4200)
   const reasoningEffort = process.env.OPENAI_REASONING_EFFORT || 'minimal'
 
-  const skills = await listSkills()
+  const skills = await listSkills(context.municipalityId)
   const selected = skills.filter((skill) => input.skill_ids.includes(skill.id) || input.skill_ids.includes(skill.code))
   const date = input.date || new Date().toLocaleDateString('pt-BR')
 
@@ -1400,36 +1440,38 @@ export async function generatePlanWithSource(
   const teacherObjectives = (input.objectives || '').trim()
   const teacherMethodology = (input.methodology || '').trim()
   const teacherNotes = (input.notes || '').trim()
+  const referenceLabel = planReferenceLabel(input)
+  const municipalityLabel = planMunicipalityLabel(context)
 
   const template = `PLANO DE AULA: ${input.title.toUpperCase()}
 
 1. IDENTIFICACAO
 Professor(a): ${input.teacher || 'Professor(a)'}
-Escola: ${input.school || 'Escola Municipal'} | Municipio: rede municipal
+Escola: ${input.school || 'Escola Municipal'} | Municipio: ${municipalityLabel}
 Ano/Turma: ${input.grade_level} | Componente: ${input.subject}
 Data: ${date} | Duracao: ${input.duration || '50 minutos'}
 Tema: ${input.title}
 
 2. OBJETIVOS
-Objetivo geral: Desenvolver uma experiencia de aprendizagem alinhada a BNCC Computacao, conectando ${input.title} ao cotidiano dos estudantes do municipio.
+Objetivo geral: Desenvolver uma experiencia de aprendizagem alinhada ao ${referenceLabel}, conectando ${input.title} ao cotidiano dos estudantes do municipio.
 Objetivos especificos:
 - Relacionar o tema aos conhecimentos previos da turma.
 - Aplicar procedimentos de investigacao, registro, colaboracao ou criacao digital.
 - Produzir uma evidencia de aprendizagem individual ou coletiva.
-- Exercitar atitudes de autoria, respeito e cidadania digital.
+- Exercitar atitudes de autoria, respeito, convivencia e participacao.
 
-3. HABILIDADES BNCC
+3. HABILIDADES DO REFERENCIAL CURRICULAR
 ${skillBlock || 'Nenhuma habilidade encontrada.'}
 
 4. CONTEUDOS
 Conceituais:
 - Conceitos centrais do componente ${input.subject} ligados ao tema.
-- Cultura digital e pensamento computacional.
+- Conhecimentos e experiencias relacionados as habilidades selecionadas.
 Procedimentais:
 - Observacao, registro, organizacao e comunicacao de informacoes.
 - Uso orientado dos recursos disponiveis.
 Atitudinais:
-- Colaboracao, respeito e responsabilidade no uso da tecnologia.
+- Colaboracao, respeito e responsabilidade nas interacoes e atividades.
 
 5. METODOLOGIA
 ${teacherMethodology || 'Metodologia ativa com mediacao do professor.'}
@@ -1441,7 +1483,7 @@ Momento inicial: apresente o tema, escute hipoteses dos estudantes e registre no
 
 Desenvolvimento: proponha uma tarefa pratica com os recursos disponiveis. Os estudantes devem pesquisar, organizar informacoes, criar um produto simples ou resolver um desafio relacionado ao tema. Circule pela sala, faca perguntas, apoie grupos com mais dificuldade e incentive justificativas.
 
-Encerramento: convide os grupos a compartilhar resultados. Sistematize o que foi aprendido, conecte com a BNCC Computacao e registre combinados para continuidade.
+Encerramento: convide os grupos a compartilhar resultados. Sistematize o que foi aprendido, conecte com o referencial curricular e registre combinados para continuidade.
 
 7. RECURSOS DIDATICOS
 ${input.materials || 'Quadro, caderno, celular ou computador compartilhado.'}
@@ -1451,7 +1493,7 @@ A avaliacao sera formativa, observando participacao, colaboracao, clareza do reg
 
 9. REFERENCIAS
 - BRASIL. Base Nacional Comum Curricular (BNCC). Brasilia: MEC, 2017.
-- BNCC Computacao e documentos curriculares complementares.
+- ${referenceLabel} e documentos curriculares complementares.
 
 OBJETIVOS DO PROFESSOR
 ${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'}
@@ -1459,7 +1501,7 @@ ${teacherObjectives || 'Nao informado - usar tema e habilidades BNCC como base.'
 OBSERVACOES
 ${teacherNotes || 'Plano gerado para uso e edicao pelo professor.'}
 
-Plano elaborado com base na BNCC Computacao - Secretaria Municipal de Educacao.`
+Plano elaborado com base no ${referenceLabel} - Secretaria Municipal de Educacao de ${municipalityLabel}.`
 
   return { content: template, source: 'fallback' }
 }

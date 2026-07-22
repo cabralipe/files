@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import { createPlanSchema, generatePlanWithSource } from '@/lib/public-backend'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { rateLimitShared, getClientIp } from '@/lib/rate-limit'
+import { resolveMunicipality } from '@/lib/municipality'
 
 export const dynamic = 'force-dynamic'
 // Limite total da funcao no Vercel (segundos). Precisa ser MAIOR que os
@@ -30,7 +31,12 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const values = createPlanSchema.parse(body)
-    const { content, source } = await generatePlanWithSource(values)
+    const municipality = await resolveMunicipality(request)
+    const { content, source } = await generatePlanWithSource(values, {
+      municipalityId: municipality?.id,
+      municipalityName: municipality?.name,
+      municipalityState: municipality?.state,
+    })
 
     return NextResponse.json({
       data: {

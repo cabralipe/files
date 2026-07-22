@@ -174,14 +174,14 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     icon: 'BN',
     iconStyle: { background: 'var(--red)', color: 'var(--paper-soft)' },
     title: 'Bem-vindo ao Portal BNCC!',
-    body: 'Esta plataforma foi feita para professores da rede municipal criarem planos de aula alinhados à BNCC Computação. Veja como funciona em poucos passos.',
+    body: 'Esta plataforma foi feita para professores da rede municipal criarem planos de aula alinhados ao referencial curricular. Veja como funciona em poucos passos.',
     tip: null,
   },
   {
     icon: '⌕',
     iconStyle: { background: 'var(--blue-wash)', color: 'var(--ink)' },
     title: 'Pesquise as habilidades',
-    body: 'Use a busca e os filtros de ano, componente e eixo temático para explorar as habilidades da BNCC Computação e encontrar as que combinam com a sua aula.',
+    body: 'Use a busca e os filtros de etapa, componente e campo de experiência para explorar as habilidades do referencial e encontrar as que combinam com a sua aula.',
     selector: '.fbar',
   },
   {
@@ -232,6 +232,15 @@ export default function Home() {
   const [subject, setSubject] = useState('')
   const [axis, setAxis] = useState('')
   const [seg, setSeg] = useState('')
+  const referenceLabel = seg === 'ei'
+    ? 'Educação Infantil'
+    : seg === 'anos-iniciais'
+      ? 'Anos Iniciais'
+      : seg === 'anos-finais'
+        ? 'Anos Finais'
+        : seg === 'eja'
+          ? 'Educação de Jovens e Adultos'
+          : subject || 'Referencial Curricular'
   const [form, setForm] = useState<PlanForm>(emptyForm)
   const [planKind, setPlanKind] = useState<PlanKind>('plano')
   const [docFormat, setDocFormat] = useState<DocFormat>('plano')
@@ -264,7 +273,12 @@ export default function Home() {
     try {
       const params = new URLSearchParams(window.location.search)
       const sp = params.get('seg')
-      if (sp) setSeg(sp)
+      if (sp) {
+        setSeg(sp)
+        if (sp === 'ei') {
+          setForm((current) => ({ ...current, subject: 'Educação Infantil' }))
+        }
+      }
       // Permite abrir o portal já filtrado por componente (ex.: card "BNCC Computação").
       const subj = params.get('subject')
       if (subj) setSubject(subj)
@@ -463,8 +477,8 @@ export default function Home() {
 
     const phrases = [
       '🧠 Analisando as habilidades selecionadas...',
-      '📚 Consultando as diretrizes da BNCC Computação...',
-      '🔍 Pesquisando melhores práticas pedagógicas de computação...',
+      `📚 Consultando as diretrizes de ${referenceLabel}...`,
+      '🔍 Pesquisando práticas pedagógicas adequadas à faixa etária...',
       '💡 Formulando objetivos didáticos alinhados ao ano escolar...',
       '✏️ Estruturando a introdução e o aquecimento da aula...',
       '🧩 Decompondo conceitos complexos em atividades simples...',
@@ -486,7 +500,7 @@ export default function Home() {
       '🎨 Refinando a estética e a estrutura do conteúdo...',
       '✍️ Revisando a ortografia e a formatação do texto...',
       '🤝 Garantindo que a acessibilidade esteja contemplada...',
-      '🔋 Projetando alternativas para computação desplugada...',
+      '🔋 Projetando alternativas com os recursos disponíveis...',
       '🌟 Adicionando dicas exclusivas para o professor na regência...',
       '📅 Organizando a cronologia dos momentos da aula...',
       '🔍 Verificando o alinhamento com a Taxonomia de Bloom...',
@@ -745,10 +759,15 @@ export default function Home() {
 
     const docFmtForPdf: DocFormat = plan ? 'plano' : docFormat
     const withSignatures = isPei || docFmtForPdf === 'plano'
+    const pdfReferenceLabel = meta.subject === 'Educação Infantil'
+      ? 'Educação Infantil'
+      : referenceLabel
     await downloadRisoPdf({
       docType: isPei ? 'PEI' : DOC_LABELS[docFmtForPdf].docType,
-      docSubtitle: isPei ? 'Plano Educacional Individualizado' : DOC_LABELS[docFmtForPdf].docSubtitle,
-      masthead: `Portal BNCC Computação · Secretaria Municipal de Educação de ${muniLabel}`,
+      docSubtitle: isPei
+        ? 'Plano Educacional Individualizado'
+        : `${DOC_LABELS[docFmtForPdf].label} · ${pdfReferenceLabel}`,
+      masthead: `Referencial Curricular · ${pdfReferenceLabel} · Secretaria Municipal de Educação de ${muniLabel}`,
       title,
       meta: [
         { label: 'Professor(a)', value: meta.teacher || 'Professor(a)' },
@@ -790,7 +809,7 @@ export default function Home() {
           ],
         },
       ] : [],
-      footerLeft: `PORTAL BNCC COMPUTAÇÃO · ${muniLabel.toUpperCase()}`,
+      footerLeft: `${pdfReferenceLabel.toUpperCase()} · ${muniLabel.toUpperCase()}`,
       fileName: `${isPei ? 'pei' : docFmtForPdf === 'exercicios' ? 'exercicios' : docFmtForPdf === 'avaliacao' ? 'avaliacao' : 'plano'}-${pdfSlug(title) || 'aula'}.pdf`,
     })
   }
@@ -798,7 +817,7 @@ export default function Home() {
   return (
     <main>
       {/* ── Abas da pagina (header global fica acima) ── */}
-      <nav className="subnav" aria-label="Seções do portal · BNCC Computação">
+      <nav className="subnav" aria-label={`Seções do portal · ${referenceLabel}`}>
         <button className={`nb ${view === 'skills' ? 'on' : ''}`} onClick={() => setView('skills')}>
           Pesquisar
         </button>
@@ -827,7 +846,7 @@ export default function Home() {
             storageKey="bncc_howto_seen"
             accentVar="var(--red)"
             washVar="var(--red-wash)"
-            referencialLabel="complemento da BNCC Computação (1º ao 9º Ano)"
+            referencialLabel={`Referencial Curricular de ${muniName} · ${referenceLabel}`}
             onOpenTutorial={openTutorial}
           />
 
