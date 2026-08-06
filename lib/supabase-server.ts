@@ -239,7 +239,11 @@ async function loadContext(request: Request): Promise<{ user: User; ctx: UserCon
     email,
     role,
     blocked,
-    mustChangePassword: profile.must_change_password === true,
+    // Depois da troca, o Auth metadata pode estar atualizado antes de uma
+    // leitura consistente da réplica de public.users. Quando o Auth confirma
+    // explicitamente false, não reabrimos o fluxo de primeiro acesso.
+    mustChangePassword:
+      profile.must_change_password === true && user.app_metadata?.must_change_password !== false,
     municipalityId: (profile.municipality_id as string | null) || null,
     schoolId: (profile.school_id as string | null) || null,
     school: (profile.school_name as string | null) || null,
