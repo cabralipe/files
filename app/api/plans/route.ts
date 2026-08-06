@@ -71,7 +71,28 @@ export async function POST(request: Request) {
       const { data: selectedSchool } = await getSupabaseAdmin().from('schools').select('name').eq('id', requestedSchoolId).maybeSingle()
       if (selectedSchool?.name) body.school = selectedSchool.name
     }
-    const plan = await createPlan(body, ctx.userId, municipalityId ?? undefined, requestedSchoolId)
+
+    // PEI/PAEE são sempre de um aluno, que carrega escola e município corretos.
+    // Quando o autor (ex.: professor regente sem escola/município no perfil) não
+    // fornece esses campos, o documento herda do aluno — senão ele é gravado com
+    // municipality_id/school_id nulos e some das filas (o filtro SQL por
+    // municipality_id o exclui, e o escopo por escola nunca casa).
+    let effectiveSchoolId = requestedSchoolId
+    let effectiveMunicipalityId = municipalityId
+    if ((body.is_pei || body.is_paee) && typeof body.student_id === 'string' && body.student_id) {
+      const { data: student } = await getSupabaseAdmin()
+        .from('students')
+        .select('school_id, school_name, municipality_id')
+        .eq('id', body.student_id)
+        .maybeSingle()
+      if (student) {
+        if (!effectiveSchoolId && student.school_id) effectiveSchoolId = student.school_id
+        if (!effectiveMunicipalityId && student.municipality_id) effectiveMunicipalityId = student.municipality_id
+        if (!body.school && student.school_name) body.school = student.school_name
+      }
+    }
+
+    const plan = await createPlan(body, ctx.userId, effectiveMunicipalityId ?? undefined, effectiveSchoolId)
 
     return NextResponse.json({ success: true, data: plan, plan }, { status: 201 })
   } catch (error) {
