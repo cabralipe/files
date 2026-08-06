@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase-client'
@@ -50,8 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<AuthProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const profileRequestId = useRef(0)
 
   const applySession = useCallback(async (session: Session | null) => {
+    const requestId = ++profileRequestId.current
     if (!session) {
       setUser(null)
       setProfile(null)
@@ -60,18 +62,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const nextProfile = await fetchProfile(session.access_token)
-      setUser(session.user)
-      setProfile(nextProfile)
-      setError(null)
+      // Eventos do Supabase e refreshProfile podem consultar o perfil em
+      // paralelo. Uma resposta antiga não pode restaurar, por exemplo, o
+      // mustChangePassword=true depois que a troca de senha já foi concluída.
+      if (requestId === profileRequestId.current) {
+        setUser(session.user)
+        setProfile(nextProfile)
+        setError(null)
+      }
       return nextProfile
     } catch (err) {
-      setUser(null)
-      setProfile(null)
-      setError(err instanceof Error ? err.message : 'Erro ao carregar perfil')
-      window.setTimeout(() => { void supabase.auth.signOut({ scope: 'local' }) }, 0)
+      if (requestId === profileRequestId.current) {
+        setUser(null)
+        setProfile(null)
+        setError(err instanceof Error ? err.message : 'Erro ao carregar perfil')
+        window.setTimeout(() => { void supabase.auth.signOut({ scope: 'local' }) }, 0)
+      }
       return null
     } finally {
-      setLoading(false)
+      if (requestId === profileRequestId.current) setLoading(false)
     }
   }, [])
 
