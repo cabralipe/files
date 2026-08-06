@@ -61,7 +61,9 @@ export default function ResetPasswordPage() {
       if (!response.ok) throw new Error(payload.error || 'Erro ao concluir a troca de senha')
       const nextProfile = await refreshProfile()
       setMessage('Senha atualizada com sucesso.')
-      setTimeout(() => router.replace(nextProfile ? roleHomePath(nextProfile) : '/auth/login'), 700)
+      setTimeout(() => {
+        window.location.replace(nextProfile ? roleHomePath(nextProfile) : '/auth/login')
+      }, 700)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível atualizar a senha')
     } finally {
