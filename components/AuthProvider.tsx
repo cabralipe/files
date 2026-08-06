@@ -15,6 +15,7 @@ export type AuthProfile = {
   mustChangePassword: boolean
   municipality: { id: string; slug: string; name: string; state: string } | null
   school: { id: string; name: string } | null
+  schools: { id: string; name: string; municipality_id: string }[]
   permissions: RolePermissions
 }
 
@@ -25,7 +26,7 @@ type AuthContextValue = {
   error: string | null
   isAuthenticated: boolean
   refreshProfile: () => Promise<AuthProfile | null>
-  signUp: (email: string, password: string, name: string, schoolId: string, subject: string, municipalityId: string) => Promise<any>
+  signUp: (email: string, password: string, name: string, schoolIds: string[], subject: string, municipalityId: string, role?: 'teacher' | 'aee_teacher' | 'coordinator') => Promise<any>
   signIn: (email: string, password: string) => Promise<any>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
@@ -113,9 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     name: string,
-    schoolId: string,
+    schoolIds: string[],
     subject: string,
     municipalityId: string,
+    role: 'teacher' | 'aee_teacher' | 'coordinator' = 'teacher',
   ) => {
     setLoading(true)
     setError(null)
@@ -123,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name, school_id: schoolId, subject, municipality_id: municipalityId }),
+        body: JSON.stringify({ email, password, name, school_ids: schoolIds, subject, municipality_id: municipalityId, role }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Erro ao cadastrar')

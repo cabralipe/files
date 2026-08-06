@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
+import { getSupabaseAdmin, getUserSchools, requireUserContext } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
 import { canManageAeeStudents, createStudentWithProfileSchema } from '@/lib/pei'
 import { canSeeSensitiveStudentData } from '@/lib/authz-rules'
@@ -61,10 +61,16 @@ export async function GET(request: Request) {
 
     // Não-gestores ficam restritos à PRÓPRIA escola (do contexto, não do cliente).
     if (!isManager) {
-      if (!ctx.schoolId && !ctx.school) {
+      const memberships = await getUserSchools(ctx.userId, municipalityId)
+      const requestedSchoolId = new URL(request.url).searchParams.get('school_id')
+      const allowedSchoolIds = memberships.map((school) => school.id)
+      const schoolId = requestedSchoolId && allowedSchoolIds.includes(requestedSchoolId)
+        ? requestedSchoolId
+        : (ctx.schoolId && allowedSchoolIds.includes(ctx.schoolId) ? ctx.schoolId : null)
+      if (!schoolId && !ctx.school) {
         return NextResponse.json({ success: true, data: [] })
       }
-      query = ctx.schoolId ? query.eq('school_id', ctx.schoolId) : query.eq('school_name', ctx.school)
+      query = schoolId ? query.eq('school_id', schoolId) : query.eq('school_name', ctx.school)
     }
 
     const { data, error } = await query

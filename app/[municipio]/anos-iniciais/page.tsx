@@ -13,6 +13,7 @@ import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
 import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
 import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
 import SamQuestionIntegration from '@/components/SamQuestionIntegration'
+import SchoolSelector from '@/components/SchoolSelector'
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ type Skill = {
 }
 
 type PlanForm = {
+  school_id: string
   title: string
   teacher: string
   school: string
@@ -43,6 +45,7 @@ type PlanForm = {
 }
 
 const emptyForm: PlanForm = {
+  school_id: '',
   title: '',
   teacher: '',
   school: '',
@@ -205,7 +208,7 @@ async function getAccessToken() {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function AnosIniciaisPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { municipality } = useMunicipality()
   const muniName = municipality?.name || 'Município'
   const muniUf = municipality?.state || ''
@@ -283,9 +286,11 @@ export default function AnosIniciaisPage() {
       setForm(f => ({
         ...f,
         teacher: f.teacher || String(user.user_metadata?.name || user.user_metadata?.full_name || ''),
+        school_id: f.school_id || profile?.school?.id || '',
+        school: f.school || profile?.school?.name || '',
       }))
     }
-  }, [user])
+  }, [user, profile])
 
   // Load server-side plans (PEI) when user is logged in
   useEffect(() => {
@@ -914,6 +919,14 @@ export default function AnosIniciaisPage() {
                   <input value={form.teacher} onChange={e => updateForm('teacher', e.target.value)} placeholder="Nome completo" />
                 </Field>
                 <Field label="Escola" hint="Escola onde a aula será dada. Selecione na lista.">
+                  <SchoolSelector
+                    schools={profile?.schools || []}
+                    value={form.school_id}
+                    onChange={(id) => {
+                      const school = profile?.schools.find((item) => item.id === id)
+                      setForm((current) => ({ ...current, school_id: id, school: school?.name || current.school }))
+                    }}
+                  />
                   <select value={form.school} onChange={e => updateForm('school', e.target.value)}>
                     <option value="">Selecione a escola</option>
                     {schools.map(s => <option key={s} value={s}>{s}</option>)}

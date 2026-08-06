@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { createPlan, listPlans } from '@/lib/public-backend'
-import { requireUserContext } from '@/lib/supabase-server'
+import { getSupabaseAdmin, getUserSchools, requireUserContext } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
+import { canGeneratePei } from '@/lib/pei'
+import { canGeneratePaee } from '@/lib/paee'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +41,30 @@ export async function POST(request: Request) {
     const municipalityId =
       ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
     const body = await request.json()
-    const plan = await createPlan(body, ctx.userId, municipalityId ?? undefined, ctx.schoolId)
+
+    // PEI/PAEE sao documentos sensiveis do aluno: a criacao (nao so a geracao
+    // por IA) precisa respeitar o mesmo fluxo — professor regente faz o PEI,
+    // so o AEE/coordenacao/gestao pode autorar um PAEE.
+    if (body.is_paee && !canGeneratePaee(ctx.role)) {
+      return NextResponse.json({ error: 'Acesso restrito ao professor AEE, coordenacao ou administracao' }, { status: 403 })
+    }
+    if (body.is_pei && !canGeneratePei(ctx.role)) {
+      return NextResponse.json({ error: 'Acesso restrito a usuarios pedagogicos autenticados' }, { status: 403 })
+    }
+
+    const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
+    const requestedSchoolId = typeof body.school_id === 'string' ? body.school_id : ctx.schoolId
+    if (memberships.length > 1 && !requestedSchoolId) {
+      return NextResponse.json({ error: 'Selecione a escola do documento' }, { status: 400 })
+    }
+    if (requestedSchoolId && memberships.length && !memberships.some((school) => school.id === requestedSchoolId)) {
+      return NextResponse.json({ error: 'A escola selecionada nao esta associada ao seu usuario' }, { status: 403 })
+    }
+    if (requestedSchoolId) {
+      const { data: selectedSchool } = await getSupabaseAdmin().from('schools').select('name').eq('id', requestedSchoolId).maybeSingle()
+      if (selectedSchool?.name) body.school = selectedSchool.name
+    }
+    const plan = await createPlan(body, ctx.userId, municipalityId ?? undefined, requestedSchoolId)
 
     return NextResponse.json({ success: true, data: plan, plan }, { status: 201 })
   } catch (error) {

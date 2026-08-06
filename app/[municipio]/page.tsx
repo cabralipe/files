@@ -248,12 +248,12 @@ export default function MunicipioHome() {
         .portal-card-comp:hover { box-shadow: 8px 8px 0 var(--red-deep); }
         .portal-card-ai { background: var(--teal-wash); }
         .portal-card-ai:hover { box-shadow: 8px 8px 0 var(--teal-deep); }
-        .portal-card-af { background: var(--blue-wash); }
-        .portal-card-af:hover { box-shadow: 8px 8px 0 var(--blue-deep); }
+        .portal-card-af { background: var(--plum-wash); }
+        .portal-card-af:hover { box-shadow: 8px 8px 0 var(--plum-deep); }
         .portal-card-stamp { width: 52px; height: 52px; display: grid; place-items: center; border: 2px solid var(--ink); box-shadow: var(--stamp); font-family: var(--font-display); font-weight: 900; font-style: italic; font-size: 18px; transform: rotate(-3deg); flex-shrink: 0; }
         .portal-card-comp .portal-card-stamp { background: var(--red); color: var(--paper-soft); }
         .portal-card-ai .portal-card-stamp { background: var(--teal); color: var(--paper-soft); }
-        .portal-card-af .portal-card-stamp { background: var(--blue); color: var(--paper-soft); }
+        .portal-card-af .portal-card-stamp { background: var(--plum); color: var(--paper-soft); }
         .portal-card-body { flex: 1; }
         .portal-card-tag { font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-muted); margin-bottom: 8px; }
         .portal-card-title { font-family: var(--font-display); font-weight: 900; font-size: 36px; line-height: .95; letter-spacing: -.03em; color: var(--ink); font-variation-settings: "opsz" 144; margin-bottom: 14px; }

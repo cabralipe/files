@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase-client'
 import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
 import { useAuth } from '@/hooks/useAuth'
+import SchoolSelector from '@/components/SchoolSelector'
 
 // Construtor do PAEE — Plano de Atendimento Educacional Especializado.
 // Elaborado pelo professor AEE a partir da ficha AEE do aluno, articulado com
@@ -14,6 +15,7 @@ type PaeeStudent = {
   id: string
   full_name: string
   school_name: string
+  school_id?: string
   grade_level: string
   class_name?: string
   shift?: string
@@ -101,6 +103,7 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
 
   const isAdminRole = profile?.permissions.manageMunicipality === true
   const school = profile?.school?.name || ''
+  const [schoolId, setSchoolId] = useState(profile?.school?.id || '')
   const student = students.find((item) => item.id === studentId) || null
 
   useEffect(() => {
@@ -110,7 +113,7 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
       try {
         setLoadingStudents(true)
         const token = await getAccessToken()
-        const params = school && !isAdminRole ? `?school=${encodeURIComponent(school)}` : ''
+        const params = !isAdminRole && schoolId ? `?school_id=${encodeURIComponent(schoolId)}` : ''
         const response = await fetch(`/api/students${params}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
@@ -127,7 +130,7 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
     return () => {
       cancelled = true
     }
-  }, [user, school, isAdminRole])
+  }, [user, school, schoolId, isAdminRole])
 
   // Ao escolher o aluno, verifica PEI (para articulação) e PAEE já existentes.
   useEffect(() => {
@@ -237,6 +240,7 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
           title: `PAEE — ${student.full_name}`,
           teacher: teacherName,
           school: student.school_name,
+          school_id: student.school_id || schoolId,
           grade_level: student.grade_level,
           subject: 'Atendimento Educacional Especializado',
           duration: organizacao.duracao_atendimento,
@@ -343,6 +347,7 @@ export default function PaeeBuilder({ user }: { user: User | null }) {
       {error && <div className="al-error">{error}</div>}
 
       <div className="pc">
+        <SchoolSelector schools={profile?.schools || []} value={schoolId} onChange={(id) => { setSchoolId(id); setStudentId('') }} />
         <div className="pct"><span className="step-chip">1</span> Estudante</div>
         <div className="fg">
           <Field label="Aluno vinculado ao PAEE" wide hint="O PAEE é elaborado a partir da ficha AEE do aluno. Cadastre o aluno na aba de cadastro se ele não aparecer aqui.">

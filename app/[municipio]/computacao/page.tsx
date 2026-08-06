@@ -13,6 +13,7 @@ import { downloadRisoPdf, sanitizePdfText, pdfSlug } from '@/lib/pdf-riso'
 import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
 import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
 import SamQuestionIntegration from '@/components/SamQuestionIntegration'
+import SchoolSelector from '@/components/SchoolSelector'
 
 
 type Skill = {
@@ -79,6 +80,7 @@ type FamilyConsultation = {
 }
 
 type PlanForm = {
+  school_id: string
   title: string
   teacher: string
   school: string
@@ -93,6 +95,7 @@ type PlanForm = {
 }
 
 const emptyForm: PlanForm = {
+  school_id: '',
   title: '',
   teacher: '',
   school: '',
@@ -136,17 +139,6 @@ const emptyFamilyConsultation: FamilyConsultation = {
   expectativas: '',
   concordancia: 'pendente',
   observacoes: '',
-}
-
-function splitList(value: string) {
-  return value
-    .split(/\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-function joinList(value?: string[]) {
-  return (value || []).join('\n')
 }
 
 const tagClass: Record<string, string> = {
@@ -249,9 +241,6 @@ export default function Home() {
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
-  const [revisaoRegente, setRevisaoRegente] = useState(false)
-  const [aee, setAee] = useState<AeeCollaboration>(emptyAeeCollaboration)
-  const [family, setFamily] = useState<FamilyConsultation>(emptyFamilyConsultation)
   const [generated, setGenerated] = useState('')
   const [hideAnswerKey, setHideAnswerKey] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -265,8 +254,6 @@ export default function Home() {
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10)
     setForm((f) => f.date ? f : { ...f, date: today })
-    setAee((a) => a.data ? a : { ...a, data: today })
-    setFamily((fam) => fam.data_consulta ? fam : { ...fam, data_consulta: today })
   }, [])
 
   useEffect(() => {
@@ -318,6 +305,7 @@ export default function Home() {
         current.school === emptyForm.school
           ? String(profile?.school?.name || current.school)
           : current.school,
+      school_id: current.school_id || profile?.school?.id || '',
       subject:
         current.subject === emptyForm.subject
           ? String(user.user_metadata?.subject || current.subject).replace(/^.*: /, '')
@@ -422,14 +410,6 @@ export default function Home() {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
-  function updateAee<K extends keyof AeeCollaboration>(field: K, value: AeeCollaboration[K]) {
-    setAee((current) => ({ ...current, [field]: value }))
-  }
-
-  function updateFamily<K extends keyof FamilyConsultation>(field: K, value: FamilyConsultation[K]) {
-    setFamily((current) => ({ ...current, [field]: value }))
-  }
-
   function planPayload(content = generated, publish = false) {
     return {
       ...form,
@@ -439,11 +419,8 @@ export default function Home() {
       is_pei: planKind === 'pei',
       student_id: planKind === 'pei' ? selectedStudentId : '',
       pei_snapshot: planKind === 'pei' ? { student: selectedStudent } : {},
-      revisao_regente: revisaoRegente,
-      colaboracao_aee: aee,
-      consulta_familia: family,
-      is_published: publish,
-      plan_status: publish ? 'vigente' : 'rascunho',
+      is_published: planKind === 'pei' ? false : publish,
+      plan_status: planKind === 'pei' ? 'rascunho' : (publish ? 'vigente' : 'rascunho'),
     }
   }
 
@@ -706,9 +683,6 @@ export default function Home() {
     setHideAnswerKey(false)
     setSelectedStudentId(plan.student_id || '')
     setSelectedStudent((plan.pei_snapshot?.student as PeiStudent | undefined) || null)
-    setRevisaoRegente(Boolean(plan.revisao_regente))
-    setAee({ ...emptyAeeCollaboration, ...(plan.colaboracao_aee || {}) })
-    setFamily({ ...emptyFamilyConsultation, ...(plan.consulta_familia || {}) })
     setView('plan')
     showToast('Plano carregado para edição.')
   }
@@ -727,9 +701,6 @@ export default function Home() {
     setPlanKind('plano')
     setSelectedStudentId('')
     setSelectedStudent(null)
-    setRevisaoRegente(false)
-    setAee(emptyAeeCollaboration)
-    setFamily(emptyFamilyConsultation)
     setView('plan')
   }
 
@@ -752,8 +723,8 @@ export default function Home() {
       date: form.date,
       duration: form.duration,
     }
-    const aeePdf = plan?.colaboracao_aee || aee
-    const familyPdf = plan?.consulta_familia || family
+    const aeePdf = plan?.colaboracao_aee || emptyAeeCollaboration
+    const familyPdf = plan?.consulta_familia || emptyFamilyConsultation
     const concordancia = (value: string, label: string) =>
       `${familyPdf.concordancia === value ? '(X)' : '( )'} ${label}`
 
@@ -1037,20 +1008,8 @@ export default function Home() {
                 <span className="stn">3</span>
                 <span className="stl">Plano gerado</span>
               </div>
-              {planKind === 'pei' && (
-                <>
-                  <div className={`sti ${revisaoRegente && aee.nome && aee.contribuicoes ? 'done' : ''}`}>
-                    <span className="stn">4</span>
-                    <span className="stl">Revisao colaborativa</span>
-                  </div>
-                  <div className={`sti ${family.responsavel_nome && family.concordancia !== 'pendente' ? 'done' : ''}`}>
-                    <span className="stn">5</span>
-                    <span className="stl">Familia</span>
-                  </div>
-                </>
-              )}
               <div className={`sti ${generated ? 'done' : ''}`}>
-                <span className="stn">{planKind === 'pei' ? '6' : '4'}</span>
+                <span className="stn">4</span>
                 <span className="stl">Salvar/Publicar</span>
               </div>
             </div>
@@ -1119,6 +1078,14 @@ export default function Home() {
                   <input value={form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} placeholder="Nome do professor" />
                 </Field>
                 <Field label="Escola" hint="Escola onde a aula será dada. Selecione na lista.">
+                  <SchoolSelector
+                    schools={profile?.schools || []}
+                    value={form.school_id}
+                    onChange={(id) => {
+                      const school = profile?.schools.find((item) => item.id === id)
+                      setForm((current) => ({ ...current, school_id: id, school: school?.name || current.school }))
+                    }}
+                  />
                   <select
                     value={form.school}
                     onChange={(event) => updateForm('school', event.target.value)}
@@ -1168,10 +1135,14 @@ export default function Home() {
                 <span className="oa-label">{planKind === 'pei' ? 'PEI editável' : `${DOC_LABELS[docFormat].label} (editável)`}</span>
                 <button className="btn btn-gh" onClick={() => void downloadPlanPdf()}>Baixar PDF</button>
                 {isLoggedIn ? (
-                  <>
+                  planKind === 'pei' ? (
                     <button className="btn btn-suc" disabled={loading || !generated} onClick={() => void savePlan(false)}>Salvar rascunho</button>
-                    <button className="btn btn-pri" disabled={loading || !generated} onClick={() => void savePlan(true)}>Publicar vigente</button>
-                  </>
+                  ) : (
+                    <>
+                      <button className="btn btn-suc" disabled={loading || !generated} onClick={() => void savePlan(false)}>Salvar rascunho</button>
+                      <button className="btn btn-pri" disabled={loading || !generated} onClick={() => void savePlan(true)}>Publicar vigente</button>
+                    </>
+                  )
                 ) : (
                   <Link className="btn btn-suc" href="/auth/login">Login para salvar</Link>
                 )}
@@ -1217,127 +1188,23 @@ export default function Home() {
                   sourceRef={form.title}
                 />
               )}
-              {planKind === 'pei' && (
-                <div className="pei-flow">
-                  <section className="pei-block pei-tutorial">
-                    <div className="pei-tutorial-title">Como funciona o PEI</div>
-                    <ol className="pei-tutorial-steps">
-                      <li><strong>Passo 1–3</strong> — Preencha os dados do plano, selecione habilidades BNCC e gere o documento com IA.</li>
-                      <li><strong>Passo 4 (AEE)</strong> — O professor da sala de recursos revisa e registra contribuicoes, recursos e adaptacoes.</li>
-                      <li><strong>Passo 5 (Familia)</strong> — Registre a consulta com a familia e o grau de concordancia.</li>
-                      <li><strong>Passo 6 (Salvar)</strong> — Salve como rascunho ou publique como vigente. Publicar exige revisao, AEE e consulta familiar registrados.</li>
-                    </ol>
-                    <p className="pei-note" style={{ marginTop: 8 }}>
-                      O PEI e um documento pedagogico colaborativo. Nao substitui laudo clinico nem diagnostico medico.
-                      Deve ser revisado bimestralmente e ficar acessivel a equipe pedagogica e a familia.
-                    </p>
-                  </section>
-                  <section className="pei-block">
-                    <div className="bnac-form-section">Passo 4 - Revisao colaborativa (AEE)</div>
-                    <div className="pei-next" style={{ marginBottom: 12, padding: '12px 14px', border: '2px solid var(--blue)', background: 'var(--blue-wash)' }}>
-                      <p className="pei-note" style={{ margin: 0 }}>
-                        <strong>Caminho recomendado:</strong> salve o rascunho e{' '}
-                        <strong>envie para a validação do professor AEE</strong> — ele registra a própria
-                        colaboração no painel dele e o documento segue para a família. Preencha os campos
-                        abaixo manualmente <strong>apenas como exceção</strong>, quando a colaboração já
-                        aconteceu presencialmente (ex.: reunião registrada em ata).
-                      </p>
-                      <div className="brow" style={{ marginTop: 10 }}>
-                        <button
-                          type="button"
-                          className="btn btn-pri"
-                          disabled={!editingPlanId}
-                          title={editingPlanId ? '' : 'Salve o rascunho primeiro'}
-                          onClick={() => void submitForAee()}
-                        >
-                          Enviar para validação do AEE →
-                        </button>
-                      </div>
-                    </div>
-                    <label className="pei-check">
-                      <input type="checkbox" checked={revisaoRegente} onChange={(event) => setRevisaoRegente(event.target.checked)} />
-                      Professor regente revisou as secoes do PEI
-                    </label>
-                    <div className="fg">
-                      <Field label="Professor sala especial/AEE">
-                        <input value={aee.nome} onChange={(event) => updateAee('nome', event.target.value)} placeholder="Nome do profissional" />
-                      </Field>
-                      <Field label="ID/matricula do AEE">
-                        <input value={aee.professor_id} onChange={(event) => updateAee('professor_id', event.target.value)} placeholder="Opcional" />
-                      </Field>
-                      <Field label="Data da colaboracao">
-                        <input type="date" value={aee.data} onChange={(event) => updateAee('data', event.target.value)} />
-                      </Field>
-                      <Field label="Funcao">
-                        <input value={aee.funcao} onChange={(event) => updateAee('funcao', event.target.value)} />
-                      </Field>
-                      <Field label="Contribuicoes do AEE" wide>
-                        <textarea value={aee.contribuicoes} onChange={(event) => updateAee('contribuicoes', event.target.value)} placeholder="Barreiras identificadas, estrategias de comunicacao, apoio na avaliacao e sugestoes de adaptacao." />
-                      </Field>
-                      <Field label="Recursos indicados" wide>
-                        <textarea value={joinList(aee.recursos_indicados)} onChange={(event) => updateAee('recursos_indicados', splitList(event.target.value))} placeholder="Um recurso por linha" />
-                      </Field>
-                      <Field label="Adaptacoes sugeridas" wide>
-                        <textarea value={joinList(aee.adaptacoes_sugeridas)} onChange={(event) => updateAee('adaptacoes_sugeridas', splitList(event.target.value))} placeholder="Uma adaptacao por linha" />
-                      </Field>
-                      <Field label="Parecer do AEE" wide>
-                        <textarea value={aee.parecer} onChange={(event) => updateAee('parecer', event.target.value)} />
-                      </Field>
-                    </div>
-                  </section>
-                  <section className="pei-block">
-                    <div className="bnac-form-section">Passo 5 - Consulta e aprovacao da familia</div>
-                    <p className="pei-note" style={{ marginBottom: 12 }}>
-                      A participacao da familia e prevista na Lei Brasileira de Inclusao. <strong>Caminho
-                      recomendado:</strong> a familia registra a propria ciencia no painel dela (o AEE cria o
-                      acesso na aba &quot;Família&quot; do painel AEE). Preencha abaixo apenas como excecao,
-                      quando a consulta ja aconteceu de forma presencial ou informal (telefone, WhatsApp).
-                    </p>
-                    <div className="fg">
-                      <Field label="Responsavel consultado">
-                        <input value={family.responsavel_nome} onChange={(event) => updateFamily('responsavel_nome', event.target.value)} />
-                      </Field>
-                      <Field label="Parentesco">
-                        <input value={family.parentesco} onChange={(event) => updateFamily('parentesco', event.target.value)} />
-                      </Field>
-                      <Field label="Data da consulta">
-                        <input type="date" value={family.data_consulta} onChange={(event) => updateFamily('data_consulta', event.target.value)} />
-                      </Field>
-                      <Field label="Formato">
-                        <select value={family.formato} onChange={(event) => updateFamily('formato', event.target.value as FamilyConsultation['formato'])}>
-                          <option value="presencial">Presencial</option>
-                          <option value="telefone">Telefone</option>
-                          <option value="whatsapp">WhatsApp</option>
-                          <option value="reuniao_online">Reuniao online</option>
-                          <option value="outro">Outro</option>
-                        </select>
-                      </Field>
-                      <Field label="Status da familia" wide>
-                        <select value={family.concordancia} onChange={(event) => updateFamily('concordancia', event.target.value as FamilyConsultation['concordancia'])}>
-                          <option value="pendente">Pendente</option>
-                          <option value="aprovado">Aprovado pela familia</option>
-                          <option value="ciencia_sem_aprovacao">Ciencia sem aprovacao formal</option>
-                        </select>
-                      </Field>
-                      <Field label="Informacoes relevantes" wide>
-                        <textarea value={family.informacoes_relevantes} onChange={(event) => updateFamily('informacoes_relevantes', event.target.value)} placeholder="Rotina, autonomia, comunicacao, interesses, dificuldades em casa, medicacao quando informada espontaneamente e acompanhamentos externos." />
-                      </Field>
-                      <Field label="Expectativas da familia" wide>
-                        <textarea value={family.expectativas} onChange={(event) => updateFamily('expectativas', event.target.value)} />
-                      </Field>
-                      <Field label="Observacoes e encaminhamentos" wide>
-                        <textarea value={family.observacoes} onChange={(event) => updateFamily('observacoes', event.target.value)} placeholder="Justificativa e encaminhamento para nova reuniao quando houver ciencia sem aprovacao." />
-                      </Field>
-                    </div>
-                  </section>
-                  <section className="pei-block">
-                    <div className="bnac-form-section">Passo 6 - Salvar/Publicar</div>
-                    <p className="pei-note">
-                      Publicar como vigente exige revisao do professor regente, colaboracao do AEE registrada,
-                      consulta familiar e aprovacao ou ciencia formal da familia. O PEI publicado fica visivel
-                      para a coordenacao e para a conta de familia vinculada ao aluno.
-                    </p>
-                  </section>
+              {planKind === 'pei' && generated && (
+                <div className="pei-next" style={{ marginTop: 12, padding: '14px 16px', border: '2px solid var(--blue)', background: 'var(--blue-wash)' }}>
+                  <div className="bnac-form-section" style={{ marginBottom: 6 }}>Próximos passos do PEI</div>
+                  <p className="pei-note">
+                    Salve o rascunho e envie para validação do professor AEE. Depois ele segue para a família
+                    e, ao final, fica vigente. A coordenação acompanha todo o fluxo.
+                  </p>
+                  <div className="brow" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-pri"
+                      disabled={!editingPlanId}
+                      title={editingPlanId ? '' : 'Salve o rascunho primeiro'}
+                      onClick={() => void submitForAee()}
+                    >
+                      Enviar para validação do AEE →
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
