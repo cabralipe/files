@@ -14,6 +14,8 @@ import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
 import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
 import SamQuestionIntegration from '@/components/SamQuestionIntegration'
 import SchoolSelector from '@/components/SchoolSelector'
+import PlanContentModal, { type PlanContentModalData } from '@/components/PlanContentModal'
+import { StatusChip, CoordinatorFeedback } from '@/components/DocStatusBadges'
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -255,7 +257,8 @@ export default function AnosIniciaisPage() {
 
   // saved plans (localStorage for normal plans, server for PEI)
   const [saved, setSaved] = useState<Array<{ id: string; name: string; content: string; createdAt: string; kind?: DocFormat }>>([])
-  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string; aee_return_note?: string; coordinator_note?: string }>>([])
+  const [serverPlans, setServerPlans] = useState<Array<{ id: string; title: string; content: string; created_at: string; is_pei: boolean; plan_status?: string; aee_return_note?: string; coordinator_note?: string; coordinator_viewed_at?: string; coordinator_name?: string }>>([])
+  const [reading, setReading] = useState<PlanContentModalData | null>(null)
   const [loadingServerPlans, setLoadingServerPlans] = useState(false)
 
   // Set today's date after mount to avoid SSR/client timezone mismatch
@@ -1112,17 +1115,25 @@ export default function AnosIniciaisPage() {
                         <div className="pi-date">{new Date(plan.created_at).toLocaleString('pt-BR')}</div>
                       </div>
                       <div style={{ marginBottom: 8 }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', padding: '3px 8px', border: '1.5px solid var(--ink)', background: 'var(--paper)' }}>
-                          {peiStatusLabel(plan.plan_status)}
-                        </span>
+                        <StatusChip status={plan.plan_status} label={peiStatusLabel(plan.plan_status)} />
                       </div>
                       {plan.plan_status === 'rascunho' && (plan.aee_return_note || plan.coordinator_note)?.trim() && (
                         <div className="al-error" style={{ marginBottom: 8, fontSize: 13 }}>
                           <strong>Devolvido pelo AEE:</strong> {plan.aee_return_note || plan.coordinator_note}
                         </div>
                       )}
+                      <CoordinatorFeedback
+                        viewedAt={plan.coordinator_viewed_at}
+                        name={plan.coordinator_name}
+                        note={plan.plan_status !== 'rascunho' ? plan.coordinator_note : undefined}
+                      />
                       <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
                       <div className="pi-actions">
+                        <button className="btn btn-gh" onClick={() => setReading({
+                          title: plan.title || 'PEI sem título',
+                          meta: `${peiStatusLabel(plan.plan_status)} · ${new Date(plan.created_at).toLocaleDateString('pt-BR')}`,
+                          content: plan.content,
+                        })}>Ler completo</button>
                         <button className="btn btn-pri" onClick={() => {
                           setEditingPlanId(plan.id)
                           setGenerated(plan.content)
@@ -1164,6 +1175,11 @@ export default function AnosIniciaisPage() {
                   </div>
                   <p className="plan-preview">{plan.content.slice(0, 200)}…</p>
                   <div className="pi-actions">
+                    <button className="btn btn-gh" onClick={() => setReading({
+                      title: plan.name,
+                      meta: `${DOC_LABELS[plan.kind || 'plano'].label} · ${new Date(plan.createdAt).toLocaleDateString('pt-BR')}`,
+                      content: plan.content,
+                    })}>Ler completo</button>
                     <button className="btn btn-pri" onClick={() => loadSaved(plan)}>Editar</button>
                     <button className="btn btn-gh" onClick={() => deleteSaved(plan.id)}>Excluir</button>
                   </div>
@@ -1175,6 +1191,8 @@ export default function AnosIniciaisPage() {
       )}
 
       <div id="toast" role="status" aria-live="polite" className={toast ? 'show' : ''}>{toast}</div>
+
+      <PlanContentModal data={reading} onClose={() => setReading(null)} />
 
       <style>{`
         .ai-ic::before { content: "AI" !important; font-size: 14px !important; letter-spacing: -.05em; }

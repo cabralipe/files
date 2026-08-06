@@ -31,6 +31,100 @@ async function getAccessToken() {
   return data.session?.access_token
 }
 
+type FamilyLinkRequest = {
+  id: string
+  student_id: string
+  responsible_name: string
+  relationship: string
+  status: 'pending_approval' | 'approved' | 'revoked'
+  created_at: string
+  students: { full_name: string; grade_level: string; class_name: string; school_name: string } | null
+}
+
+function FamilyLinksApproval() {
+  const [links, setLinks] = useState<FamilyLinkRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState('')
+
+  async function load() {
+    setLoading(true)
+    setError('')
+    try {
+      const token = await getAccessToken()
+      const res = await fetch('/api/coordinator/family-links?status=pending_approval', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao carregar solicitações')
+      setLinks(payload.data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao carregar solicitações')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+  async function decide(id: string, action: 'approve' | 'reject') {
+    setBusy(id)
+    try {
+      const token = await getAccessToken()
+      const res = await fetch(`/api/coordinator/family-links/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action }),
+      })
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload.error || 'Erro ao decidir sobre o link')
+      setLinks((current) => current.filter((l) => l.id !== id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao decidir sobre o link')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  if (loading) return <div className="est">Carregando solicitações...</div>
+
+  return (
+    <div>
+      {error && <div className="al-error" style={{ marginBottom: 12 }}>{error}</div>}
+      {links.length === 0 ? (
+        <div className="est">Nenhuma solicitação de acesso da família pendente.</div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {links.map((l) => (
+            <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '2px solid var(--ink)', background: 'var(--paper-soft)', padding: '10px 12px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <strong>{l.responsible_name}</strong>
+                <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}> · {l.relationship || 'responsável'}</span>
+                <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 2 }}>
+                  {l.students?.full_name || 'Aluno'}
+                  {l.students?.grade_level ? ` · ${l.students.grade_level}` : ''}
+                  {l.students?.class_name ? ` / ${l.students.class_name}` : ''}
+                </div>
+              </div>
+              <button className="btn btn-suc" disabled={busy === l.id} onClick={() => void decide(l.id, 'approve')}>
+                {busy === l.id ? 'Salvando...' : 'Aprovar'}
+              </button>
+              <button className="btn btn-out" disabled={busy === l.id} onClick={() => void decide(l.id, 'reject')}>
+                Recusar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CoordinatorDashboard() {
   const router = useRouter()
   const { profile, loading: authLoading, isAuthenticated } = useAuth()
@@ -254,6 +348,18 @@ export default function CoordinatorDashboard() {
             </div>
           </div>
           <PeiReviewQueue mode="coordination" kind="paee" />
+        </section>
+      )}
+
+      {isCoordinator && (
+        <section className="pg">
+          <div className="saved-head">
+            <div>
+              <h1>Acesso da família</h1>
+              <p>O AEE gera o link do responsável; aqui você aprova para que ele passe a funcionar no portal da família.</p>
+            </div>
+          </div>
+          <FamilyLinksApproval />
         </section>
       )}
     </main>

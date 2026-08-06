@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
 import { listPlansBySchool, reviewPlan } from '@/lib/public-backend'
-import { requireUserContext } from '@/lib/supabase-server'
+import { getUserSchools, requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,13 +17,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Acesso restrito a coordenadores' }, { status: 403 })
     }
 
-    const school = ctx.school || ''
-    if (!school) {
+    const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
+    const schoolIds = Array.from(new Set([...memberships.map((s) => s.id), ...(ctx.schoolId ? [ctx.schoolId] : [])]))
+    const schoolNames = Array.from(new Set([...memberships.map((s) => s.name), ...(ctx.school ? [ctx.school] : [])]))
+    if (!schoolIds.length && !schoolNames.length) {
       return NextResponse.json({ error: 'Coordenador sem escola vinculada' }, { status: 400 })
     }
 
     // Só pode revisar planos da própria escola/município.
-    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined, ctx.schoolId)
+    const plans = await listPlansBySchool(schoolIds, ctx.municipalityId || undefined, schoolNames)
     const canReview = plans.some((plan) => plan.id === params.id)
 
     if (!canReview) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { listPlansBySchool } from '@/lib/public-backend'
-import { requireUserContext } from '@/lib/supabase-server'
+import { getUserSchools, requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,20 +12,23 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Acesso restrito a coordenadores' }, { status: 403 })
     }
 
-    const school = ctx.school || ''
-    if (!school) {
+    // Coordenador pode estar vinculado a mais de uma escola (user_schools).
+    const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
+    const schoolIds = Array.from(new Set([...memberships.map((s) => s.id), ...(ctx.schoolId ? [ctx.schoolId] : [])]))
+    const schoolNames = Array.from(new Set([...memberships.map((s) => s.name), ...(ctx.school ? [ctx.school] : [])]))
+    if (!schoolIds.length && !schoolNames.length) {
       return NextResponse.json({ error: 'Coordenador sem escola vinculada' }, { status: 400 })
     }
 
-    // Escopo por município + escola (do contexto, não do cliente).
-    const plans = await listPlansBySchool(school, ctx.municipalityId || undefined, ctx.schoolId)
+    // Escopo por município + escola(s) (do contexto, não do cliente).
+    const plans = await listPlansBySchool(schoolIds, ctx.municipalityId || undefined, schoolNames)
 
     return NextResponse.json({
       success: true,
       data: plans,
       plans,
       total: plans.length,
-      school,
+      schools: schoolNames,
     })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {

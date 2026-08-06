@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase-client'
+import PlanContentModal, { type PlanContentModalData } from '@/components/PlanContentModal'
+import { StatusChip, CoordinatorFeedback } from '@/components/DocStatusBadges'
 
 export type PeiReviewMode = 'aee' | 'coordination'
 export type PeiReviewKind = 'pei' | 'paee'
@@ -15,6 +17,9 @@ type Pei = {
   teacher?: string
   school?: string
   student_id?: string
+  coordinator_viewed_at?: string
+  coordinator_name?: string
+  coordinator_note?: string
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -49,7 +54,7 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState('')
-  const [open, setOpen] = useState<string>('')
+  const [reading, setReading] = useState<PlanContentModalData | null>(null)
   // Registro de ciencia da familia em nome dela (coordenacao/gestao).
   const [consentFor, setConsentFor] = useState('')
   const [consentName, setConsentName] = useState('')
@@ -202,18 +207,32 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
                   ))}
                 </div>
 
-                <div className="pei-note" style={{ fontSize: 12, marginBottom: 8 }}>
+                <div className="pei-note" style={{ fontSize: 12, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {plan.teacher ? <>Prof.: <strong>{plan.teacher}</strong> · </> : null}
-                  {plan.school || ''} · {STATUS_LABEL[status] || status}
+                  {plan.school || ''}
+                  <StatusChip status={status} label={STATUS_LABEL[status] || status} />
                 </div>
 
-                <p className="plan-preview">
-                  {open === plan.id ? plan.content : `${plan.content.slice(0, 220)}…`}
-                </p>
+                <CoordinatorFeedback
+                  viewedAt={plan.coordinator_viewed_at}
+                  name={plan.coordinator_name}
+                  note={plan.coordinator_note}
+                />
+
+                <p className="plan-preview">{plan.content.slice(0, 220)}…</p>
 
                 <div className="pi-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button className="btn btn-gh" onClick={() => setOpen(open === plan.id ? '' : plan.id)}>
-                    {open === plan.id ? 'Recolher' : 'Ler completo'}
+                  <button
+                    className="btn btn-gh"
+                    onClick={() =>
+                      setReading({
+                        title: plan.title || `${docLabel} sem título`,
+                        meta: `${plan.teacher ? `Prof.: ${plan.teacher} · ` : ''}${plan.school || ''} · ${STATUS_LABEL[status] || status}`,
+                        content: plan.content,
+                      })
+                    }
+                  >
+                    Ler completo
                   </button>
                   {kind === 'pei' && mode === 'aee' && status === 'aguardando_aee' && (
                     <>
@@ -267,6 +286,8 @@ export default function PeiReviewQueue({ mode, kind = 'pei' }: { mode: PeiReview
           })}
         </div>
       )}
+
+      <PlanContentModal data={reading} onClose={() => setReading(null)} />
     </div>
   )
 }

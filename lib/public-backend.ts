@@ -83,7 +83,7 @@ export type PlanFamilyConsultation = {
   responsavel_nome: string
   parentesco: string
   data_consulta: string
-  formato: 'presencial' | 'telefone' | 'whatsapp' | 'reuniao_online' | 'outro'
+  formato: 'presencial' | 'telefone' | 'whatsapp' | 'reuniao_online' | 'portal' | 'outro'
   informacoes_relevantes: string
   expectativas: string
   concordancia: 'aprovado' | 'ciencia_sem_aprovacao' | 'pendente'
@@ -160,7 +160,7 @@ const planSchemaBase = {
     responsavel_nome: z.string().trim().optional().default(''),
     parentesco: z.string().trim().optional().default(''),
     data_consulta: z.string().trim().optional().default(''),
-    formato: z.enum(['presencial', 'telefone', 'whatsapp', 'reuniao_online', 'outro']).optional().default('presencial'),
+    formato: z.enum(['presencial', 'telefone', 'whatsapp', 'reuniao_online', 'portal', 'outro']).optional().default('presencial'),
     informacoes_relevantes: z.string().trim().optional().default(''),
     expectativas: z.string().trim().optional().default(''),
     concordancia: z.enum(['aprovado', 'ciencia_sem_aprovacao', 'pendente']).optional().default('pendente'),
@@ -693,31 +693,42 @@ export async function deletePlan(id: string) {
 }
 
 export async function listPlansBySchool(
-  school: string,
+  schoolIds: string[],
   municipalityId?: string,
-  schoolId?: string | null,
+  schoolNames?: string[],
 ): Promise<PublicPlan[]> {
   const plans = await listPlans(undefined, municipalityId)
-  if (schoolId) return plans.filter((plan) => plan.school_id === schoolId)
-  const normalizedSchool = school.trim().toLowerCase()
-  return plans.filter((plan) => plan.school.trim().toLowerCase() === normalizedSchool)
+  return plans.filter((plan) => matchesActorSchools(plan, schoolIds, schoolNames || []))
+}
+
+// Um usuario pode ter varias escolas vinculadas (user_schools); um plano
+// "pertence" a ele se o school_id bater com alguma delas, OU — para planos
+// legados/orfaos sem school_id — se o nome da escola bater (case/trim-insensitive).
+// Sem esse fallback por nome, um professor cuja conta ainda nao tem school_id
+// populado (ou um plano salvo antes dessa coluna existir) fica invisivel para
+// o AEE/coordenacao mesmo estando na escola certa.
+function matchesActorSchools(
+  plan: Pick<PublicPlan, 'school_id' | 'school'>,
+  schoolIds: string[],
+  schoolNames: string[],
+): boolean {
+  if (!schoolIds.length && !schoolNames.length) return true
+  if (plan.school_id) return schoolIds.includes(plan.school_id)
+  if (!plan.school) return false
+  const name = plan.school.trim().toLowerCase()
+  return schoolNames.some((n) => n.trim().toLowerCase() === name)
 }
 
 // Lista PEIs (de todos os professores) para os fluxos de validacao AEE/coordenacao.
 export async function listPeisForReview(opts: {
   municipalityId?: string
-  school?: string
-  schoolId?: string
+  schoolIds?: string[]
+  schoolNames?: string[]
   status?: PublicPlan['plan_status']
 }): Promise<PublicPlan[]> {
   // is_pei + municipality vão no SQL; escola/status (JSON) filtram o subconjunto.
   let plans = await queryPlans({ municipalityId: opts.municipalityId, isPei: true })
-  if (opts.schoolId) {
-    plans = plans.filter((plan) => plan.school_id === opts.schoolId)
-  } else if (opts.school) {
-    const s = opts.school.trim().toLowerCase()
-    plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
-  }
+  plans = plans.filter((plan) => matchesActorSchools(plan, opts.schoolIds || [], opts.schoolNames || []))
   if (opts.status) {
     plans = plans.filter((plan) => (plan.plan_status || 'rascunho') === opts.status)
   }
@@ -738,19 +749,14 @@ export async function getLatestPeiForStudent(
 // Lista PAEEs (planos do AEE) para acompanhamento do AEE/coordenacao.
 export async function listPaeesForReview(opts: {
   municipalityId?: string
-  school?: string
-  schoolId?: string
+  schoolIds?: string[]
+  schoolNames?: string[]
   status?: PublicPlan['plan_status']
 }): Promise<PublicPlan[]> {
   // is_paee vive no JSON; filtra em memória sobre o conjunto do município (SQL).
   let plans = await queryPlans({ municipalityId: opts.municipalityId })
   plans = plans.filter((plan) => plan.is_paee)
-  if (opts.schoolId) {
-    plans = plans.filter((plan) => plan.school_id === opts.schoolId)
-  } else if (opts.school) {
-    const s = opts.school.trim().toLowerCase()
-    plans = plans.filter((plan) => plan.school.trim().toLowerCase() === s)
-  }
+  plans = plans.filter((plan) => matchesActorSchools(plan, opts.schoolIds || [], opts.schoolNames || []))
   if (opts.status) {
     plans = plans.filter((plan) => (plan.plan_status || 'rascunho') === opts.status)
   }
@@ -767,6 +773,30 @@ export async function getLatestPaeeForStudent(
   const paees = plans.filter((plan) => plan.is_paee)
   const vigente = paees.find((plan) => plan.plan_status === 'vigente')
   return vigente || paees[0] || null
+}
+
+// Todos os PEIs/PAEEs do aluno (todas as versoes/status) — usado pelo portal
+// da familia, que precisa ver inclusive os "aguardando_familia" para dar ciencia.
+export async function getStudentPeiPaeeDocs(studentId: string, municipalityId?: string): Promise<PublicPlan[]> {
+  const plans = await queryPlans({ municipalityId, studentId })
+  return plans.filter((plan) => plan.is_pei || plan.is_paee)
+}
+
+// Planos de aula (nunca PEI/PAEE, que sao exclusivos do aluno) da turma do
+// aluno, ja validados pela coordenacao — para o portal da familia.
+export async function getApprovedClassPlans(opts: {
+  municipalityId?: string
+  schoolId?: string | null
+  gradeLevel: string
+}): Promise<PublicPlan[]> {
+  let plans = await queryPlans({ municipalityId: opts.municipalityId })
+  plans = plans.filter((plan) => !plan.is_pei && !plan.is_paee && Boolean(plan.coordinator_viewed_at))
+  if (opts.schoolId) {
+    plans = plans.filter((plan) => plan.school_id === opts.schoolId)
+  }
+  const grade = opts.gradeLevel.trim().toLowerCase()
+  plans = plans.filter((plan) => (plan.grade_level || '').trim().toLowerCase() === grade)
+  return plans
 }
 
 export type PlanTransition = 'submit_aee' | 'submit_familia' | 'approve_aee' | 'reject_aee' | 'family_consent'
@@ -896,7 +926,20 @@ export async function transitionPlanStatus(
     note?: string
     // Identidade de quem executa a acao, para validar o escopo (escola/municipio
     // ou vinculo familiar) e evitar que um usuario atue sobre documentos alheios.
-    actor?: { role?: string; userId?: string; school?: string; schoolId?: string; municipalityId?: string }
+    // schoolIds/schoolNames cobrem vinculo a mais de uma escola (user_schools);
+    // school/schoolId seguem aceitos por compatibilidade com quem ainda nao migrou.
+    actor?: {
+      role?: string
+      userId?: string
+      school?: string
+      schoolId?: string
+      schoolIds?: string[]
+      schoolNames?: string[]
+      municipalityId?: string
+      // Família via link aprovado (sem conta/JWT): o student_id já foi
+      // conferido pelo token no chamador — dispensa o lookup em family_student_links.
+      verifiedStudentId?: string
+    }
   } = {},
 ): Promise<PublicPlan | null> {
   const supabase = getSupabaseAdmin()
@@ -918,19 +961,25 @@ export async function transitionPlanStatus(
       throw new Error('SCOPE_FORBIDDEN')
     }
     if (actor.role === 'family') {
-      const { data: link } = await supabase
-        .from('family_student_links')
-        .select('student_id')
-        .eq('family_user_id', actor.userId || '')
-        .eq('student_id', plan.student_id || '')
-        .maybeSingle()
-      if (!link) throw new Error('SCOPE_FORBIDDEN')
+      if (actor.verifiedStudentId) {
+        if (!plan.student_id || actor.verifiedStudentId !== plan.student_id) throw new Error('SCOPE_FORBIDDEN')
+      } else {
+        const { data: link } = await supabase
+          .from('family_student_links')
+          .select('student_id')
+          .eq('family_user_id', actor.userId || '')
+          .eq('student_id', plan.student_id || '')
+          .maybeSingle()
+        if (!link) throw new Error('SCOPE_FORBIDDEN')
+      }
     } else if (!managers.includes(actor.role)) {
-      // teacher / aee_teacher / coordinator: restritos a propria escola E ao
-      // proprio municipio (nomes de escola se repetem entre redes).
-      const sameSchool = actor.schoolId && plan.school_id
-        ? actor.schoolId === plan.school_id
-        : Boolean(actor.school && plan.school && actor.school === plan.school)
+      // teacher / aee_teacher / coordinator: restritos a(s) propria(s) escola(s)
+      // E ao proprio municipio (nomes de escola se repetem entre redes).
+      const schoolIds = Array.from(new Set([...(actor.schoolIds || []), ...(actor.schoolId ? [actor.schoolId] : [])]))
+      const schoolNames = Array.from(new Set([...(actor.schoolNames || []), ...(actor.school ? [actor.school] : [])]))
+      // Ao contrario do filtro de listagem, aqui ausencia de escola no ator
+      // NAO pode significar "sem restricao" — precisa negar por padrao.
+      const sameSchool = (schoolIds.length > 0 || schoolNames.length > 0) && matchesActorSchools(plan, schoolIds, schoolNames)
       if (!sameSchool) {
         throw new Error('SCOPE_FORBIDDEN')
       }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
-import { requireUserContext } from '@/lib/supabase-server'
+import { getUserSchools, requireUserContext } from '@/lib/supabase-server'
 import { canApprovePeiAee, canConsentFamily, canGeneratePei } from '@/lib/pei'
 import {
   transitionPlanStatus,
@@ -33,6 +33,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Acao nao permitida para o seu perfil' }, { status: 403 })
     }
 
+    const memberships = ['admin', 'municipality_admin', 'super_admin'].includes(role)
+      ? []
+      : await getUserSchools(ctx.userId, ctx.municipalityId)
+
     const plan = await transitionPlanStatus(params.id, body.action as PlanTransition, {
       actorName: ctx.fullName,
       note: body.note,
@@ -43,6 +47,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         userId: ctx.userId,
         school: ctx.school || '',
         schoolId: ctx.schoolId || undefined,
+        schoolIds: memberships.map((s) => s.id),
+        schoolNames: memberships.map((s) => s.name),
         municipalityId: ctx.municipalityId || undefined,
       },
     })

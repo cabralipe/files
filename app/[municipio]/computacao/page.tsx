@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase-client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from '@/lib/m-link'
-import { schoolsFor } from '@/lib/education-options'
 import { useMunicipality } from '@/lib/municipality-context'
 import { useAuth } from '@/hooks/useAuth'
 import PeiControls, { type PeiStudent, type PlanKind } from '@/components/PeiControls'
@@ -14,6 +13,7 @@ import AnswerKeyVisibility from '@/components/AnswerKeyVisibility'
 import { hasAnswerKey, withoutAnswerKey } from '@/lib/answer-key'
 import SamQuestionIntegration from '@/components/SamQuestionIntegration'
 import SchoolSelector from '@/components/SchoolSelector'
+import PlanContentModal, { type PlanContentModalData } from '@/components/PlanContentModal'
 
 
 type Skill = {
@@ -213,7 +213,6 @@ export default function Home() {
   const muniUf = municipality?.state || ''
   const muniLabel = `${muniName}${muniUf ? '/' + muniUf : ''}`
   const muniLabelDash = `${muniName}${muniUf ? '-' + muniUf : ''}`
-  const schools = schoolsFor(municipality)
   const isLoggedIn = Boolean(user)
   const [view, setView] = useState<'skills' | 'plan' | 'saved'>('skills')
   const [skills, setSkills] = useState<Skill[]>([])
@@ -241,6 +240,7 @@ export default function Home() {
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [selectedStudent, setSelectedStudent] = useState<PeiStudent | null>(null)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null)
+  const [reading, setReading] = useState<PlanContentModalData | null>(null)
   const [generated, setGenerated] = useState('')
   const [hideAnswerKey, setHideAnswerKey] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -1077,7 +1077,7 @@ export default function Home() {
                 <Field label="Professor(a)" hint="Seu nome, como deve aparecer no cabeçalho do plano." example="Ex.: Carlos Henrique Lima">
                   <input value={form.teacher} onChange={(event) => updateForm('teacher', event.target.value)} placeholder="Nome do professor" />
                 </Field>
-                <Field label="Escola" hint="Escola onde a aula será dada. Selecione na lista.">
+                <Field label="Escola" hint="Escola onde a aula será dada.">
                   <SchoolSelector
                     schools={profile?.schools || []}
                     value={form.school_id}
@@ -1086,15 +1086,9 @@ export default function Home() {
                       setForm((current) => ({ ...current, school_id: id, school: school?.name || current.school }))
                     }}
                   />
-                  <select
-                    value={form.school}
-                    onChange={(event) => updateForm('school', event.target.value)}
-                  >
-                    <option value="">Selecione a escola</option>
-                    {schools.map((school) => (
-                      <option key={school} value={school}>{school}</option>
-                    ))}
-                  </select>
+                  {(!profile?.schools || profile.schools.length <= 1) && (
+                    <input value={form.school} readOnly disabled placeholder="Escola do seu cadastro" />
+                  )}
                 </Field>
                 <Field label="Ano/Turma" hint="Ano escolar da turma. A IA ajusta a linguagem e as atividades à faixa etária." example="Ex.: 8º Ano">
                   <input value={form.grade_level} onChange={(event) => updateForm('grade_level', event.target.value)} placeholder="8º Ano" />
@@ -1277,6 +1271,11 @@ export default function Home() {
                     )}
                   </div>
                   <div className="pi-actions">
+                    <button className="btn btn-gh" onClick={() => setReading({
+                      title: plan.title,
+                      meta: `${plan.teacher || 'Professor(a)'} · ${plan.school || ''} · ${plan.is_published ? 'Vigente' : 'Rascunho'}`,
+                      content: plan.content,
+                    })}>Ler completo</button>
                     <button className="btn btn-suc" onClick={() => void downloadPlanPdf(plan)}>PDF</button>
                     <button className="btn btn-pri" onClick={() => loadSavedPlan(plan)}>Editar</button>
                     <button className="btn btn-gh" onClick={() => deleteSavedPlan(plan.id)}>Excluir</button>
@@ -1337,6 +1336,8 @@ export default function Home() {
       )}
 
       <div id="toast" role="status" aria-live="polite" className={message ? 'show' : ''}>{message}</div>
+
+      <PlanContentModal data={reading} onClose={() => setReading(null)} />
     </main>
   )
 }

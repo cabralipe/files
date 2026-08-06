@@ -53,7 +53,14 @@ export async function POST(request: Request) {
     }
 
     const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
-    const requestedSchoolId = typeof body.school_id === 'string' ? body.school_id : ctx.schoolId
+    // string vazia ('') nao conta como "escola informada". Com mais de uma
+    // escola vinculada a escolha precisa ser explicita (ambiguidade real);
+    // com no maximo uma, cai com seguranca para a escola do proprio perfil —
+    // sem isso, um form que ainda nao carregou a escola grava o plano com
+    // school_id nulo e ele some da fila do AEE/coordenacao.
+    const explicitSchoolId = typeof body.school_id === 'string' && body.school_id ? body.school_id : undefined
+    const requestedSchoolId =
+      explicitSchoolId || (memberships.length <= 1 ? ctx.schoolId || memberships[0]?.id || undefined : undefined)
     if (memberships.length > 1 && !requestedSchoolId) {
       return NextResponse.json({ error: 'Selecione a escola do documento' }, { status: 400 })
     }

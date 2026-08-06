@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireUserContext } from '@/lib/supabase-server'
+import { getUserSchools, requireUserContext } from '@/lib/supabase-server'
 import { resolveMunicipality } from '@/lib/municipality'
 import { canViewPeiPipeline } from '@/lib/pei'
 import { listPaeesForReview, type PublicPlan } from '@/lib/public-backend'
@@ -21,19 +21,19 @@ export async function GET(request: Request) {
     const municipalityId =
       ctx.role === 'super_admin' ? (await resolveMunicipality(request))?.id : ctx.municipalityId || undefined
 
-    if (!isManager && !ctx.school) {
+    // Ver comentário equivalente em /api/peis/review-queue.
+    const memberships = isManager ? [] : await getUserSchools(ctx.userId, ctx.municipalityId)
+    const schoolIds = Array.from(new Set([...memberships.map((s) => s.id), ...(ctx.schoolId ? [ctx.schoolId] : [])]))
+    const schoolNames = Array.from(new Set([...memberships.map((s) => s.name), ...(ctx.school ? [ctx.school] : [])]))
+
+    if (!isManager && !schoolIds.length && !schoolNames.length) {
       return NextResponse.json({ success: true, data: [], total: 0 })
     }
 
-    // Gestao ve todas as escolas do municipio; AEE/coordenacao ficam na sua escola.
-    const school = isManager
-      ? url.searchParams.get('school') || undefined
-      : ctx.school || undefined
-
     const plans = await listPaeesForReview({
       municipalityId: municipalityId ?? undefined,
-      school,
-      schoolId: isManager ? undefined : ctx.schoolId || undefined,
+      schoolIds: isManager ? undefined : schoolIds,
+      schoolNames: isManager ? undefined : schoolNames,
       status: status as PublicPlan['plan_status'] | undefined,
     })
 

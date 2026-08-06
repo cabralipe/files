@@ -26,6 +26,12 @@ export async function GET(request: Request) {
       schoolName = school?.name || schoolName
     }
     const schools = await getUserSchools(ctx.userId, ctx.municipalityId)
+    // Fallback: usuarios sem school_id legado (ex.: vinculados so via
+    // user_schools) ainda precisam de uma "escola padrao" para os forms
+    // pre-preencherem school_id corretamente — sem isso o documento e criado
+    // sem escola e some da fila do AEE/coordenacao.
+    const primarySchoolId = ctx.schoolId || schools[0]?.id || null
+    const primarySchoolName = ctx.schoolId ? schoolName : schools[0]?.name || schoolName
 
     return NextResponse.json({
       id: ctx.userId,
@@ -40,7 +46,7 @@ export async function GET(request: Request) {
         name: municipality.name,
         state: municipality.state,
       } : null,
-      school: ctx.schoolId ? { id: ctx.schoolId, name: schoolName || 'Escola' } : null,
+      school: primarySchoolId ? { id: primarySchoolId, name: primarySchoolName || 'Escola' } : null,
       schools: schools.map((school) => ({ id: school.id, name: school.name, municipality_id: school.municipality_id })),
       permissions: getRolePermissions(ctx.role),
       // Compatibilidade temporária com o redirecionamento antigo.
