@@ -60,7 +60,11 @@ export async function getUserSchools(userId: string, municipalityId?: string | n
     const { data, error } = await query
     if (!error) {
       const rows = (data || []).map((row: any) => row.schools).filter(Boolean) as UserSchool[]
-      return municipalityId ? rows.filter((row) => row.municipality_id === municipalityId) : rows
+      const scoped = municipalityId ? rows.filter((row) => row.municipality_id === municipalityId) : rows
+      // Só retorna aqui se houver vínculo em user_schools. Sem linhas (usuário
+      // criado depois do backfill, ou backfill não executado) cai no legado
+      // por profile.school_id — senão o AEE/coordenação perde escola (e nome).
+      if (scoped.length) return scoped
     }
   } catch {
     // A migração pode ainda não ter sido aplicada; segue com a coluna legada.
@@ -71,6 +75,40 @@ export async function getUserSchools(userId: string, municipalityId?: string | n
   const { data: school } = await supabase.from('schools').select('id, name, municipality_id').eq('id', profile.school_id).maybeSingle()
   if (!school || (municipalityId && school.municipality_id !== municipalityId)) return []
   return [school as UserSchool]
+}
+
+/**
+ * Conjunto de school_id "efetivos" de um usuário de escola (AEE/coordenação),
+ * para escopar recursos guardados apenas por school_id (ex.: links da família).
+ * Inclui os vínculos diretos (user_schools + profile.school_id) E os ids de
+ * outras escolas do mesmo município cujo NOME bata — cobrindo bases em que a
+ * mesma escola existe como registros duplicados (ids distintos, mesmo nome) ou
+ * usuários vinculados só pelo nome. Espelha o casamento id-OU-nome usado nos
+ * planos/PEIs para que a fila e a aprovação de links não fiquem mais restritas.
+ */
+export async function getScopedSchoolIds(
+  ctx: Pick<UserContext, 'userId' | 'municipalityId' | 'schoolId' | 'school'>,
+): Promise<string[]> {
+  const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
+  const ids = new Set<string>([...memberships.map((s) => s.id), ...(ctx.schoolId ? [ctx.schoolId] : [])])
+  const names = new Set<string>(
+    [...memberships.map((s) => s.name), ...(ctx.school ? [ctx.school] : [])]
+      .filter(Boolean)
+      .map((n) => n.trim().toLowerCase()),
+  )
+
+  if (names.size) {
+    const supabase = getSupabaseAdmin()
+    let query = supabase.from('schools').select('id, name, municipality_id')
+    if (ctx.municipalityId) query = query.eq('municipality_id', ctx.municipalityId)
+    const { data } = await query
+    for (const school of data || []) {
+      const name = typeof school?.name === 'string' ? school.name.trim().toLowerCase() : ''
+      if (name && names.has(name)) ids.add(school.id as string)
+    }
+  }
+
+  return Array.from(ids)
 }
 
 export function getSupabaseAdmin() {

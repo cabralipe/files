@@ -702,21 +702,30 @@ export async function listPlansBySchool(
 }
 
 // Um usuario pode ter varias escolas vinculadas (user_schools); um plano
-// "pertence" a ele se o school_id bater com alguma delas, OU — para planos
-// legados/orfaos sem school_id — se o nome da escola bater (case/trim-insensitive).
-// Sem esse fallback por nome, um professor cuja conta ainda nao tem school_id
-// populado (ou um plano salvo antes dessa coluna existir) fica invisivel para
-// o AEE/coordenacao mesmo estando na escola certa.
+// "pertence" a ele se o school_id bater com alguma delas OU se o nome da escola
+// bater (case/trim-insensitive).
+//
+// O casamento e por id OU por nome — nao "id, senao nome". Duas situacoes reais
+// exigem o fallback por nome MESMO quando o plano ja tem school_id:
+//   1. Bases em que a mesma escola existe como registros duplicados (ids
+//      distintos, mesmo nome): o professor grava o plano com um id e o
+//      AEE/coordenacao esta vinculado ao outro.
+//   2. O AEE/coordenacao esta vinculado apenas pelo nome (sem school_id no
+//      perfil nem linha em user_schools).
+// Um `return schoolIds.includes(plan.school_id)` antecipado matava o fallback
+// nesses casos e deixava o PEI/PAEE invisivel para quem deveria ve-lo.
 function matchesActorSchools(
   plan: Pick<PublicPlan, 'school_id' | 'school'>,
   schoolIds: string[],
   schoolNames: string[],
 ): boolean {
   if (!schoolIds.length && !schoolNames.length) return true
-  if (plan.school_id) return schoolIds.includes(plan.school_id)
-  if (!plan.school) return false
-  const name = plan.school.trim().toLowerCase()
-  return schoolNames.some((n) => n.trim().toLowerCase() === name)
+  if (plan.school_id && schoolIds.includes(plan.school_id)) return true
+  if (plan.school) {
+    const name = plan.school.trim().toLowerCase()
+    if (schoolNames.some((n) => n.trim().toLowerCase() === name)) return true
+  }
+  return false
 }
 
 // Lista PEIs (de todos os professores) para os fluxos de validacao AEE/coordenacao.

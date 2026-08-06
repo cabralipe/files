@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z, ZodError } from 'zod'
-import { getSupabaseAdmin, getUserSchools, requireUserContext } from '@/lib/supabase-server'
+import { getScopedSchoolIds, getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,8 +25,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (fetchError) throw fetchError
     if (!link) return NextResponse.json({ error: 'Link não encontrado' }, { status: 404 })
 
-    const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
-    const schoolIds = Array.from(new Set([...memberships.map((s) => s.id), ...(ctx.schoolId ? [ctx.schoolId] : [])]))
+    // Mesmo escopo id-OU-nome da fila; senão a coordenação veria o link mas não
+    // conseguiria aprová-lo (403) quando o id da escola do aluno difere do seu.
+    const schoolIds = await getScopedSchoolIds(ctx)
     if (!link.school_id || !schoolIds.includes(link.school_id)) {
       return NextResponse.json({ error: 'Este link não pertence a uma escola sua' }, { status: 403 })
     }

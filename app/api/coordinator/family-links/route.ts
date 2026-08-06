@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin, getUserSchools, requireUserContext } from '@/lib/supabase-server'
+import { getScopedSchoolIds, getSupabaseAdmin, requireUserContext } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,8 +11,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Acesso restrito a coordenadores' }, { status: 403 })
     }
 
-    const memberships = await getUserSchools(ctx.userId, ctx.municipalityId)
-    const schoolIds = Array.from(new Set([...memberships.map((s) => s.id), ...(ctx.schoolId ? [ctx.schoolId] : [])]))
+    // Escopo por escola casando id OU nome (cobre escolas duplicadas com ids
+    // distintos e coordenador vinculado só pelo nome), senão o link gerado pelo
+    // AEE com o school_id do aluno não apareceria na fila.
+    const schoolIds = await getScopedSchoolIds(ctx)
     if (!schoolIds.length) {
       return NextResponse.json({ error: 'Coordenador sem escola vinculada' }, { status: 400 })
     }
