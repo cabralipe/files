@@ -47,6 +47,32 @@ export type UserContext = {
   fullName: string
 }
 
+export type UserSchool = { id: string; name: string; municipality_id: string }
+
+/** Retorna as escolas associadas ao usuário; mantém compatibilidade com o school_id legado. */
+export async function getUserSchools(userId: string, municipalityId?: string | null): Promise<UserSchool[]> {
+  const supabase = getSupabaseAdmin()
+  try {
+    let query = supabase
+      .from('user_schools')
+      .select('school_id, schools(id, name, municipality_id)')
+      .eq('user_id', userId)
+    const { data, error } = await query
+    if (!error) {
+      const rows = (data || []).map((row: any) => row.schools).filter(Boolean) as UserSchool[]
+      return municipalityId ? rows.filter((row) => row.municipality_id === municipalityId) : rows
+    }
+  } catch {
+    // A migração pode ainda não ter sido aplicada; segue com a coluna legada.
+  }
+
+  const { data: profile } = await supabase.from('users').select('school_id, municipality_id').eq('id', userId).maybeSingle()
+  if (!profile?.school_id) return []
+  const { data: school } = await supabase.from('schools').select('id, name, municipality_id').eq('id', profile.school_id).maybeSingle()
+  if (!school || (municipalityId && school.municipality_id !== municipalityId)) return []
+  return [school as UserSchool]
+}
+
 export function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     throw new Error('Supabase admin credentials are not configured')

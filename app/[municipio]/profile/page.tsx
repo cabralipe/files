@@ -14,6 +14,7 @@ type UserProfile = {
   email: string
   bio?: string | null
   total_points?: number
+  schools?: { id: string; name: string; municipality_id?: string }[]
 }
 
 export default function Profile() {
@@ -22,7 +23,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
-  const [formData, setFormData] = useState({ full_name: '', bio: '' })
+  const [formData, setFormData] = useState({ full_name: '', bio: '', school_ids: [] as string[] })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -67,6 +68,7 @@ export default function Profile() {
       setFormData({
         full_name: nextProfile.full_name || nextProfile.name || '',
         bio: nextProfile.bio || '',
+        school_ids: (nextProfile.schools || []).map((school: { id: string }) => school.id),
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar perfil')
@@ -150,6 +152,15 @@ export default function Profile() {
                   onChange={(event) => setFormData((current) => ({ ...current, full_name: event.target.value }))}
                 />
               </label>
+              {(profile?.schools || []).length > 1 && (
+                <label className="fgr s2">
+                  <span className="fl">Escolas associadas</span>
+                  <select multiple value={formData.school_ids} onChange={(event) => setFormData((current) => ({ ...current, school_ids: Array.from(event.target.selectedOptions, (option) => option.value) }))}>
+                    {(profile?.schools || []).map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+                  </select>
+                  <span className="fex">Selecione uma ou mais escolas. Use Ctrl/Command para marcar várias.</span>
+                </label>
+              )}
               <label className="fgr s2">
                 <span className="fl">Bio</span>
                 <textarea

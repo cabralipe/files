@@ -20,6 +20,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const body = await request.json()
+
+    // O tipo do documento (plano/PEI/PAEE) e definido na criacao e nao pode
+    // ser trocado na edicao — evita que o dono "vire" um plano comum em PEI/
+    // PAEE (ou vice-versa) para contornar quem pode autorar cada um.
+    if (typeof body.is_pei === 'boolean' && body.is_pei !== info.isPei) {
+      return NextResponse.json({ error: 'Nao e possivel alterar o tipo do documento (PEI)' }, { status: 400 })
+    }
+    if (typeof body.is_paee === 'boolean' && body.is_paee !== info.isPaee) {
+      return NextResponse.json({ error: 'Nao e possivel alterar o tipo do documento (PAEE)' }, { status: 400 })
+    }
+
     const plan = await updatePlan(params.id, body)
 
     if (!plan) {

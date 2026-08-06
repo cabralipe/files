@@ -59,7 +59,8 @@ export default function SignUp() {
     confirmPassword: '',
     state: '',
     municipality_id: '',
-    school_id: '',
+    school_ids: [] as string[],
+    role: 'teacher' as 'teacher' | 'aee_teacher' | 'coordinator',
     subject: '',
   })
   const [error, setError] = useState('')
@@ -104,8 +105,8 @@ export default function SignUp() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'state' ? { municipality_id: '', school_id: '' } : {}),
-      ...(name === 'municipality_id' ? { school_id: '' } : {}),
+      ...(name === 'state' ? { municipality_id: '', school_ids: [] } : {}),
+      ...(name === 'municipality_id' ? { school_ids: [] } : {}),
     }))
   }
 
@@ -124,7 +125,7 @@ export default function SignUp() {
       return
     }
 
-    if (!formData.name || !formData.email || !formData.password || !formData.school_id) {
+    if (!formData.name || !formData.email || !formData.password || !formData.school_ids.length) {
       setError('Todos os campos sao obrigatorios')
       return
     }
@@ -149,9 +150,10 @@ export default function SignUp() {
         formData.email,
         formData.password,
         formData.name,
-        formData.school_id,
+        formData.school_ids,
         formData.subject,
         formData.municipality_id,
+        formData.role,
       )
       setSuccess('Cadastro realizado com sucesso.')
       setTimeout(() => {
@@ -249,10 +251,18 @@ export default function SignUp() {
             </div>
 
             <label className="fgr">
+              <span className="fl">Perfil de acesso</span>
+              <select name="role" value={formData.role} onChange={handleChange}>
+                <option value="teacher">Professor(a) regente</option>
+                <option value="aee_teacher">Professor(a) do AEE</option>
+                <option value="coordinator">Coordenador(a) pedagógico(a)</option>
+              </select>
+            </label>
+
+            <label className="fgr">
               <span className="fl">Escola</span>
               {schoolOptions.length ? (
-                <select name="school_id" value={formData.school_id} onChange={handleChange} disabled={!selectedMunicipality}>
-                  <option value="">Selecione a escola</option>
+                <select multiple name="school_ids" value={formData.school_ids} onChange={(e) => setFormData((prev) => ({ ...prev, school_ids: Array.from(e.target.selectedOptions, (option) => option.value) }))} disabled={!selectedMunicipality}>
                   {schoolOptions.map((school) => (
                     <option key={school.id} value={school.id}>
                       {school.name}
@@ -266,6 +276,7 @@ export default function SignUp() {
                     : 'Selecione o município primeiro.'}
                 </span>
               )}
+              {schoolOptions.length > 1 && <span className="fex">Segure Ctrl (Windows) ou Command (Mac) para selecionar mais de uma escola.</span>}
             </label>
 
             <label className="fgr">

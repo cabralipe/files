@@ -27,9 +27,12 @@ export default async function MunicipalityLayout({
   const municipality = await getMunicipalityBySlug(params.municipio)
   if (!municipality) notFound()
 
+  // --blue-wash é um token de design compartilhado (tags, chips, o card "Anos
+  // Finais" etc.) — nao deve ser sobrescrito pela cor secundaria do municipio,
+  // que pode ser um tom saturado (ex.: Colonia Leopoldina) e quebrar o
+  // contraste em qualquer componente que use essa variavel.
   const styleVars: Record<string, string> = {}
   if (municipality.primary_color) styleVars['--red'] = municipality.primary_color
-  if (municipality.secondary_color) styleVars['--blue-wash'] = municipality.secondary_color
 
   return (
     <div style={styleVars as React.CSSProperties}>

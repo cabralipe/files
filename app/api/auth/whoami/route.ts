@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserContext } from '@/lib/supabase-server'
 import { getMunicipalityById } from '@/lib/municipality'
 import { getRolePermissions } from '@/lib/authz-rules'
-import { getSupabaseAdmin } from '@/lib/supabase-server'
+import { getSupabaseAdmin, getUserSchools } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
         .maybeSingle()
       schoolName = school?.name || schoolName
     }
+    const schools = await getUserSchools(ctx.userId, ctx.municipalityId)
 
     return NextResponse.json({
       id: ctx.userId,
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
         state: municipality.state,
       } : null,
       school: ctx.schoolId ? { id: ctx.schoolId, name: schoolName || 'Escola' } : null,
+      schools: schools.map((school) => ({ id: school.id, name: school.name, municipality_id: school.municipality_id })),
       permissions: getRolePermissions(ctx.role),
       // Compatibilidade temporária com o redirecionamento antigo.
       municipality_slug: municipality?.slug || null,

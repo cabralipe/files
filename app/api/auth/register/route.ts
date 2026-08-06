@@ -8,10 +8,15 @@ const registerSchema = z.object({
   email: z.string().email('Email invalido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
   name: z.string().trim().min(2, 'Informe o nome'),
-  school_id: z.string().uuid('Selecione uma escola cadastrada'),
+  role: z.enum(['teacher', 'aee_teacher', 'coordinator']).default('teacher'),
+  school_id: z.string().uuid().optional(),
+  school_ids: z.array(z.string().uuid()).min(1, 'Selecione ao menos uma escola').optional(),
   subject: z.string().trim().optional().default(''),
   municipality_id: z.string().trim().uuid('Selecione o municipio').optional().or(z.literal('')).default(''),
 }).superRefine((values, ctx) => {
+  if (!values.school_id && (!values.school_ids || values.school_ids.length === 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Selecione ao menos uma escola', path: ['school_ids'] })
+  }
   if (!values.subject || values.subject.trim().length < 2) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -34,19 +39,21 @@ export async function POST(request: Request) {
       )
     }
     const admin = getSupabaseAdmin()
-    const { data: school, error: schoolError } = await admin
+    const schoolIds = Array.from(new Set(values.school_ids?.length ? values.school_ids : [values.school_id!]))
+    const { data: schools, error: schoolError } = await admin
       .from('schools')
       .select('id, name, municipality_id')
-      .eq('id', values.school_id)
+      .in('id', schoolIds)
       .eq('municipality_id', municipality.id)
-      .maybeSingle()
     if (schoolError) throw schoolError
-    if (!school) {
+    if (!schools || schools.length !== schoolIds.length) {
       return NextResponse.json({ error: 'Selecione uma escola válida do município.' }, { status: 400 })
     }
-    const role = 'teacher' as const
+    const school = schools.find((item) => item.id === schoolIds[0]) || schools[0]
+    const role = values.role
     const metadata = {
       name: values.name,
+      role,
       school: school.name,
       school_id: school.id,
       subject: values.subject,
@@ -116,6 +123,10 @@ export async function POST(request: Request) {
       // Vincula usuário ao município (tabela user_municipalities)
       try {
         const admin = getSupabaseAdmin()
+        await admin.from('user_schools').upsert(
+          schoolIds.map((schoolId) => ({ user_id: user.id, school_id: schoolId })),
+          { onConflict: 'user_id,school_id' },
+        )
         await admin
           .from('user_municipalities')
           .upsert(
@@ -143,7 +154,7 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ user: sessionData.user, session: sessionData.session, municipality: { id: municipality.id, slug: municipality.slug, name: municipality.name, state: municipality.state } }, { status: 201 })
+    return NextResponse.json({ user: sessionData.user, session: sessionData.session, role, municipality: { id: municipality.id, slug: municipality.slug, name: municipality.name, state: municipality.state } }, { status: 201 })
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message || 'Dados invalidos' }, { status: 400 })
