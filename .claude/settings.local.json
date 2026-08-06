@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(curl -s -X POST https://integrate.api.nvidia.com/v1/chat/completions -H \"Authorization: Bearer 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\" -H \"Content-Type: application/json\" -d \"{\\\\\"model\\\\\":\\\\\"deepseek-ai/deepseek-v4-pro\\\\\",\\\\\"messages\\\\\":[{\\\\\"role\\\\\":\\\\\"user\\\\\",\\\\\"content\\\\\":\\\\\"oi\\\\\"}],\\\\\"max_tokens\\\\\":20,\\\\\"stream\\\\\":false}\")"
+      "Bash(curl -s -X POST https://integrate.api.nvidia.com/v1/chat/completions -H \"Authorization: Bearer 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\" -H \"Content-Type: application/json\" -d \"{\\\\\"model\\\\\":\\\\\"deepseek-ai/deepseek-v4-pro\\\\\",\\\\\"messages\\\\\":[{\\\\\"role\\\\\":\\\\\"user\\\\\",\\\\\"content\\\\\":\\\\\"oi\\\\\"}],\\\\\"max_tokens\\\\\":20,\\\\\"stream\\\\\":false}\")",
+      "mcp__ee1e44b5-637a-46ab-a858-a1b06c576496__execute_sql"
     ]
   }
 }
